@@ -22,6 +22,10 @@ class ShelterResource extends Resource
 
     protected static ?string $navigationLabel = '收容所';
 
+    protected static ?string $modelLabel = '收容所';
+
+    protected static ?string $pluralModelLabel = '收容所';
+
     public static function form(Schema $schema): Schema
     {
         return ShelterForm::configure($schema);

@@ -20,6 +20,12 @@ class ReportResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?string $modelLabel = '災情回報';
+
+    protected static ?string $pluralModelLabel = '災情回報';
+
+    protected static ?string $navigationLabel = '災情回報';
+
     public static function form(Schema $schema): Schema
     {
         return ReportForm::configure($schema);

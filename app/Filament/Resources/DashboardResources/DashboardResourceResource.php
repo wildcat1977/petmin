@@ -22,6 +22,10 @@ class DashboardResourceResource extends Resource
 
     protected static ?string $navigationLabel = '物資看板';
 
+    protected static ?string $modelLabel = '物資項目';
+
+    protected static ?string $pluralModelLabel = '物資項目';
+
     public static function form(Schema $schema): Schema
     {
         return DashboardResourceForm::configure($schema);
