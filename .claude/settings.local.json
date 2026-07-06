@@ -33,7 +33,15 @@
       "Bash(curl -s -m 12 \"https://data.taipei/api/v1/dataset/search?q=%E6%94%B6%E5%AE%B9&limit=5\")",
       "Bash(curl -s -m 12 \"https://data.taipei/api/v1/dataset/search?q=shelter&limit=5\")",
       "Bash(npm run *)",
-      "Bash(git commit -q -m 'feat: Phase 1b — external data integration layer *)"
+      "Bash(git commit -q -m 'feat: Phase 1b — external data integration layer *)",
+      "Bash(php -r 'echo json_encode\\(json_decode\\(file_get_contents\\(\"/var/www/html/civic_shield/composer.lock\"\\), true\\)[\"packages\"] ? array_values\\(array_filter\\(array_map\\(fn\\($p\\) => str_starts_with\\($p[\"name\"], \"filament/\"\\) || $p[\"name\"]==\"laravel/framework\" ? $p[\"name\"].\" \".$p[\"version\"] : null, json_decode\\(file_get_contents\\(\"/var/www/html/civic_shield/composer.lock\"\\), true\\)[\"packages\"]\\)\\)\\) : []\\);')",
+      "Bash(curl -s -o /dev/null -w \"dashboard:%{http_code} \" http://localhost:8100/dashboard)",
+      "Bash(curl -s http://localhost:8100/dashboard)",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page",
+      "Bash(CHROME=$\\(command -v chromium chromium-browser google-chrome google-chrome-stable chrome 2>/dev/null | head -1\\); echo \"chrome: $CHROME\"; ls ~/.cache/puppeteer/chrome*/ 2>/dev/null | head -3; ls /opt/google 2>/dev/null)",
+      "Bash(google-chrome --headless=new --disable-gpu --no-sandbox --window-size=1440,900 --hide-scrollbars --virtual-time-budget=12000 --screenshot=dashboard.png http://localhost:8100/dashboard)",
+      "Bash(google-chrome --headless=new --disable-gpu --no-sandbox --window-size=1440,900 --hide-scrollbars --virtual-time-budget=12000 --screenshot=home.png http://localhost:8100/)",
+      "Bash(git commit -q -m 'feat: Phase 1c — EOC dashboard, Filament admin resources, docs pending *)"
     ]
   }
 }

@@ -448,6 +448,20 @@ function initRadar() {
     radarMap.on('zoomend', scheduleFetch);
     fetchReports();
 
+    // 行政區界疊層（EOC dashboard 用；data-districts-url 存在才載入）
+    if (el.dataset.districtsUrl) {
+        fetch(el.dataset.districtsUrl)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((geojson) => {
+                if (!geojson || !radarMap) return;
+                L.geoJSON(geojson, {
+                    interactive: false,
+                    style: { color: '#38bdf8', weight: 1, opacity: 0.35, fillColor: '#38bdf8', fillOpacity: 0.04, dashArray: '4 3' },
+                }).addTo(radarMap);
+            })
+            .catch(() => {});
+    }
+
     new ThemeToggleControl().addTo(radarMap);
 
     // 地標搜尋（訪客可用，左上縮合圖示，展開後搜尋）

@@ -8,6 +8,9 @@ use Livewire\Component;
 
 new class extends Component
 {
+    /** EOC dashboard 開啟行政區界疊層 */
+    public bool $showDistricts = false;
+
     public function getTickerMessagesProperty(): array
     {
         $messages = [];
@@ -73,5 +76,6 @@ new class extends Component
     data-radar-echo-url="{{ route('api.radar-echo') }}"
     data-radar-echo-bounds='@json(config('civicshield.sources.radar_echo.bounds'))'
     data-flood-wmts="{{ config('civicshield.flood_potential_wmts') }}"
+    @if ($showDistricts) data-districts-url="{{ asset('geo/taipei-districts.json') }}" @endif
     data-ticker='@json($this->tickerMessages)'
 ></div>
