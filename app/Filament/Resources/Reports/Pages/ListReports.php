@@ -44,8 +44,6 @@ class ListReports extends ListRecords
         $allowed = [
             Report::STATUS_APPROVED,
             Report::STATUS_REJECTED,
-            Report::STATUS_REPORTED_1999,
-            Report::STATUS_RESOLVED,
             Report::STATUS_PENDING,
         ];
 

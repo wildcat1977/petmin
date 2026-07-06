@@ -63,17 +63,16 @@ class ReportsTable
                             ->visible(fn (Report $record) => $record->user_id !== null)
                     ),
 
-                BadgeColumn::make('type')
-                    ->label('類型')
-                    ->colors([
-                        'danger' => Report::TYPE_RAT,
-                        'primary' => Report::TYPE_POISON,
-                    ])
-                    ->formatStateUsing(fn (string $state) => match ($state) {
-                        Report::TYPE_RAT => '🐀 鼠蹤',
-                        Report::TYPE_POISON => '☠️ 毒餌',
-                        default => $state,
-                    }),
+                BadgeColumn::make('category')
+                    ->label('災情分類')
+                    ->color(fn (string $state) => match ($state) {
+                        Report::CATEGORY_FLOOD => 'info',
+                        Report::CATEGORY_ROAD_BLOCKED => 'warning',
+                        Report::CATEGORY_POWER_OUTAGE => 'warning',
+                        Report::CATEGORY_STRUCTURAL_DAMAGE => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state) => Report::CATEGORY_LABELS[$state] ?? $state),
 
                 ImageColumn::make('image_path')
                     ->label('照片')
@@ -96,29 +95,32 @@ class ReportsTable
 
                 BadgeColumn::make('status')
                     ->label('狀態')
-                    ->colors([
-                        'warning' => Report::STATUS_PENDING,
-                        'success' => Report::STATUS_APPROVED,
-                        'danger' => Report::STATUS_REJECTED,
-                        'warning' => Report::STATUS_REPORTED_1999,
-                        'success' => Report::STATUS_RESOLVED,
-                    ])
                     ->color(fn (string $state) => match ($state) {
                         Report::STATUS_PENDING => 'gray',
-                        Report::STATUS_APPROVED => 'danger',
-                        Report::STATUS_REPORTED_1999 => 'warning',
-                        Report::STATUS_RESOLVED => 'success',
-                        Report::STATUS_REJECTED => 'gray',
+                        Report::STATUS_APPROVED => 'success',
+                        Report::STATUS_REJECTED => 'danger',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state) => match ($state) {
                         Report::STATUS_PENDING => '待審核',
-                        Report::STATUS_APPROVED => '🔴 已核准（地圖上架）',
+                        Report::STATUS_APPROVED => '✅ 已核准（照片公開）',
                         Report::STATUS_REJECTED => '已拒絕',
-                        Report::STATUS_REPORTED_1999 => '🟡 已通報 1999',
-                        Report::STATUS_RESOLVED => '🟢 已處理完畢',
                         default => $state,
                     }),
+
+                BadgeColumn::make('verification_level')
+                    ->label('核實')
+                    ->color(fn (string $state) => match ($state) {
+                        Report::VERIFICATION_UNVERIFIED => 'gray',
+                        Report::VERIFICATION_CORROBORATED => 'info',
+                        Report::VERIFICATION_OFFICIAL => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state) => Report::VERIFICATION_LABELS[$state] ?? $state),
+
+                TextColumn::make('water_depth_cm')
+                    ->label('水深cm')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('rejection_reason')
                     ->label('拒絕原因')
@@ -134,43 +136,41 @@ class ReportsTable
                     ->sortable(),
             ])
             ->filters([
-                SelectFilter::make('type')
-                    ->label('類型篩選')
-                    ->options([
-                        Report::TYPE_RAT => '🐀 鼠蹤',
-                        Report::TYPE_POISON => '☠️ 毒餌',
-                    ]),
+                SelectFilter::make('category')
+                    ->label('災情分類篩選')
+                    ->options(Report::CATEGORY_LABELS),
                 SelectFilter::make('status')
                     ->label('狀態篩選')
                     ->options([
                         Report::STATUS_PENDING => '待審核',
-                        Report::STATUS_APPROVED => '🔴 已核准（地圖上架）',
-                        Report::STATUS_REPORTED_1999 => '🟡 已通報 1999',
-                        Report::STATUS_RESOLVED => '🟢 已處理完畢',
+                        Report::STATUS_APPROVED => '✅ 已核准（照片公開）',
                         Report::STATUS_REJECTED => '已拒絕',
                     ]),
+                SelectFilter::make('verification_level')
+                    ->label('核實篩選')
+                    ->options(Report::VERIFICATION_LABELS),
             ])
             ->recordActions([
                 Action::make('approve')
-                    ->label('核准上架')
-                    ->color('danger')
+                    ->label('核准（公開照片）')
+                    ->color('success')
                     ->icon('heroicon-o-check-circle')
                     ->visible(fn (Report $record) => $record->status === Report::STATUS_PENDING)
                     ->action(fn (Report $record) => $record->update(['status' => Report::STATUS_APPROVED])),
 
-                Action::make('report_1999')
-                    ->label('標記已通報 1999')
-                    ->color('warning')
-                    ->icon('heroicon-o-phone')
-                    ->visible(fn (Report $record) => $record->status === Report::STATUS_APPROVED)
-                    ->action(fn (Report $record) => $record->update(['status' => Report::STATUS_REPORTED_1999])),
-
-                Action::make('resolve')
-                    ->label('標記已處理完畢')
+                Action::make('mark_official')
+                    ->label('標記官方核實')
                     ->color('success')
                     ->icon('heroicon-o-check-badge')
-                    ->visible(fn (Report $record) => $record->status === Report::STATUS_REPORTED_1999)
-                    ->action(fn (Report $record) => $record->update(['status' => Report::STATUS_RESOLVED])),
+                    ->visible(fn (Report $record) => $record->verification_level !== Report::VERIFICATION_OFFICIAL)
+                    ->action(fn (Report $record) => $record->update(['verification_level' => Report::VERIFICATION_OFFICIAL])),
+
+                Action::make('mark_resolved')
+                    ->label('標記已排除')
+                    ->color('gray')
+                    ->icon('heroicon-o-flag')
+                    ->visible(fn (Report $record) => $record->resolved_at === null)
+                    ->action(fn (Report $record) => $record->update(['resolved_at' => now()])),
 
                 Action::make('reject')
                     ->label('拒絕')
@@ -195,12 +195,12 @@ class ReportsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('approve_all')
-                        ->label('批次核准上架')
+                        ->label('批次核准（公開照片）')
                         ->icon('heroicon-o-check-circle')
-                        ->color('danger')
+                        ->color('success')
                         ->requiresConfirmation()
-                        ->modalHeading('批次核准上架')
-                        ->modalDescription('將所選的待審核通報全部核准並上架至地圖，非待審核狀態的通報將略過。')
+                        ->modalHeading('批次核准（公開照片）')
+                        ->modalDescription('將所選的待審核回報全部核准（照片公開），非待審核狀態的回報將略過。')
                         ->action(function (Collection $records): void {
                             $records
                                 ->filter(fn (Report $record) => $record->status === Report::STATUS_PENDING)

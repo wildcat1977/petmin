@@ -1,14 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\MapPointsController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\GmailAuthController;
-use App\Http\Controllers\ShareController;
 use App\Http\Middleware\SetLocale;
 use App\Models\Report;
+use App\Models\Shelter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 
 Route::get('/locale/{locale}', function (string $locale) {
     if (in_array($locale, SetLocale::SUPPORTED, true)) {
@@ -22,6 +22,25 @@ Route::view('/', 'pages.radar')->name('home');
 
 Route::view('/reports', 'pages.reports')->name('reports');
 
+// 點位 API（server-side bbox query + geohash 聚合，spec §7.2）
+Route::get('/api/map/reports', MapPointsController::class)->name('api.map.reports');
+
+// 收容所點位（開設中的優先呈現；資料由 data.taipei 同步 + 後台維護）
+Route::get('/api/map/shelters', function () {
+    return response()->json(Cache::remember('map.shelters', 60, fn () => Shelter::query()
+        ->orderByDesc('is_open')
+        ->get(['id', 'name', 'latitude', 'longitude', 'address', 'capacity', 'is_open'])
+        ->map(fn (Shelter $s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'lat' => (float) $s->latitude,
+            'lng' => (float) $s->longitude,
+            'address' => $s->address,
+            'capacity' => $s->capacity,
+            'open' => $s->is_open,
+        ])->all()));
+})->name('api.map.shelters');
+
 Route::get('/reports/export', function () {
     $reports = Report::query()
         ->with('user:id,name')
@@ -32,35 +51,32 @@ Route::get('/reports/export', function () {
     $statusLabels = [
         Report::STATUS_PENDING => '待審核',
         Report::STATUS_APPROVED => '已審核',
-        Report::STATUS_REPORTED_1999 => '已通報1999',
-        Report::STATUS_RESOLVED => '已處理',
+        Report::STATUS_REJECTED => '已退件',
     ];
 
-    $typeLabels = [
-        Report::TYPE_RAT => '鼠蹤',
-        Report::TYPE_POISON => '毒餌',
-    ];
-
-    $filename = '鼠蹤通報清單_'.now()->format('Ymd_His').'.csv';
+    $filename = '災情回報清單_'.now()->format('Ymd_His').'.csv';
 
     $headers = [
         'Content-Type' => 'text/csv; charset=UTF-8',
         'Content-Disposition' => 'attachment; filename="'.$filename.'"',
     ];
 
-    $callback = function () use ($reports, $statusLabels, $typeLabels) {
+    $callback = function () use ($reports, $statusLabels) {
         $handle = fopen('php://output', 'w');
         fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-        fputcsv($handle, ['通報時間', '類型', '地點', '狀態', '說明', '照片網址', '緯度', '經度']);
+        fputcsv($handle, ['回報時間', '分類', '水深(cm)', '地點', '審核狀態', '核實層級', '已排除', '說明', '照片網址', '緯度', '經度']);
 
         foreach ($reports as $report) {
             fputcsv($handle, [
                 $report->created_at->format('Y-m-d H:i'),
-                $typeLabels[$report->type] ?? $report->type,
+                Report::CATEGORY_LABELS[$report->category] ?? $report->category,
+                $report->water_depth_cm !== null ? (string) $report->water_depth_cm : '',
                 $report->address ?: '',
                 $statusLabels[$report->status] ?? $report->status,
+                Report::VERIFICATION_LABELS[$report->verification_level] ?? $report->verification_level,
+                $report->resolved_at?->format('Y-m-d H:i') ?? '',
                 $report->description ?? '',
-                $report->image_path ? Storage::disk('public')->url($report->image_path) : '',
+                $report->publicImageUrl() ?? '',
                 (string) $report->latitude,
                 (string) $report->longitude,
             ]);
@@ -81,8 +97,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/gmail/callback', [GmailAuthController::class, 'callback'])
         ->name('admin.gmail.callback');
 });
-
-Route::view('/leaderboard', 'pages.leaderboard')->name('leaderboard');
 
 Route::get('/transparency', function () {
     $stats = Cache::remember('transparency.stats', 3600, function () {
@@ -118,11 +132,11 @@ Route::get('/transparency', function () {
 
         // 地圖散點資料：epoch 需告知 PG「此值是台北時間」才能取到正確 UTC epoch
         $mapPoints = DB::table('reports')
-            ->whereIn('status', ['approved', 'reported_1999', 'resolved'])
-            ->selectRaw("latitude::float AS lat, longitude::float AS lng, type, EXTRACT(EPOCH FROM (created_at AT TIME ZONE 'Asia/Taipei'))::int AS ts")
+            ->whereIn('status', Report::VISIBLE_STATUSES)
+            ->selectRaw("latitude::float AS lat, longitude::float AS lng, category, EXTRACT(EPOCH FROM (created_at AT TIME ZONE 'Asia/Taipei'))::int AS ts")
             ->orderBy('created_at')
             ->get()
-            ->map(fn ($r) => [(float) $r->lat, (float) $r->lng, $r->type, (int) $r->ts])
+            ->map(fn ($r) => [(float) $r->lat, (float) $r->lng, $r->category, (int) $r->ts])
             ->values()
             ->all();
 
@@ -131,8 +145,6 @@ Route::get('/transparency', function () {
             'approved' => Report::where('status', Report::STATUS_APPROVED)->count(),
             'pending' => Report::where('status', Report::STATUS_PENDING)->count(),
             'rejected' => Report::where('status', Report::STATUS_REJECTED)->count(),
-            'reported_1999' => Report::where('status', Report::STATUS_REPORTED_1999)->count(),
-            'resolved' => Report::where('status', Report::STATUS_RESOLVED)->count(),
             'ai_auto' => (int) ($rejectionBreakdown['ai_auto'] ?? 0),
             'avg_review_hrs' => (float) (DB::table('reports')
                 ->whereNotNull('first_reviewed_at')
@@ -182,11 +194,11 @@ Route::get('/stats', function () {
 
         // epoch 需告知 PG「此值是台北時間」才能取到正確 UTC epoch
         $mapPoints = DB::table('reports')
-            ->whereIn('status', ['approved', 'reported_1999', 'resolved'])
-            ->selectRaw("latitude::float AS lat, longitude::float AS lng, type, EXTRACT(EPOCH FROM (created_at AT TIME ZONE 'Asia/Taipei'))::int AS ts")
+            ->whereIn('status', Report::VISIBLE_STATUSES)
+            ->selectRaw("latitude::float AS lat, longitude::float AS lng, category, EXTRACT(EPOCH FROM (created_at AT TIME ZONE 'Asia/Taipei'))::int AS ts")
             ->orderBy('created_at')
             ->get()
-            ->map(fn ($r) => [(float) $r->lat, (float) $r->lng, $r->type, (int) $r->ts])
+            ->map(fn ($r) => [(float) $r->lat, (float) $r->lng, $r->category, (int) $r->ts])
             ->values()
             ->all();
 
@@ -195,8 +207,6 @@ Route::get('/stats', function () {
             'approved' => Report::where('status', Report::STATUS_APPROVED)->count(),
             'pending' => Report::where('status', Report::STATUS_PENDING)->count(),
             'rejected' => Report::where('status', Report::STATUS_REJECTED)->count(),
-            'reported_1999' => Report::where('status', Report::STATUS_REPORTED_1999)->count(),
-            'resolved' => Report::where('status', Report::STATUS_RESOLVED)->count(),
             'ai_auto' => (int) ($rejectionBreakdown['ai_auto'] ?? 0),
             'avg_review_hrs' => (float) (DB::table('reports')
                 ->whereNotNull('first_reviewed_at')
@@ -214,8 +224,8 @@ Route::get('/stats', function () {
 
 Route::get('/contact', fn () => view('pages.contact'))->name('contact');
 
-Route::get('/share/{user}', [ShareController::class, 'show'])->name('share.show');
-Route::get('/share/{user}/og.jpg', [ShareController::class, 'image'])->name('share.image');
+// EOC dashboard（公開唯讀大屏，spec §7.3）
+Route::view('/dashboard', 'pages.dashboard')->name('dashboard');
 
 Route::post('/logout', function () {
     auth()->logout();

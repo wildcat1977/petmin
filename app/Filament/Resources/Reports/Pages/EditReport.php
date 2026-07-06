@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Reports\Pages;
 use App\Filament\Resources\Reports\ReportResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use GuzzleHttp\Client;
 
 class EditReport extends EditRecord
 {
@@ -25,24 +26,24 @@ class EditReport extends EditRecord
         $record = $this->getRecord();
 
         try {
-            $resp = (new \GuzzleHttp\Client([
-                'headers' => ['User-Agent' => 'RatRadar/1.0 (ratdar.taipei)'],
+            $resp = (new Client([
+                'headers' => ['User-Agent' => 'CivicShield/1.0'],
                 'timeout' => 8,
             ]))->get('https://nominatim.openstreetmap.org/reverse', [
                 'query' => [
-                    'lat'             => $record->latitude,
-                    'lon'             => $record->longitude,
-                    'format'          => 'json',
+                    'lat' => $record->latitude,
+                    'lon' => $record->longitude,
+                    'format' => 'json',
                     'accept-language' => 'zh-TW',
                 ],
             ]);
 
-            $data     = json_decode((string) $resp->getBody(), true);
-            $a        = $data['address'] ?? [];
-            $city     = $a['city'] ?? $a['county'] ?? $a['state'] ?? '';
+            $data = json_decode((string) $resp->getBody(), true);
+            $a = $data['address'] ?? [];
+            $city = $a['city'] ?? $a['county'] ?? $a['state'] ?? '';
             $district = $a['city_district'] ?? $a['suburb'] ?? $a['town'] ?? $a['village'] ?? '';
-            $parts    = array_filter([$city, $district]);
-            $address  = implode(' ', $parts) ?: null;
+            $parts = array_filter([$city, $district]);
+            $address = implode(' ', $parts) ?: null;
 
             $record->updateQuietly(['address' => $address]);
         } catch (\Throwable) {

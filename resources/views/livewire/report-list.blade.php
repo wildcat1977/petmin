@@ -9,16 +9,16 @@ new class extends Component
 {
     use WithPagination;
 
-    public string $filterStatus = '';
-    public string $filterType   = '';
-    public string $search       = '';
+    public string $filterVerification = '';
+    public string $filterCategory     = '';
+    public string $search             = '';
 
-    public function updatingFilterStatus(): void
+    public function updatingFilterVerification(): void
     {
         $this->resetPage();
     }
 
-    public function updatingFilterType(): void
+    public function updatingFilterCategory(): void
     {
         $this->resetPage();
     }
@@ -34,12 +34,12 @@ new class extends Component
             ->with('user:id,name')
             ->whereNotIn('status', [Report::STATUS_REJECTED, Report::STATUS_PENDING]);
 
-        if ($this->filterStatus) {
-            $query->where('status', $this->filterStatus);
+        if ($this->filterVerification) {
+            $query->where('verification_level', $this->filterVerification);
         }
 
-        if ($this->filterType) {
-            $query->where('type', $this->filterType);
+        if ($this->filterCategory) {
+            $query->where('category', $this->filterCategory);
         }
 
         if ($this->search) {
@@ -67,14 +67,13 @@ new class extends Component
             return Report::query()
                 ->whereNotIn('status', [Report::STATUS_REJECTED])
                 ->whereNotNull('address')
-                ->get(['address', 'status'])
+                ->get(['address', 'status', 'resolved_at'])
                 ->groupBy(fn($r) => explode(' ', trim($r->address))[1] ?? explode(' ', trim($r->address))[0] ?? '其他')
                 ->map(fn($rows) => [
-                    'total'         => $rows->count(),
-                    'approved'      => $rows->where('status', Report::STATUS_APPROVED)->count(),
-                    'pending'       => $rows->where('status', Report::STATUS_PENDING)->count(),
-                    'resolved'      => $rows->where('status', Report::STATUS_RESOLVED)->count(),
-                    'reported_1999' => $rows->where('status', Report::STATUS_REPORTED_1999)->count(),
+                    'total'    => $rows->count(),
+                    'approved' => $rows->where('status', Report::STATUS_APPROVED)->count(),
+                    'pending'  => $rows->where('status', Report::STATUS_PENDING)->count(),
+                    'resolved' => $rows->whereNotNull('resolved_at')->count(),
                 ])
                 ->sortByDesc('total')
                 ->toArray();
@@ -85,16 +84,19 @@ new class extends Component
 }; ?>
 
 @php
-$statusConfig = [
-    'pending'       => ['label' => __('待審核 (status)'),    'class' => 'bg-amber-500/20 text-amber-400'],
-    'approved'      => ['label' => __('已建立'),    'class' => 'bg-green-500/20 text-green-400'],
-    'reported_1999' => ['label' => __('已通報1999'),'class' => 'bg-blue-500/20 text-blue-400'],
-    'resolved'      => ['label' => __('已處理 (status)'),    'class' => 'bg-slate-500/20 text-slate-400'],
+$verificationConfig = [
+    'unverified'   => ['label' => __('未核實'),   'class' => 'bg-slate-500/20 text-slate-400'],
+    'corroborated' => ['label' => __('多方佐證'), 'class' => 'bg-sky-500/20 text-sky-400'],
+    'official'     => ['label' => __('官方核實'), 'class' => 'bg-green-500/20 text-green-400'],
 ];
-$typeConfig = [
-    'rat'    => ['label' => __('🐀 鼠蹤'), 'class' => 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30'],
-    'poison' => ['label' => __('☠️ 毒餌'), 'class' => 'bg-purple-500/15 text-purple-300 ring-1 ring-purple-500/30'],
+$categoryConfig = [
+    'flood'             => ['label' => __('淹水'),     'class' => 'bg-sky-500/15 text-sky-400 ring-1 ring-sky-500/30'],
+    'road_blocked'      => ['label' => __('道路中斷'), 'class' => 'bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30'],
+    'power_outage'      => ['label' => __('停電'),     'class' => 'bg-yellow-500/15 text-yellow-300 ring-1 ring-yellow-500/30'],
+    'structural_damage' => ['label' => __('結構受損'), 'class' => 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30'],
 ];
+$categoryFallback = fn ($category) => $categoryConfig[$category]
+    ?? ['label' => $category, 'class' => 'bg-white/10 text-slate-400'];
 @endphp
 
 <div
@@ -220,20 +222,18 @@ $typeConfig = [
                placeholder="{{ __('搜尋說明…') }}"
                class="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-red-500 min-w-[160px]">
 
-        <select wire:model.live="filterStatus"
+        <select wire:model.live="filterVerification"
                 class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500">
-            <option value="">{{ __('全部狀態') }}</option>
-            @foreach($statusConfig as $key => $cfg)
-                @if($key !== 'pending')
-                    <option value="{{ $key }}" class="bg-[#161b22]">{{ $cfg['label'] }}</option>
-                @endif
+            <option value="">{{ __('全部核實程度') }}</option>
+            @foreach($verificationConfig as $key => $cfg)
+                <option value="{{ $key }}" class="bg-[#161b22]">{{ $cfg['label'] }}</option>
             @endforeach
         </select>
 
-        <select wire:model.live="filterType"
+        <select wire:model.live="filterCategory"
                 class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-red-500">
-            <option value="">{{ __('全部類型') }}</option>
-            @foreach($typeConfig as $key => $cfg)
+            <option value="">{{ __('全部分類') }}</option>
+            @foreach($categoryConfig as $key => $cfg)
                 <option value="{{ $key }}" class="bg-[#161b22]">{{ $cfg['label'] }}</option>
             @endforeach
         </select>
@@ -245,9 +245,9 @@ $typeConfig = [
             <thead class="border-b border-white/10 bg-white/5 text-left text-xs text-slate-400">
                 <tr>
                     <th class="w-28 px-4 py-3 font-medium">{{ __('通報時間') }}</th>
-                    <th class="w-20 px-4 py-3 font-medium">{{ __('類型') }}</th>
+                    <th class="w-20 px-4 py-3 font-medium">{{ __('災情分類') }}</th>
                     <th class="w-32 px-4 py-3 font-medium">{{ __('地點') }}</th>
-                    <th class="w-24 px-4 py-3 font-medium">{{ __('狀態') }}</th>
+                    <th class="w-24 px-4 py-3 font-medium">{{ __('核實') }}</th>
                     <th class="w-16 px-4 py-3 font-medium">{{ __('照片') }}</th>
                     <th class="px-4 py-3 font-medium">{{ __('說明') }}</th>
                 </tr>
@@ -260,7 +260,7 @@ $typeConfig = [
                             <span class="text-xs text-slate-600">{{ $report->created_at->format('H:i') }}</span>
                         </td>
                         <td class="px-4 py-3">
-                            @php $tcfg = $typeConfig[$report->type] ?? $typeConfig['rat']; @endphp
+                            @php $tcfg = $categoryFallback($report->category); @endphp
                             <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $tcfg['class'] }}">
                                 {{ $tcfg['label'] }}
                             </span>
@@ -289,7 +289,7 @@ $typeConfig = [
                             </div>
                         </td>
                         <td class="px-4 py-3">
-                            @php $cfg = $statusConfig[$report->status] ?? ['label' => $report->status, 'class' => 'bg-white/10 text-slate-400']; @endphp
+                            @php $cfg = $verificationConfig[$report->verification_level] ?? ['label' => $report->verification_level, 'class' => 'bg-white/10 text-slate-400']; @endphp
                             <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $cfg['class'] }}">
                                 {{ $cfg['label'] }}
                             </span>
@@ -322,8 +322,8 @@ $typeConfig = [
     <div class="space-y-3 sm:hidden">
         @forelse($reports as $report)
             @php
-                $cfg  = $statusConfig[$report->status] ?? ['label' => $report->status, 'class' => 'bg-white/10 text-slate-400'];
-                $tcfg = $typeConfig[$report->type] ?? $typeConfig['rat'];
+                $cfg  = $verificationConfig[$report->verification_level] ?? ['label' => $report->verification_level, 'class' => 'bg-white/10 text-slate-400'];
+                $tcfg = $categoryFallback($report->category);
             @endphp
             <div class="rounded-xl border border-white/10 bg-white/5 p-4">
                 {{-- 頂列：時間 + 類型 + 狀態 --}}
@@ -399,7 +399,7 @@ $typeConfig = [
     <div x-show="tab==='pending'">
         <div class="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <p class="text-sm font-semibold text-amber-300">⏳ {{ __('待審核通報') }}</p>
-            <p class="mt-1 text-xs leading-relaxed text-amber-200/70">{{ __('以下通報尚未經管理員審核，資訊未經核實，僅供參考，請勿視為確認的鼠患地點。') }}</p>
+            <p class="mt-1 text-xs leading-relaxed text-amber-200/70">{{ __('以下回報尚未經管理員審核，資訊未經核實，僅供參考，請勿視為已確認的災情地點。') }}</p>
         </div>
 
         @if($pendingReports->isEmpty())
@@ -412,7 +412,7 @@ $typeConfig = [
                 <thead class="border-b border-white/10 bg-white/5 text-left text-xs text-slate-400">
                     <tr>
                         <th class="w-28 px-4 py-3 font-medium">{{ __('通報時間') }}</th>
-                        <th class="w-20 px-4 py-3 font-medium">{{ __('類型') }}</th>
+                        <th class="w-20 px-4 py-3 font-medium">{{ __('災情分類') }}</th>
                         <th class="w-32 px-4 py-3 font-medium">{{ __('地點') }}</th>
                         <th class="w-16 px-4 py-3 font-medium">{{ __('照片') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('說明') }}</th>
@@ -420,7 +420,7 @@ $typeConfig = [
                 </thead>
                 <tbody class="divide-y divide-white/5">
                     @foreach($pendingReports as $report)
-                        @php $tcfg = $typeConfig[$report->type] ?? $typeConfig['rat']; @endphp
+                        @php $tcfg = $categoryFallback($report->category); @endphp
                         <tr class="transition hover:bg-white/5">
                             <td class="whitespace-nowrap px-4 py-3 text-slate-400">
                                 {{ $report->created_at->format('Y-m-d') }}<br>
@@ -477,7 +477,7 @@ $typeConfig = [
         {{-- 卡片列表（手機） --}}
         <div class="space-y-3 sm:hidden">
             @foreach($pendingReports as $report)
-                @php $tcfg = $typeConfig[$report->type] ?? $typeConfig['rat']; @endphp
+                @php $tcfg = $categoryFallback($report->category); @endphp
                 <div class="rounded-xl border border-amber-500/20 bg-white/5 p-4">
                     <div class="mb-3 flex items-center justify-between gap-2">
                         <span class="text-xs text-slate-400">{{ $report->created_at->format('Y-m-d H:i') }}</span>
@@ -593,7 +593,7 @@ $typeConfig = [
                         <th class="px-4 py-3 text-right font-medium">{{ __('通報數') }}</th>
                         <th class="px-4 py-3 text-right font-medium">{{ __('已核准') }}</th>
                         <th class="px-4 py-3 text-right font-medium">{{ __('待審核') }}</th>
-                        <th class="px-4 py-3 text-right font-medium">{{ __('已處理') }}</th>
+                        <th class="px-4 py-3 text-right font-medium">{{ __('已排除') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('佔比') }}</th>
                     </tr>
                 </thead>
@@ -603,9 +603,9 @@ $typeConfig = [
                     <tr class="transition hover:bg-white/5">
                         <td class="px-4 py-3 font-medium text-slate-200">{{ $district }}</td>
                         <td class="px-4 py-3 text-right text-slate-100">{{ $stat['total'] }}</td>
-                        <td class="px-4 py-3 text-right text-red-400">{{ $stat['approved'] }}</td>
+                        <td class="px-4 py-3 text-right text-green-400">{{ $stat['approved'] }}</td>
                         <td class="px-4 py-3 text-right text-amber-400">{{ $stat['pending'] }}</td>
-                        <td class="px-4 py-3 text-right text-green-400">{{ $stat['resolved'] + $stat['reported_1999'] }}</td>
+                        <td class="px-4 py-3 text-right text-slate-400">{{ $stat['resolved'] }}</td>
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-2">
                                 <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">

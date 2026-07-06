@@ -18,7 +18,7 @@
         $nearbyReports = \App\Models\Report::where('id', '!=', $record->id)
             ->whereBetween('latitude',  [$lat - $delta, $lat + $delta])
             ->whereBetween('longitude', [$lng - $delta, $lng + $delta])
-            ->select('id', 'latitude', 'longitude', 'status', 'type', 'address', 'image_path', 'description', 'created_at')
+            ->select('id', 'latitude', 'longitude', 'status', 'category', 'address', 'image_path', 'description', 'created_at')
             ->latest()
             ->limit(60)
             ->get()
@@ -27,7 +27,7 @@
                 'lat'        => (float) $r->latitude,
                 'lng'        => (float) $r->longitude,
                 'status'     => $r->status,
-                'type'       => $r->type,
+                'category'   => $r->category,
                 'address'    => $r->address ?? '',
                 'image_url'  => $r->image_path
                     ? \Illuminate\Support\Facades\Storage::disk('public')->url($r->image_path)
@@ -106,27 +106,23 @@ function mapPickerInit_{{ $record?->id ?? 0 }}() {
                 const nearby = @js($nearbyReports);
                 if (nearby.length > 0) {
                     const statusColor = {
-                        pending:       '#f97316',
-                        approved:      '#ef4444',
-                        rejected:      '#6b7280',
-                        reported_1999: '#eab308',
-                        resolved:      '#22c55e',
+                        pending:  '#f97316',
+                        approved: '#22c55e',
+                        rejected: '#6b7280',
                     };
                     const statusLabel = {
-                        pending:       '待審核',
-                        approved:      '已核准',
-                        rejected:      '已拒絕',
-                        reported_1999: '已通報1999',
-                        resolved:      '已處理',
+                        pending:  '待審核',
+                        approved: '已核准',
+                        rejected: '已拒絕',
                     };
-                    const typeLabel = { rat: '🐀 鼠蹤', poison: '☠️ 毒餌' };
+                    const categoryLabel = @js(\App\Models\Report::CATEGORY_LABELS);
 
                     nearby.forEach(r => {
                         let html = '';
                         if (r.image_url) {
                             html += '<img src="' + r.image_url + '" style="width:120px;height:80px;object-fit:cover;border-radius:4px;display:block;margin-bottom:4px;">';
                         }
-                        html += '<b>#' + r.id + ' ' + (typeLabel[r.type] || r.type) + '</b><br>';
+                        html += '<b>#' + r.id + ' ' + (categoryLabel[r.category] || r.category) + '</b><br>';
                         html += (statusLabel[r.status] || r.status) + '<br>';
                         if (r.desc) {
                             html += '<span style="color:#888">' + r.desc + (r.desc.length >= 20 ? '…' : '') + '</span><br>';

@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /var/www/html/civic_shield/ && echo \"---\" && ls /var/www/html/)",
+      "Bash(git -C /var/www/html/mouse_radar remote -v)",
+      "Bash(git ls-remote *)",
+      "WebFetch(domain:gemini.google.com)",
+      "WebFetch(domain:claude.ai)",
+      "Bash(git -C /var/www/html/mouse_radar log --oneline -3)",
+      "Bash(git -C /var/www/html/mouse_radar status --short)",
+      "Bash(grep -E \"\\\\.php$|\\\\.ts$|\\\\.js$\")",
+      "Bash(rsync -a --info=stats1 --exclude='.env' --exclude='storage/logs/*' --exclude='storage/app/public/*' --exclude='storage/app/private/*' --exclude='bootstrap/cache/*' --exclude='public/storage' /var/www/html/mouse_radar/ /var/www/html/civic_shield/)",
+      "Bash(sudo -u postgres psql -c \"CREATE ROLE civic_shield LOGIN PASSWORD 'PUMA-Civic123!';\" -c \"CREATE DATABASE civic_shield OWNER civic_shield;\")",
+      "Bash(sudo -u postgres psql -lqt)",
+      "Bash(curl -s -m 30 -o /tmp/claude-1001/-var-www-html-civic-shield/67865ac4-4de6-4fc8-925f-7b00a3f4c3ea/scratchpad/taipei.json -w \"%{http_code} %{size_download}\\\\n\" \"https://raw.githubusercontent.com/g0v/twgeojson/master/json/twTown1982.geo.json\")",
+      "Bash(vendor/bin/pint --dirty --format agent)",
+      "Bash(node -e ' *)",
+      "Bash(php /var/www/html/civic_shield/vendor/bin/pint --dirty --format agent)",
+      "Bash(php -l /var/www/html/civic_shield/routes/web.php)",
+      "Bash(php /var/www/html/civic_shield/artisan view:clear)",
+      "Bash(php /var/www/html/civic_shield/artisan view:cache)",
+      "Bash(curl -s -o /dev/null -w \"home:%{http_code} \" http://localhost:8100/)",
+      "Bash(curl -s \"http://localhost:8100/api/map/reports?bbox=121.45,24.95,121.67,25.22&zoom=16\")",
+      "Bash(curl -s \"http://localhost:8100/api/map/reports?bbox=121.45,24.95,121.67,25.22&zoom=12\")",
+      "Bash(curl -s http://localhost:8100/api/map/shelters)",
+      "Bash(curl -s -o /dev/null -w \"dashboard:%{http_code}\\\\n\" http://localhost:8100/dashboard)",
+      "Bash(curl -s -m 15 \"https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx\")",
+      "Bash(curl -s -m 15 -o /dev/null -w \"%{http_code} %{content_type} %{size_download}\\\\n\" \"https://www.cwa.gov.tw/Data/radar/CV1_3600.png\")",
+      "Bash(curl -s -m 15 \"https://data.taipei/api/v1/dataset/search?q=%E9%81%BF%E9%9B%A3%E6%94%B6%E5%AE%B9&limit=5\")",
+      "Bash(php vendor/bin/pint --dirty --format agent)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m 'feat: fork ratdar into CivicShield — Phase 0 + 1a *)"
+    ]
+  }
+}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use GuzzleHttp\Client;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
@@ -66,7 +67,7 @@ class SocialiteController extends Controller
             ])->save();
         } else {
             $user = User::create([
-                'name' => $oauthUser->getName() ?: ($oauthUser->getNickname() ?: '匿名捕鼠人'),
+                'name' => $oauthUser->getName() ?: ($oauthUser->getNickname() ?: '匿名市民'),
                 'email' => $oauthUser->getEmail() ?: $provider.'_'.$oauthUser->getId().'@ratdar.local',
                 'provider' => $provider,
                 'provider_id' => $oauthUser->getId(),
@@ -95,8 +96,8 @@ class SocialiteController extends Controller
      */
     public function liffCallback(): RedirectResponse
     {
-        $token    = request()->string('access_token')->toString();
-        $idToken  = request()->string('id_token')->toString();
+        $token = request()->string('access_token')->toString();
+        $idToken = request()->string('id_token')->toString();
         $redirect = request()->string('redirect', '/')->toString();
 
         if (empty($token)) {
@@ -105,8 +106,8 @@ class SocialiteController extends Controller
 
         // 向 LINE Profile API 取得使用者基本資料
         try {
-            $resp = (new \GuzzleHttp\Client())->get('https://api.line.me/v2/profile', [
-                'headers' => ['Authorization' => 'Bearer ' . $token],
+            $resp = (new Client)->get('https://api.line.me/v2/profile', [
+                'headers' => ['Authorization' => 'Bearer '.$token],
                 'timeout' => 8,
             ]);
             $profile = json_decode((string) $resp->getBody(), true);
@@ -123,15 +124,15 @@ class SocialiteController extends Controller
         $email = null;
         if ($idToken && config('services.line.email_scope')) {
             try {
-                $verifyResp = (new \GuzzleHttp\Client())->post('https://api.line.me/oauth2/v2.1/verify', [
+                $verifyResp = (new Client)->post('https://api.line.me/oauth2/v2.1/verify', [
                     'form_params' => [
-                        'id_token'  => $idToken,
+                        'id_token' => $idToken,
                         'client_id' => config('services.line.client_id'),
                     ],
                     'timeout' => 8,
                 ]);
                 $claims = json_decode((string) $verifyResp->getBody(), true);
-                $email  = $claims['email'] ?? null;
+                $email = $claims['email'] ?? null;
             } catch (\Throwable) {
                 // email 取得失敗不阻斷登入
             }
@@ -151,11 +152,11 @@ class SocialiteController extends Controller
             $user->fill(array_merge($updates, ['provider' => 'line', 'provider_id' => $providerId]))->save();
         } else {
             $user = User::create([
-                'name'        => $profile['displayName'] ?? '匿名捕鼠人',
-                'email'       => $email ?: ('line_' . $providerId . '@ratdar.local'),
-                'provider'    => 'line',
+                'name' => $profile['displayName'] ?? '匿名市民',
+                'email' => $email ?: ('line_'.$providerId.'@ratdar.local'),
+                'provider' => 'line',
                 'provider_id' => $providerId,
-                'avatar'      => $profile['pictureUrl'] ?? null,
+                'avatar' => $profile['pictureUrl'] ?? null,
             ]);
         }
 
@@ -163,6 +164,7 @@ class SocialiteController extends Controller
 
         // 加上 liff_authed flag 防止前端御牧迴賦
         $separator = str_contains($redirect, '?') ? '&' : '?';
-        return redirect($redirect . $separator . 'liff_authed=1');
+
+        return redirect($redirect.$separator.'liff_authed=1');
     }
 }

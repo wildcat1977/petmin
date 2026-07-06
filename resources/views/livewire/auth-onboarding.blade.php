@@ -35,13 +35,13 @@ new class extends Component
         <div class="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
              wire:click.self="close">
             <div class="w-full max-w-md rounded-t-3xl bg-[#161b22] p-6 text-slate-100 shadow-2xl ring-1 ring-white/10 sm:rounded-3xl">
-                <h2 class="text-xl font-bold">{{ __('啟動雷達 · 加入捕鼠隊') }}</h2>
-                <p class="mt-2 text-sm text-slate-400">{{ __('為了通報精準度，我們需要您協助：') }}</p>
+                <h2 class="text-xl font-bold">{{ __('加入 CivicShield · 一起回報災情') }}</h2>
+                <p class="mt-2 text-sm text-slate-400">{{ __('為了回報精準度，我們需要您協助：') }}</p>
 
                 <ol class="mt-4 space-y-3 text-sm">
                     <li class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400">1</span>
-                        <span>{!! __('看到老鼠先別怕，拿出手機<strong>拍張照片</strong>。') !!}</span>
+                        <span>{!! __('發現淹水、道路中斷等災情時，拿出手機<strong>拍張照片</strong>。') !!}</span>
                     </li>
                     <li class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400">2</span>
@@ -49,12 +49,12 @@ new class extends Component
                     </li>
                     <li class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400">3</span>
-                        <span>{{ __('送出通報，雷達熱力圖即時更新。') }}</span>
+                        <span>{{ __('送出回報，災情地圖即時更新。') }}</span>
                     </li>
                 </ol>
 
                 <p class="mt-4 text-[11px] leading-relaxed text-slate-500">
-                    {{ __('登入即代表您同意我們儲存上傳之照片與當下的地理位置資訊，僅用於本平台之鼠患通報用途。') }}
+                    {{ __('登入即代表您同意我們儲存上傳之照片與當下的地理位置資訊，僅用於本平台之災情回報用途。') }}
                 </p>
 
                 <div class="mt-6 space-y-3">
@@ -65,7 +65,7 @@ new class extends Component
                             <p class="mt-1 text-amber-400/80">{!! __('Google 登入在此環境會被封鎖（error 403）。請複製網址，改用 <strong>Safari</strong> 或 <strong>Chrome</strong> 開啟後再登入。') !!}</p>
                         </div>
                         <button
-                            onclick="navigator.clipboard?.writeText('https://ratdar.taipei').then(() => { this.textContent = '{{ __('✓ 已複製！') }}'; setTimeout(() => this.textContent = '{{ __('複製網址') }}', 2000); })"
+                            onclick="navigator.clipboard?.writeText(window.location.href).then(() => { this.textContent = '{{ __('✓ 已複製！') }}'; setTimeout(() => this.textContent = '{{ __('複製網址') }}', 2000); })"
                             class="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-700 px-4 py-3 font-semibold text-slate-200 transition hover:bg-slate-600">
                             {{ __('複製網址') }}
                         </button>

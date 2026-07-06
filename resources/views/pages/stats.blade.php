@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '通報統計地圖 · Rat Radar')
+@section('title', '災情統計地圖 · CivicShield 災情回報')
 
 @section('content')
 @php
@@ -140,7 +140,7 @@
             @endif
         </section>
 
-        {{-- ── 鼠蹤擴散時間軸（全寬大地圖） ── --}}
+        {{-- ── 災情分佈時間軸（全寬大地圖） ── --}}
         @if ($hasMap)
         <section class="mb-12"
                  x-data="{
@@ -182,13 +182,17 @@
                          this.layers.forEach(l => l.remove());
                          this.layers = [];
                          const range = this.endTs - this.startTs || 1;
-                         this.points.forEach(([lat, lng, type, ts]) => {
+                         const categoryRgb = {
+                             flood:             '56,189,248',
+                             road_blocked:      '251,146,60',
+                             power_outage:      '250,204,21',
+                             structural_damage: '248,113,113',
+                         };
+                         this.points.forEach(([lat, lng, category, ts]) => {
                              if (ts < this.startTs || ts > this.endTs) return;
                              const age = (ts - this.startTs) / range;
                              const alpha = 0.15 + age * 0.85;
-                             const color = type === 'poison'
-                                 ? `rgba(167,139,250,${alpha.toFixed(2)})`
-                                 : `rgba(251,146,60,${alpha.toFixed(2)})`;
+                             const color = `rgba(${categoryRgb[category] ?? '148,163,184'},${alpha.toFixed(2)})`;
                              const circle = L.circleMarker([lat, lng], {
                                  radius: 6,
                                  color,
@@ -244,7 +248,7 @@
                      },
                  }"
                  x-init="$nextTick(() => initMap())">
-            <h2 class="mb-4 text-lg font-semibold text-slate-300">🗺️ 鼠蹤擴散時間軸</h2>
+            <h2 class="mb-4 text-lg font-semibold text-slate-300">🗺️ 災情分佈時間軸</h2>
             <div class="overflow-hidden rounded-xl border border-white/10 bg-white/5">
 
                 {{-- 地圖（全高） --}}
@@ -293,8 +297,10 @@
                             ↺ 重置
                         </button>
                         <div class="ml-auto flex items-center gap-4 text-xs text-slate-500">
-                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-orange-400"></span>鼠蹤</span>
-                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-violet-400"></span>毒餌</span>
+                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-sky-400"></span>淹水</span>
+                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-orange-400"></span>道路中斷</span>
+                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-yellow-400"></span>停電</span>
+                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-red-400"></span>結構受損</span>
                             <span class="text-slate-600">越亮 = 越近期</span>
                         </div>
                     </div>
@@ -310,7 +316,6 @@
         <div class="flex justify-center gap-4">
             <a href="{{ route('home') }}" class="hover:text-slate-400">首頁</a>
             <a href="{{ route('transparency') }}" class="hover:text-slate-400">透明度報告</a>
-            <a href="{{ route('leaderboard') }}" class="hover:text-slate-400">英雄榜</a>
         </div>
     </footer>
 

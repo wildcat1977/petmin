@@ -15,11 +15,10 @@ class ReportsApiTest extends TestCase
         return Report::factory()->create(array_merge(['status' => Report::STATUS_APPROVED], $attrs));
     }
 
-    public function test_returns_approved_reports_as_json(): void
+    public function test_returns_visible_reports_as_json(): void
     {
-        $report = $this->approvedReport(['description' => 'test rat']);
+        $report = $this->approvedReport(['description' => 'test flood']);
         Report::factory()->create(['status' => Report::STATUS_REJECTED]);
-        Report::factory()->create(['status' => Report::STATUS_PENDING]);
 
         $response = $this->getJson('/api/v1/reports');
 
@@ -27,22 +26,37 @@ class ReportsApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $report->id)
             ->assertJsonStructure([
-                'data' => [['id', 'type', 'latitude', 'longitude', 'address', 'description', 'image_url', 'reported_at', 'status']],
+                'data' => [['id', 'category', 'latitude', 'longitude', 'address', 'description', 'image_url', 'reported_at', 'status']],
                 'meta' => ['current_page', 'last_page', 'per_page', 'total'],
             ]);
     }
 
     public function test_includes_all_visible_statuses(): void
     {
-        // SQLite test DB only supports approved/rejected/pending (PG-only CHECK constraint
-        // covers reported_1999/resolved; tested implicitly via VISIBLE_STATUSES constant)
+        // 可見狀態 = pending + approved（pending 點位上圖）；rejected 下圖
         Report::factory()->create(['status' => Report::STATUS_APPROVED]);
         Report::factory()->create(['status' => Report::STATUS_REJECTED]);
         Report::factory()->create(['status' => Report::STATUS_PENDING]);
 
         $this->getJson('/api/v1/reports')
             ->assertOk()
-            ->assertJsonPath('meta.total', 1);
+            ->assertJsonPath('meta.total', 2);
+    }
+
+    public function test_pending_report_photo_is_not_exposed(): void
+    {
+        // 內容審核通過前照片不得公開（pending 僅點位上圖）
+        $pending = Report::factory()->create([
+            'status' => Report::STATUS_PENDING,
+            'image_path' => 'reports/pending.jpg',
+        ]);
+        $approved = $this->approvedReport(['image_path' => 'reports/approved.jpg']);
+
+        $response = $this->getJson('/api/v1/reports')->assertOk();
+
+        $byId = collect($response->json('data'))->keyBy('id');
+        $this->assertNull($byId[$pending->id]['image_url']);
+        $this->assertNotNull($byId[$approved->id]['image_url']);
     }
 
     public function test_filters_by_from_date(): void
@@ -91,25 +105,25 @@ class ReportsApiTest extends TestCase
             ->assertJsonPath('data.0.id', $match->id);
     }
 
-    public function test_filters_by_type(): void
+    public function test_filters_by_category(): void
     {
-        $rat = $this->approvedReport(['type' => Report::TYPE_RAT]);
-        $poison = $this->approvedReport(['type' => Report::TYPE_POISON]);
+        $flood = $this->approvedReport(['category' => Report::CATEGORY_FLOOD]);
+        $roadBlocked = $this->approvedReport(['category' => Report::CATEGORY_ROAD_BLOCKED]);
 
-        $this->getJson('/api/v1/reports?type=rat')
+        $this->getJson('/api/v1/reports?category=flood')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $rat->id);
+            ->assertJsonPath('data.0.id', $flood->id);
 
-        $this->getJson('/api/v1/reports?type=poison')
+        $this->getJson('/api/v1/reports?category=road_blocked')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $poison->id);
+            ->assertJsonPath('data.0.id', $roadBlocked->id);
     }
 
-    public function test_rejects_invalid_type(): void
+    public function test_rejects_invalid_category(): void
     {
-        $this->getJson('/api/v1/reports?type=invalid')
+        $this->getJson('/api/v1/reports?category=invalid')
             ->assertUnprocessable();
     }
 

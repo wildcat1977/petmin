@@ -9,6 +9,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -23,14 +24,17 @@ class ReportForm
                 View::make('filament.components.map-picker')
                     ->columnSpanFull(),
 
-                Select::make('type')
-                    ->label('類型')
-                    ->options([
-                        Report::TYPE_RAT => '🐀 鼠蹤',
-                        Report::TYPE_POISON => '☠️ 毒餌 / 老鼠藥',
-                    ])
-                    ->default(Report::TYPE_RAT)
+                Select::make('category')
+                    ->label('災情分類')
+                    ->options(Report::CATEGORY_LABELS)
+                    ->live()
                     ->required(),
+
+                TextInput::make('water_depth_cm')
+                    ->label('淹水深度 (cm)')
+                    ->numeric()
+                    ->nullable()
+                    ->visible(fn (Get $get) => $get('category') === Report::CATEGORY_FLOOD),
 
                 TextInput::make('latitude')
                     ->label('緯度')
@@ -50,12 +54,22 @@ class ReportForm
                     ->label('狀態')
                     ->options([
                         Report::STATUS_PENDING => '待審核',
-                        Report::STATUS_APPROVED => '🔴 已核准（地圖上架）',
-                        Report::STATUS_REPORTED_1999 => '🟡 已通報 1999',
-                        Report::STATUS_RESOLVED => '🟢 已處理完畢',
+                        Report::STATUS_APPROVED => '✅ 已核准（照片公開）',
                         Report::STATUS_REJECTED => '已拒絕',
                     ])
+                    ->helperText('內容適切性審核；與災情核實分離')
                     ->required(),
+
+                Select::make('verification_level')
+                    ->label('災情核實')
+                    ->options(Report::VERIFICATION_LABELS)
+                    ->helperText('官方核實請用此欄位標記 official')
+                    ->required(),
+
+                DateTimePicker::make('resolved_at')
+                    ->label('已排除時間')
+                    ->nullable()
+                    ->helperText('官方確認災情已排除'),
 
                 Select::make('rejection_reason')
                     ->label('拒絕原因')

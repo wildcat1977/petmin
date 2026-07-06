@@ -10,14 +10,12 @@
 
     {{-- 懸浮 UI --}}
     <div class="pointer-events-none fixed inset-0 z-[500] flex flex-col">
-        {{-- 頂部：周邊統計 --}}
+        {{-- 頂部：品牌 + 使用者 --}}
         <header class="pointer-events-auto flex items-center justify-between p-4">
             <div class="flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 backdrop-blur">
-                <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500"></span>
-                <span class="text-xs font-semibold text-slate-100">
-                    {{ __('周邊 :km km：', ['km' => config('radar.nearby_radius_km')]) }}
-                    <span id="nearby-count" class="text-red-400">--</span> {{ __('筆通報') }}
-                </span>
+                <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-cyan-400"></span>
+                <span class="text-xs font-bold tracking-widest text-cyan-300">CIVICSHIELD</span>
+                <span class="text-xs text-slate-300">{{ __('全民災情回報地圖') }}</span>
             </div>
 
             <div class="flex items-center gap-2">
@@ -38,6 +36,20 @@
             </div>
         </header>
 
+        {{-- 分類篩選 chips（對應圖例配色；收容所為獨立圖層開關） --}}
+        <div class="pointer-events-auto flex flex-wrap gap-1.5 px-4">
+            <button type="button" data-map-chip="flood" style="--chip-color:#38bdf8"
+                    class="map-chip chip-on">💧 {{ __('淹水') }}</button>
+            <button type="button" data-map-chip="road_blocked" style="--chip-color:#fb923c"
+                    class="map-chip chip-on">🚧 {{ __('道路中斷') }}</button>
+            <button type="button" data-map-chip="power_outage" style="--chip-color:#facc15"
+                    class="map-chip chip-on">⚡ {{ __('停電') }}</button>
+            <button type="button" data-map-chip="structural_damage" style="--chip-color:#f87171"
+                    class="map-chip chip-on">🏚️ {{ __('結構受損') }}</button>
+            <button type="button" data-map-chip="shelters" style="--chip-color:#4ade80"
+                    class="map-chip">🏠 {{ __('收容所') }}</button>
+        </div>
+
         <div class="flex-1"></div>
 
         {{-- 底部：立即回報 + Footer --}}
@@ -45,7 +57,7 @@
             {{-- 管理員公告 --}}
             <livewire:announcement-banner />
 
-            {{-- 我的通報審核結果（已登入才顯示）--}}
+            {{-- 我的回報審核結果（已登入才顯示）--}}
             @auth
             <livewire:my-report-status />
             @endauth
@@ -58,21 +70,21 @@
             </div>
 
             <button type="button"
-                    onclick="window.dispatchEvent(new CustomEvent('mouseradar:report-clicked'))"
-                    class="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-2xl bg-red-600 px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(239,68,68,0.6)] transition active:scale-95 hover:bg-red-500">
+                    onclick="window.dispatchEvent(new CustomEvent('civicshield:report-clicked'))"
+                    class="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(8,145,178,0.6)] transition active:scale-95 hover:bg-cyan-500">
                 <span class="text-xl">⚠️</span>
-                <span>{{ __('立即回報') }}</span>
+                <span>{{ __('立即回報災情') }}</span>
             </button>
 
             <footer class="mx-auto flex w-full max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
-                <a href="{{ route('leaderboard') }}" class="hover:text-slate-300">{{ __('回報榜') }}</a>
-                <a href="{{ route('reports') }}" class="hover:text-slate-300">{{ __('通報清單') }}</a>
+                <a href="{{ route('dashboard') }}" class="hover:text-slate-300">{{ __('EOC 戰情室') }}</a>
+                <a href="{{ route('reports') }}" class="hover:text-slate-300">{{ __('回報清單') }}</a>
                 <a href="{{ route('transparency') }}" class="hover:text-slate-300">{{ __('透明度報告') }}</a>
                 <a href="{{ route('stats') }}" class="hover:text-slate-300">{{ __('統計地圖') }}</a>
                 @auth
                     <a href="{{ route('profile') }}" class="hover:text-slate-300">{{ __('我的回報') }}</a>
                 @else
-                    <span class="text-slate-700">© {{ date('Y') }} Rat Radar</span>
+                    <span class="text-slate-700">© {{ date('Y') }} CivicShield</span>
                 @endauth
                 <button type="button"
                         onclick="window.dispatchEvent(new CustomEvent('open-contact-form'))"

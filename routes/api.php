@@ -3,7 +3,6 @@
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 
 /*
  * Public read-only API
@@ -15,12 +14,12 @@ use Illuminate\Support\Facades\Storage;
 /**
  * GET /api/v1/reports
  *
- * Returns approved reports (approved / reported_1999 / resolved) in JSON.
+ * Returns visible reports (pending / approved; photos only exposed once approved) in JSON.
  *
  * Query parameters:
  *   from  – ISO 8601 date/datetime, e.g. 2026-01-01 or 2026-01-01T00:00:00  (inclusive)
  *   to    – ISO 8601 date/datetime                                            (inclusive, defaults to now)
- *   type  – "rat" | "poison" (optional)
+ *   category – "flood" | "road_blocked" | "power_outage" | "structural_damage" (optional)
  *   per_page – integer 1-500, default 200
  *   page  – integer, default 1
  *
@@ -29,7 +28,7 @@ use Illuminate\Support\Facades\Storage;
  *   "data": [
  *     {
  *       "id": 1,
- *       "type": "rat",
+ *       "category": "flood",
  *       "latitude": 25.034,
  *       "longitude": 121.565,
  *       "address": "台北市大安區...",
@@ -46,7 +45,7 @@ Route::get('/v1/reports', function (Request $request) {
     $validated = $request->validate([
         'from' => ['nullable', 'date'],
         'to' => ['nullable', 'date'],
-        'type' => ['nullable', 'string', 'in:rat,poison'],
+        'category' => ['nullable', 'string', 'in:'.implode(',', Report::CATEGORIES)],
         'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         'page' => ['nullable', 'integer', 'min:1'],
     ]);
@@ -55,7 +54,7 @@ Route::get('/v1/reports', function (Request $request) {
 
     $query = Report::query()
         ->whereIn('status', Report::VISIBLE_STATUSES)
-        ->select(['id', 'type', 'latitude', 'longitude', 'address', 'description', 'image_path', 'status', 'created_at'])
+        ->select(['id', 'category', 'latitude', 'longitude', 'address', 'description', 'image_path', 'status', 'created_at'])
         ->orderBy('created_at');
 
     if (! empty($validated['from'])) {
@@ -70,8 +69,8 @@ Route::get('/v1/reports', function (Request $request) {
         $query->where('created_at', '<=', $to);
     }
 
-    if (! empty($validated['type'])) {
-        $query->where('type', $validated['type']);
+    if (! empty($validated['category'])) {
+        $query->where('category', $validated['category']);
     }
 
     $paginator = $query->paginate($perPage);
@@ -79,14 +78,13 @@ Route::get('/v1/reports', function (Request $request) {
     $data = $paginator->getCollection()->map(function (Report $r) {
         return [
             'id' => $r->id,
-            'type' => $r->type,
+            'category' => $r->category,
             'latitude' => (float) $r->latitude,
             'longitude' => (float) $r->longitude,
             'address' => $r->address ?: null,
             'description' => $r->description ?: null,
-            'image_url' => $r->image_path
-                ? Storage::disk('public')->url($r->image_path)
-                : null,
+            // 照片僅在內容審核通過（approved）後公開；pending 點位上圖但照片不公開
+            'image_url' => $r->publicImageUrl(),
             'reported_at' => $r->created_at
                 ->setTimezone('Asia/Taipei')
                 ->toIso8601String(),

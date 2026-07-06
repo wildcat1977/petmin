@@ -2,24 +2,29 @@
 
 namespace App\Services;
 
+use App\Models\Report;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Encoders\JpegEncoder;
+use Intervention\Image\ImageManager;
 
 class ImageModerationService
 {
     private Client $client;
+
     private string $model;
 
     public function __construct()
     {
         $this->client = new Client([
             'base_uri' => 'https://api.anthropic.com',
-            'timeout'  => config('services.claude.timeout', 15),
-            'headers'  => [
-                'x-api-key'         => config('services.claude.api_key'),
+            'timeout' => config('services.claude.timeout', 15),
+            'headers' => [
+                'x-api-key' => config('services.claude.api_key'),
                 'anthropic-version' => '2023-06-01',
-                'content-type'      => 'application/json',
+                'content-type' => 'application/json',
             ],
         ]);
 
@@ -30,30 +35,32 @@ class ImageModerationService
      * 審核圖片路徑（本地暫存路徑或絕對路徑）。
      * 先用 Intervention Image 縮到長邊 ≤ 1024px 再送審，節省 Token 與頻寬。
      *
-     * @param  string $imagePath
-     * @param  string $type  rat | poison（決定 prompt）
-     * @return array{is_valid: bool, confidence: float, reason: string}
+     * 職責（spec §6.2）：照片內容適切性 + 是否吻合所選災情分類。
+     * 不吻合分類不自動退件，由呼叫端標記人工複核。
+     *
+     * @param  string  $category  災情分類（flood | road_blocked | power_outage | structural_damage）
+     * @return array{is_valid: bool, matches_category: bool, confidence: float, reason: string}
      */
-    public function moderate(string $imagePath, string $type = 'rat'): array
+    public function moderate(string $imagePath, string $category): array
     {
         try {
             $base64 = $this->prepareBase64($imagePath);
 
-            $prompt = $type === 'poison' ? $this->poisonPrompt() : $this->ratPrompt();
+            $prompt = $this->prompt($category);
 
             $payload = [
-                'model'      => $this->model,
-                'max_tokens' => 64,
-                'messages'   => [
+                'model' => $this->model,
+                'max_tokens' => 96,
+                'messages' => [
                     [
-                        'role'    => 'user',
+                        'role' => 'user',
                         'content' => [
                             [
-                                'type'  => 'image',
+                                'type' => 'image',
                                 'source' => [
-                                    'type'       => 'base64',
+                                    'type' => 'base64',
                                     'media_type' => 'image/jpeg',
-                                    'data'       => $base64,
+                                    'data' => $base64,
                                 ],
                             ],
                             [
@@ -66,8 +73,8 @@ class ImageModerationService
             ];
 
             $response = $this->client->post('/v1/messages', ['json' => $payload]);
-            $body     = json_decode($response->getBody()->getContents(), true);
-            $text     = trim($body['content'][0]['text'] ?? '{}');
+            $body = json_decode($response->getBody()->getContents(), true);
+            $text = trim($body['content'][0]['text'] ?? '{}');
 
             // Extract JSON even if model wraps it in markdown
             if (preg_match('/\{[^}]+\}/', $text, $m)) {
@@ -79,44 +86,46 @@ class ImageModerationService
             $usage = $body['usage'] ?? [];
 
             Log::channel('moderation')->info('moderation.result', [
-                'model'         => $body['model'] ?? $this->model,
-                'is_valid'      => (bool) ($result['is_valid'] ?? true),
-                'confidence'    => (float) ($result['confidence'] ?? 0.5),
-                'raw_text'      => $text,
-                'input_tokens'  => $usage['input_tokens']  ?? null,
+                'model' => $body['model'] ?? $this->model,
+                'is_valid' => (bool) ($result['is_valid'] ?? true),
+                'matches_category' => (bool) ($result['matches_category'] ?? true),
+                'confidence' => (float) ($result['confidence'] ?? 0.5),
+                'raw_text' => $text,
+                'input_tokens' => $usage['input_tokens'] ?? null,
                 'output_tokens' => $usage['output_tokens'] ?? null,
-                'total_tokens'  => isset($usage['input_tokens'], $usage['output_tokens'])
+                'total_tokens' => isset($usage['input_tokens'], $usage['output_tokens'])
                     ? $usage['input_tokens'] + $usage['output_tokens']
                     : null,
             ]);
 
             return [
-                'is_valid'   => (bool) ($result['is_valid'] ?? true),
+                'is_valid' => (bool) ($result['is_valid'] ?? true),
+                'matches_category' => (bool) ($result['matches_category'] ?? true),
                 'confidence' => (float) ($result['confidence'] ?? 0.5),
-                'reason'     => 'claude',
+                'reason' => 'claude',
             ];
         } catch (GuzzleException $e) {
             // API 失敗時預設放行，避免誤擋正常上傳
             Log::channel('moderation')->warning('moderation.api_error', [
-                'model'   => $this->model,
+                'model' => $this->model,
                 'message' => $e->getMessage(),
-                'code'    => $e->getCode(),
+                'code' => $e->getCode(),
             ]);
             Log::warning('ImageModerationService: API error', [
                 'message' => $e->getMessage(),
             ]);
 
-            return ['is_valid' => true, 'confidence' => 0.0, 'reason' => 'api_error'];
+            return ['is_valid' => true, 'matches_category' => true, 'confidence' => 0.0, 'reason' => 'api_error'];
         } catch (\Throwable $e) {
             Log::channel('moderation')->warning('moderation.error', [
-                'model'   => $this->model,
+                'model' => $this->model,
                 'message' => $e->getMessage(),
             ]);
             Log::warning('ImageModerationService: unexpected error', [
                 'message' => $e->getMessage(),
             ]);
 
-            return ['is_valid' => true, 'confidence' => 0.0, 'reason' => 'error'];
+            return ['is_valid' => true, 'matches_category' => true, 'confidence' => 0.0, 'reason' => 'error'];
         }
     }
 
@@ -125,8 +134,8 @@ class ImageModerationService
      */
     private function prepareBase64(string $imagePath): string
     {
-        $manager = new \Intervention\Image\ImageManager(
-            new \Intervention\Image\Drivers\Gd\Driver()
+        $manager = new ImageManager(
+            new Driver
         );
 
         $image = $manager->decode($imagePath);
@@ -142,74 +151,50 @@ class ImageModerationService
             }
         }
 
-        $jpeg = $image->encode(new \Intervention\Image\Encoders\JpegEncoder(quality: 70));
+        $jpeg = $image->encode(new JpegEncoder(quality: 70));
 
         return base64_encode($jpeg->toString());
     }
 
-    private function ratPrompt(): string
+    private function prompt(string $category): string
     {
-        return <<<'PROMPT'
+        $label = Report::CATEGORY_LABELS[$category] ?? $category;
+
+        return <<<PROMPT
 <task>
-你是城市環境衛生稽查系統的 AI 審核員。判斷這張圖片是否與鼠患通報相關，應被接受。
+你是城市災害回報系統的 AI 審核員。市民回報的災情分類為「{$label}」。請判斷：
+1. 這張圖片是否適合公開於災情地圖（is_valid）
+2. 圖片內容是否與所選災情分類吻合（matches_category）
 </task>
 
+<category_hints>
+- 淹水：路面、騎樓、地下道、住家積水，或明顯水位痕跡
+- 道路中斷：倒樹、土石、坍塌、掉落物、封路、交通阻斷
+- 停電：黑暗的街區或室內、熄滅的號誌與路燈、斷落電線
+- 結構受損：建物裂縫、傾斜、外牆磁磚剝落、招牌或鷹架墜落、屋頂受損
+</category_hints>
+
 <accept_if>
-以下任一情況請接受（is_valid=true）：
-- 圖中出現老鼠或老鼠屍體，無論距離遠近、體型大小、是否清晰
-- 老鼠出現在畫面角落、背景或僅占畫面一小部分
-- 夜晚街景、巷弄、騎樓、下水道等城市環境照片，即使主體不突出
-- 垃圾堆積、廢棄物、糞便等鼠患相關環境髒亂
-- 模糊、逆光、光線昏暗但場景與城市環境衛生相關
+以下情況請接受（is_valid=true）：
+- 颱風／豪雨災時的戶外或住家現場照片，即使模糊、逆光、光線昏暗
+- 災情主體只占畫面角落或一小部分
 </accept_if>
 
 <reject_if>
 以下情況才拒絕（is_valid=false）：
 - 清晰可辨的人臉
 - 不雅或色情內容
-- 明確與鼠患及城市環境衛生完全無關的照片（如：純風景、室內自拍、食物特寫）
+- 明確與災情完全無關的照片（如：自拍、食物特寫、螢幕截圖梗圖）
 </reject_if>
 
 <guidance>
-審核標準應寬鬆，傾向接受。寧可接受模糊相關，也不誤擋真實通報。
-confidence 代表你對這次判斷的把握度（0.0–1.0）。若場景模糊難判，請給低 confidence。
+審核標準應寬鬆，傾向接受。寧可接受模糊相關，也不誤擋真實災情。
+matches_category 僅判斷內容與「{$label}」是否吻合；不吻合時仍可 is_valid=true。
+confidence 代表你對 is_valid 判斷的把握度（0.0–1.0）。若場景模糊難判，請給低 confidence。
 </guidance>
 
 <output>
-嚴格只輸出 JSON，不得包含任何其他文字：{"is_valid":true,"confidence":0.9}
-</output>
-PROMPT;
-    }
-
-    private function poisonPrompt(): string
-    {
-        return <<<'PROMPT'
-<task>
-你是城市寵物與野生動物保護系統的 AI 審核員。判斷這張圖片是否疑似包含被隨意放置的老鼠藥／毒餌。
-</task>
-
-<accept_if>
-以下任一情況請接受（is_valid=true）：
-- 地面、盆栽、花圃、騎樓、巷弄角落的彩色顆粒（藍/綠/粉紅色蠟塊或穀粒，常見抗凝血劑外觀）
-- 標示有「滅鼠」「老鼠藥」「殺鼠」字樣的包裝、紙片、容器
-- 黏鼠板、捕鼠籠、誘餌站（bait station）等鼠害防治用具
-- 疑似毒餌的物品，即使不確定也算
-</accept_if>
-
-<reject_if>
-以下情況才拒絕（is_valid=false）：
-- 清晰可辨的人臉
-- 不雅或色情內容
-- 明確與毒餌或鼠害防治完全無關的照片（如：純食物、自拍、室內生活照）
-</reject_if>
-
-<guidance>
-審核標準應寬鬆，傾向接受。寧可接受模糊相關，也不誤擋真實通報。
-confidence 代表你對這次判斷的把握度（0.0–1.0）。若場景模糊難判，請給低 confidence。
-</guidance>
-
-<output>
-嚴格只輸出 JSON，不得包含任何其他文字：{"is_valid":true,"confidence":0.9}
+嚴格只輸出 JSON，不得包含任何其他文字：{"is_valid":true,"matches_category":true,"confidence":0.9}
 </output>
 PROMPT;
     }

@@ -6,7 +6,6 @@ use App\Models\Report;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -30,17 +29,16 @@ class ReportsRelationManager extends RelationManager
                     ->width(70)
                     ->defaultImageUrl(null),
 
-                BadgeColumn::make('type')
-                    ->label('類型')
-                    ->colors([
-                        'danger'  => Report::TYPE_RAT,
-                        'primary' => Report::TYPE_POISON,
-                    ])
-                    ->formatStateUsing(fn (string $state) => match ($state) {
-                        Report::TYPE_RAT    => '🐀 鼠蹤',
-                        Report::TYPE_POISON => '☠️ 毒餌',
-                        default             => $state,
-                    }),
+                BadgeColumn::make('category')
+                    ->label('災情分類')
+                    ->color(fn (string $state) => match ($state) {
+                        Report::CATEGORY_FLOOD => 'info',
+                        Report::CATEGORY_ROAD_BLOCKED => 'warning',
+                        Report::CATEGORY_POWER_OUTAGE => 'warning',
+                        Report::CATEGORY_STRUCTURAL_DAMAGE => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state) => Report::CATEGORY_LABELS[$state] ?? $state),
 
                 TextColumn::make('description')
                     ->label('描述')
@@ -51,26 +49,32 @@ class ReportsRelationManager extends RelationManager
                 TextColumn::make('address')
                     ->label('地點')
                     ->limit(30)
-                    ->default(fn ($record) => $record->latitude . ', ' . $record->longitude),
+                    ->default(fn ($record) => $record->latitude.', '.$record->longitude),
 
                 BadgeColumn::make('status')
                     ->label('狀態')
                     ->color(fn (string $state) => match ($state) {
-                        Report::STATUS_PENDING       => 'gray',
-                        Report::STATUS_APPROVED      => 'danger',
-                        Report::STATUS_REPORTED_1999 => 'warning',
-                        Report::STATUS_RESOLVED      => 'success',
-                        Report::STATUS_REJECTED      => 'gray',
-                        default                      => 'gray',
+                        Report::STATUS_PENDING => 'gray',
+                        Report::STATUS_APPROVED => 'success',
+                        Report::STATUS_REJECTED => 'danger',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state) => match ($state) {
-                        Report::STATUS_PENDING       => '待審核',
-                        Report::STATUS_APPROVED      => '🔴 已核准',
-                        Report::STATUS_REJECTED      => '已拒絕',
-                        Report::STATUS_REPORTED_1999 => '🟡 已通報 1999',
-                        Report::STATUS_RESOLVED      => '🟢 已處理完畢',
-                        default                      => $state,
+                        Report::STATUS_PENDING => '待審核',
+                        Report::STATUS_APPROVED => '✅ 已核准（照片公開）',
+                        Report::STATUS_REJECTED => '已拒絕',
+                        default => $state,
                     }),
+
+                BadgeColumn::make('verification_level')
+                    ->label('核實')
+                    ->color(fn (string $state) => match ($state) {
+                        Report::VERIFICATION_UNVERIFIED => 'gray',
+                        Report::VERIFICATION_CORROBORATED => 'info',
+                        Report::VERIFICATION_OFFICIAL => 'success',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state) => Report::VERIFICATION_LABELS[$state] ?? $state),
 
                 TextColumn::make('created_at')
                     ->label('通報時間')
@@ -78,20 +82,15 @@ class ReportsRelationManager extends RelationManager
                     ->sortable(),
             ])
             ->filters([
-                SelectFilter::make('type')
-                    ->label('類型')
-                    ->options([
-                        Report::TYPE_RAT    => '🐀 鼠蹤',
-                        Report::TYPE_POISON => '☠️ 毒餌',
-                    ]),
+                SelectFilter::make('category')
+                    ->label('災情分類')
+                    ->options(Report::CATEGORY_LABELS),
                 SelectFilter::make('status')
                     ->label('狀態')
                     ->options([
-                        Report::STATUS_PENDING       => '待審核',
-                        Report::STATUS_APPROVED      => '🔴 已核准',
-                        Report::STATUS_REPORTED_1999 => '🟡 已通報 1999',
-                        Report::STATUS_RESOLVED      => '🟢 已處理完畢',
-                        Report::STATUS_REJECTED      => '已拒絕',
+                        Report::STATUS_PENDING => '待審核',
+                        Report::STATUS_APPROVED => '✅ 已核准（照片公開）',
+                        Report::STATUS_REJECTED => '已拒絕',
                     ]),
             ])
             ->recordActions([

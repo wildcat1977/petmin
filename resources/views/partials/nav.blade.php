@@ -12,7 +12,7 @@
 
     <header class="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <a href="{{ route('home') }}" class="flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <span class="text-red-500">◎</span> Rat Radar
+            <span class="text-sky-500">◎</span> CivicShield
         </a>
 
         <div class="flex items-center gap-3">
@@ -21,7 +21,6 @@
                 @include('partials.locale-switcher')
 
                 <a href="{{ route('reports') }}" class="{{ $navClsXs('reports') }}">{{ __('通報清單') }}</a>
-                <a href="{{ route('leaderboard') }}" class="{{ $navClsXs('leaderboard') }}">{{ __('英雄榜') }}</a>
                 <a href="{{ route('transparency') }}" class="{{ $navClsXs('transparency') }}">{{ __('透明度報告') }}</a>
                 <a href="{{ route('stats') }}" class="{{ $navClsXs('stats') }}">{{ __('統計地圖') }}</a>
                 <button type="button"
@@ -71,10 +70,6 @@
             <a href="{{ route('reports') }}"
                class="rounded-lg px-3 py-2 {{ $navCls('reports') }}"
                @click="open = false">{{ __('通報清單') }}</a>
-
-            <a href="{{ route('leaderboard') }}"
-               class="rounded-lg px-3 py-2 {{ $navCls('leaderboard') }}"
-               @click="open = false">{{ __('英雄榜') }}</a>
 
             <a href="{{ route('transparency') }}"
                class="rounded-lg px-3 py-2 {{ $navCls('transparency') }}"

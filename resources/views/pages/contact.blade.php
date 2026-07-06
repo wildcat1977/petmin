@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '聯絡管理員 · Rat Radar')
+@section('title', '聯絡管理員 · CivicShield 災情回報')
 
 @section('content')
 <div class="min-h-dvh bg-[#0d1117] text-slate-200">

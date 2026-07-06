@@ -16,8 +16,6 @@ new class extends Component
                 ->whereIn('status', [
                     Report::STATUS_APPROVED,
                     Report::STATUS_REJECTED,
-                    Report::STATUS_REPORTED_1999,
-                    Report::STATUS_RESOLVED,
                 ])
                 ->orderByDesc('reviewed_at')
                 ->limit(5)
@@ -32,11 +30,11 @@ new class extends Component
 @if(Auth::check() && isset($reports) && $reports->isNotEmpty())
 <div
     x-data="{
-        dismissed: JSON.parse(localStorage.getItem('ratdar_reviews') || '{}'),
+        dismissed: JSON.parse(localStorage.getItem('civicshield_reviews') || '{}'),
         isDismissed(id, ts) { return !!this.dismissed[id + '_' + ts]; },
         dismiss(id, ts) {
             this.dismissed[id + '_' + ts] = true;
-            localStorage.setItem('ratdar_reviews', JSON.stringify(this.dismissed));
+            localStorage.setItem('civicshield_reviews', JSON.stringify(this.dismissed));
         },
         hasVisible(reports) {
             return reports.some(r => !this.isDismissed(r.id, r.ts));
@@ -48,9 +46,9 @@ new class extends Component
     @foreach($reports as $report)
     @php
         $ts = $report->reviewed_at?->timestamp ?? 0;
-        $isApproved = in_array($report->status, [Report::STATUS_APPROVED, Report::STATUS_REPORTED_1999, Report::STATUS_RESOLVED]);
+        $isApproved = $report->status === Report::STATUS_APPROVED;
         $isRejected = $report->status === Report::STATUS_REJECTED;
-        $typeLabel  = $report->type === 'poison' ? __('☠️ 毒餌') : __('🐀 鼠蹤');
+        $typeLabel  = Report::CATEGORY_LABELS[$report->category] ?? $report->category;
         $reasonText = $report->rejection_reason
             ? (Report::REJECTION_REASONS[$report->rejection_reason] ?? $report->rejection_reason)
             : null;
@@ -66,17 +64,17 @@ new class extends Component
         <span class="mt-0.5 text-xl leading-none">{{ $isApproved ? '✅' : '❌' }}</span>
         <div class="flex-1 min-w-0">
             <p class="text-xs font-semibold {{ $isApproved ? 'text-green-300' : 'text-red-300' }}">
-                {{ __(':typeLabel 通報審核:result', ['typeLabel' => $typeLabel, 'result' => $isApproved ? __('通過') : __('未通過')]) }}
+                {{ __(':typeLabel 回報審核:result', ['typeLabel' => $typeLabel, 'result' => $isApproved ? __('通過') : __('未通過')]) }}
                 <span class="ml-1 font-normal text-slate-500 text-[10px]">#{{ $report->id }}</span>
             </p>
             @if($isApproved)
-                <p class="mt-0.5 text-[11px] text-slate-400">{{ __('已上架至地圖，感謝你的協助！') }}</p>
+                <p class="mt-0.5 text-[11px] text-slate-400">{{ __('照片已於地圖公開，感謝你的協助！') }}</p>
             @else
                 <p class="mt-0.5 text-[11px] text-slate-400">
                     @if($reasonText)
                         {{ __('原因：:reason', ['reason' => $reasonText]) }}
                     @else
-                        {{ __('圖片或資訊未符合通報規範') }}
+                        {{ __('圖片或資訊未符合回報規範') }}
                     @endif
                 </p>
             @endif

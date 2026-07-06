@@ -24,7 +24,7 @@
 <body>
 <div class="wrapper">
   <div class="header">
-    <h1>🐀 見鼠地圖 Rat Radar</h1>
+    <h1>CivicShield 災情回報</h1>
     <p>管理員回覆您的聯絡訊息</p>
   </div>
   <div class="body">
@@ -39,7 +39,7 @@
   </div>
   <div class="footer">
     <p>
-      此郵件由 <a href="https://ratdar.taipei">見鼠地圖</a> 管理員寄出，請勿直接回覆此郵件。<br>
+      此郵件由 <a href="{{ config('app.url') }}">CivicShield 災情回報</a> 管理員寄出，請勿直接回覆此郵件。<br>
       如有其他問題，請透過網站上的「聯絡管理員」表單再次聯繫。
     </p>
   </div>

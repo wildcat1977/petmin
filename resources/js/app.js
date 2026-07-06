@@ -1,6 +1,4 @@
 import L from 'leaflet';
-import 'leaflet.heat';
-import 'leaflet.markercluster';
 import { geocoder as createGeocoder, geocoders } from 'leaflet-control-geocoder';
 import exifr from 'exifr';
 import {
@@ -90,21 +88,13 @@ window.onPhotoChange = async function (input, wire) {
     wire.setLocationFromExif(loc.lat, loc.lng);
 };
 
-const TILE_URL_DARK  = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_URL_LIGHT = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const MAP_THEME_KEY  = 'mouseradar_map_theme';
-const TILE_OPTIONS_DARK = {
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const MAP_THEME_KEY = 'civicshield_map_theme';
+const TILE_OPTIONS = {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     subdomains: 'abc',
     maxZoom: 19,
 };
-const TILE_OPTIONS_LIGHT = {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    subdomains: 'abc',
-    maxZoom: 19,
-};
-// 向下相容：部分地方直接引用 TILE_OPTIONS，預設給亮色設定
-const TILE_OPTIONS = TILE_OPTIONS_LIGHT;
 
 // 暗色模式用 CSS filter 實現（免 API key）
 function applyTileDarkFilter(theme) {
@@ -117,20 +107,38 @@ function applyTileDarkFilter(theme) {
     }
 }
 
-// 熱區色階：暗底→亮色跳出；亮底→深色才跳出（反轉亮度進程）
-const HEAT_GRADIENT_DARK  = { 0.15: '#7f1d1d', 0.45: '#ef4444', 0.70: '#f97316', 0.90: '#fbbf24' };
-const HEAT_GRADIENT_LIGHT = { 0.20: '#fde68a', 0.45: '#fb923c', 0.70: '#dc2626', 0.90: '#7f1d1d' };
+// ── 災情分類視覺（對應圖例：淹水藍/道路橘/停電黃/結構紅/收容所綠）──
+const CATEGORY_META = {
+    flood:             { color: '#38bdf8', label: () => window.i18n?.catFlood ?? '淹水' },
+    road_blocked:      { color: '#fb923c', label: () => window.i18n?.catRoadBlocked ?? '道路中斷' },
+    power_outage:      { color: '#facc15', label: () => window.i18n?.catPowerOutage ?? '停電' },
+    structural_damage: { color: '#f87171', label: () => window.i18n?.catStructural ?? '結構受損' },
+};
+
+// 視覺分層：unverified 半透明 → corroborated 實心 → official 加白框
+const VERIFICATION_STYLE = {
+    unverified:   { fillOpacity: 0.4,  weight: 1,   ring: false },
+    corroborated: { fillOpacity: 0.9,  weight: 1.5, ring: false },
+    official:     { fillOpacity: 0.95, weight: 3,   ring: true  },
+};
+
+const VERIFICATION_LABEL = {
+    unverified:   () => window.i18n?.vlUnverified ?? '未核實',
+    corroborated: () => window.i18n?.vlCorroborated ?? '多方佐證',
+    official:     () => window.i18n?.vlOfficial ?? '官方核實',
+};
 
 let radarMap = null;
-let heatLayer = null;
-let markersLayer = null;
-let clusterLayer = null;
-let poisonLayer = null;        // 毒餌獨立圖層（不分群、永遠顯示）
-let ratLayerVisible = true;    // 「鼠蹤熱區」圖層控制開關（同步控制 clusterLayer）
+let reportsLayer = null;       // 目前顯示的點位/聚合圖層
+let sheltersLayer = null;      // 收容所圖層
 let currentTileLayer = null;   // 底圖圖層（隨主題切換）
-// 讀 localStorage，預設 light（亮色對大多數使用者更易閱讀）
-let currentTheme = (() => { try { return localStorage.getItem(MAP_THEME_KEY) || 'light'; } catch (_) { return 'light'; } })();
-let radarCircle = null;  // 1km 防禦圈
+let activeCategories = new Set(Object.keys(CATEGORY_META));
+let sheltersVisible = false;
+let sheltersCache = null;      // 收容所清單快取（每次頁面生命週期抓一次）
+let fetchController = null;
+let fetchTimer = null;
+// 讀 localStorage，預設 dark（災防情境的品牌主題）
+let currentTheme = (() => { try { return localStorage.getItem(MAP_THEME_KEY) || 'dark'; } catch (_) { return 'dark'; } })();
 
 // ── 跑馬燈廣播（從 #radar-map data-ticker 讀取真實資料）───────
 function initTicker() {
@@ -151,137 +159,204 @@ function initTicker() {
     }, 7000);
 }
 
-const MARKER_ZOOM_THRESHOLD = 14;  // 14 級以上才顯示獨立圖層，以下用 cluster
-
-const MARKER_STYLES = {
-    approved: {
-        radius: 9, fillColor: '#ef4444', color: '#ffffff', weight: 2, opacity: 1, fillOpacity: 0.9,
-    },
-    reported_1999: {
-        radius: 9, fillColor: '#f59e0b', color: '#ffffff', weight: 2, opacity: 1, fillOpacity: 0.9,
-    },
-    resolved: {
-        radius: 9, fillColor: '#22c55e', color: '#ffffff', weight: 2, opacity: 1, fillOpacity: 0.9,
-    },
-};
-
-const POISON_MARKER_STYLE = {
-    radius: 10, fillColor: '#a855f7', color: '#ffffff', weight: 2, opacity: 1, fillOpacity: 0.95,
-};
-
-const STATUS_LABEL = {
-    approved:      window.i18n?.statusApproved ?? '🔴 已回報',
-    reported_1999: window.i18n?.statusReported1999 ?? '🟡 已通報 1999',
-    resolved:      window.i18n?.statusResolved ?? '🟢 已處理完畢',
-};
-
-function markerStyle(status) {
-    return MARKER_STYLES[status] ?? MARKER_STYLES.approved;
-}
-
-function createPopupEl(m) {
+function createPopupEl(p) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'width:260px;font-size:13px;line-height:1.5';
 
-    if (m.img) {
+    if (p.img) {
         const img = document.createElement('img');
-        img.src = m.img;
+        img.src = p.img;
         img.alt = window.i18n?.reportPhoto ?? '回報照片';
         img.style.cssText = 'width:100%;height:180px;object-fit:cover;border-radius:6px;margin-bottom:8px;display:block;cursor:pointer';
-        img.addEventListener('click', () => window.open(m.img, '_blank'));
+        img.addEventListener('click', () => window.open(p.img, '_blank'));
         wrap.appendChild(img);
     }
 
-    const statusEl = document.createElement('div');
-    statusEl.style.cssText = 'margin-bottom:4px;font-weight:600;font-size:12px';
-    if (m.type === 'poison') {
-        statusEl.textContent = window.i18n?.poisonReport ?? '☠️ 毒餌通報';
-        statusEl.style.color = '#a855f7';
-    } else {
-        statusEl.textContent = STATUS_LABEL[m.status] ?? STATUS_LABEL.approved;
-    }
-    wrap.appendChild(statusEl);
+    const meta = CATEGORY_META[p.cat];
+    const head = document.createElement('div');
+    head.style.cssText = 'margin-bottom:4px;font-weight:600;font-size:12px;display:flex;align-items:center;gap:6px';
+    const dot = document.createElement('span');
+    dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${meta?.color ?? '#94a3b8'};display:inline-block`;
+    head.appendChild(dot);
+    const title = document.createElement('span');
+    let text = meta ? meta.label() : p.cat;
+    if (p.cat === 'flood' && p.depth) text += `（${window.i18n?.waterDepth ?? '水深'} ~${p.depth}cm）`;
+    title.textContent = text;
+    head.appendChild(title);
+    const vl = document.createElement('span');
+    vl.style.cssText = 'margin-left:auto;font-weight:500;font-size:11px;color:#64748b';
+    vl.textContent = VERIFICATION_LABEL[p.vl]?.() ?? '';
+    head.appendChild(vl);
+    wrap.appendChild(head);
 
-    if (m.desc) {
-        const p = document.createElement('p');
-        p.style.cssText = 'margin:0 0 4px;color:#1e293b';
-        p.textContent = m.desc;
-        wrap.appendChild(p);
+    if (p.desc) {
+        const desc = document.createElement('p');
+        desc.style.cssText = 'margin:0 0 4px;color:#1e293b';
+        desc.textContent = p.desc;
+        wrap.appendChild(desc);
     }
     const small = document.createElement('small');
     small.style.color = '#64748b';
-    small.textContent = m.at;
+    small.textContent = p.at ?? '';
     wrap.appendChild(small);
 
     return wrap;
 }
 
-function buildMarkersLayer(markersData) {
+function buildPointsLayer(points) {
     const layer = L.layerGroup();
-    markersData.forEach((m) => {
-        const circle = L.circleMarker([m.lat, m.lng], markerStyle(m.status));
-        circle.bindPopup(createPopupEl(m), { maxWidth: 280 });
+    points.forEach((p) => {
+        const meta = CATEGORY_META[p.cat];
+        const style = VERIFICATION_STYLE[p.vl] ?? VERIFICATION_STYLE.unverified;
+        const circle = L.circleMarker([p.lat, p.lng], {
+            radius: 8,
+            fillColor: meta?.color ?? '#94a3b8',
+            color: style.ring ? '#ffffff' : (meta?.color ?? '#94a3b8'),
+            weight: style.weight,
+            opacity: 1,
+            fillOpacity: style.fillOpacity,
+        });
+        circle.bindPopup(createPopupEl(p), { maxWidth: 280 });
         layer.addLayer(circle);
     });
     return layer;
 }
 
-function buildClusterLayer(markersData) {
-    const cluster = L.markerClusterGroup({
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        maxClusterRadius: 50,
-        spiderfyOnMaxZoom: true,
-        iconCreateFunction(c) {
-            const n = c.getChildCount();
-            const size = n < 10 ? 32 : n < 100 ? 38 : 44;
-            return L.divIcon({
-                html: `<div style="width:${size}px;height:${size}px;background:#ef4444;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;box-shadow:0 0 8px rgba(239,68,68,0.55)">${n}</div>`,
-                className: '',
-                iconSize: [size, size],
-                iconAnchor: [size / 2, size / 2],
-            });
-        },
-    });
-    markersData.forEach((m) => {
-        const circle = L.circleMarker([m.lat, m.lng], markerStyle(m.status));
-        circle.bindPopup(createPopupEl(m), { maxWidth: 280 });
-        cluster.addLayer(circle);
-    });
-    return cluster;
-}
-
-function buildPoisonLayer(poisonData) {
+function buildClustersLayer(clusters) {
     const layer = L.layerGroup();
-    poisonData.forEach((m) => {
+    clusters.forEach((c) => {
+        const meta = CATEGORY_META[c.dominant_category];
+        const color = meta?.color ?? '#94a3b8';
+        const size = c.count < 10 ? 34 : c.count < 100 ? 42 : 50;
         const icon = L.divIcon({
-            html: `<div style="width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:18px;background:#a855f7;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(168,85,247,0.7);color:#fff">☠</div>`,
-            className: 'poison-marker',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
+            html: `<div style="width:${size}px;height:${size}px;background:${color}cc;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0f172a;box-shadow:0 0 10px ${color}88">${c.count}</div>`,
+            className: '',
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
         });
-        const marker = L.marker([m.lat, m.lng], { icon });
-        marker.bindPopup(createPopupEl({ ...m, type: 'poison' }), { maxWidth: 280 });
+        const marker = L.marker([c.lat, c.lng], { icon });
+        marker.on('click', () => {
+            radarMap.setView([c.lat, c.lng], Math.min(radarMap.getZoom() + 2, 18));
+        });
         layer.addLayer(marker);
     });
     return layer;
 }
 
-function updateMarkersVisibility(zoom) {
+function renderReports(payload) {
     if (!radarMap) return;
-    // 鼠蹤熱區已隱藏時，同時隱藏 cluster/數字層
-    if (!ratLayerVisible) {
-        if (clusterLayer && radarMap.hasLayer(clusterLayer)) radarMap.removeLayer(clusterLayer);
-        if (markersLayer && radarMap.hasLayer(markersLayer)) radarMap.removeLayer(markersLayer);
+    const layer = payload.mode === 'points'
+        ? buildPointsLayer(payload.points ?? [])
+        : buildClustersLayer(payload.clusters ?? []);
+
+    if (reportsLayer) radarMap.removeLayer(reportsLayer);
+    reportsLayer = layer.addTo(radarMap);
+}
+
+function scheduleFetch() {
+    clearTimeout(fetchTimer);
+    fetchTimer = setTimeout(fetchReports, 250);
+}
+
+async function fetchReports() {
+    if (!radarMap) return;
+    const el = document.getElementById('radar-map');
+    if (!el) return;
+
+    if (activeCategories.size === 0) {
+        if (reportsLayer) { radarMap.removeLayer(reportsLayer); reportsLayer = null; }
         return;
     }
-    if (zoom >= MARKER_ZOOM_THRESHOLD) {
-        // 移除舊的獨立圖層，改用 cluster
-        if (markersLayer && radarMap.hasLayer(markersLayer)) radarMap.removeLayer(markersLayer);
-        if (clusterLayer && !radarMap.hasLayer(clusterLayer)) radarMap.addLayer(clusterLayer);
-    } else {
-        if (clusterLayer && radarMap.hasLayer(clusterLayer)) radarMap.removeLayer(clusterLayer);
+
+    const b = radarMap.getBounds();
+    const params = new URLSearchParams({
+        bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((v) => v.toFixed(5)).join(','),
+        zoom: radarMap.getZoom(),
+        categories: [...activeCategories].join(','),
+    });
+
+    if (fetchController) fetchController.abort();
+    fetchController = new AbortController();
+
+    try {
+        const res = await fetch(`${el.dataset.reportsUrl}?${params}`, {
+            signal: fetchController.signal,
+            headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) return;
+        renderReports(await res.json());
+    } catch (_) { /* abort 或離線：保留現有圖層 */ }
+}
+
+// ── 收容所圖層（綠）──────────────────────────────────────────
+async function renderShelters() {
+    if (!radarMap) return;
+    if (!sheltersVisible) {
+        if (sheltersLayer) { radarMap.removeLayer(sheltersLayer); sheltersLayer = null; }
+        return;
     }
+
+    if (!sheltersCache) {
+        const el = document.getElementById('radar-map');
+        try {
+            const res = await fetch(el.dataset.sheltersUrl, { headers: { Accept: 'application/json' } });
+            if (!res.ok) return;
+            sheltersCache = await res.json();
+        } catch (_) { return; }
+    }
+
+    const layer = L.layerGroup();
+    sheltersCache.forEach((s) => {
+        const icon = L.divIcon({
+            html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;background:#4ade80;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(74,222,128,0.7);opacity:${s.open ? 1 : 0.45}">🏠</div>`,
+            className: '',
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+        });
+        const marker = L.marker([s.lat, s.lng], { icon });
+        const openLabel = s.open
+            ? (window.i18n?.shelterOpen ?? '🟢 開設中')
+            : (window.i18n?.shelterClosed ?? '⚪ 未開設');
+        const capacity = s.capacity ? `｜${window.i18n?.shelterCapacity ?? '容量'} ${s.capacity}` : '';
+        // 名稱/地址為外部同步資料，用 textContent 組裝避免 XSS
+        const popup = document.createElement('div');
+        popup.style.cssText = 'font-size:13px;line-height:1.5';
+        const nameEl = document.createElement('b');
+        nameEl.textContent = s.name;
+        const statusEl = document.createElement('div');
+        statusEl.textContent = openLabel + capacity;
+        const addrEl = document.createElement('small');
+        addrEl.style.color = '#64748b';
+        addrEl.textContent = s.address ?? '';
+        popup.append(nameEl, statusEl, addrEl);
+        marker.bindPopup(popup, { maxWidth: 260 });
+        layer.addLayer(marker);
+    });
+
+    if (sheltersLayer) radarMap.removeLayer(sheltersLayer);
+    sheltersLayer = layer.addTo(radarMap);
+}
+
+// ── 分類篩選 chips（radar 頁 header 渲染，data-map-chip 綁定）──
+function initChips() {
+    document.querySelectorAll('[data-map-chip]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const cat = btn.dataset.mapChip;
+            if (cat === 'shelters') {
+                sheltersVisible = ! sheltersVisible;
+                btn.classList.toggle('chip-on', sheltersVisible);
+                renderShelters();
+                return;
+            }
+            if (activeCategories.has(cat)) {
+                activeCategories.delete(cat);
+            } else {
+                activeCategories.add(cat);
+            }
+            btn.classList.toggle('chip-on', activeCategories.has(cat));
+            scheduleFetch();
+        });
+    });
 }
 
 // ── 地圖主題切換 ──────────────────────────────────────────────
@@ -291,19 +366,7 @@ function setMapTheme(theme) {
     const mapEl = document.getElementById('radar-map');
     if (mapEl) mapEl.classList.toggle('map-theme-dark', theme === 'dark');
     if (radarMap && currentTileLayer) {
-        radarMap.removeLayer(currentTileLayer);
-        currentTileLayer = L.tileLayer(
-            theme === 'dark' ? TILE_URL_DARK : TILE_URL_LIGHT,
-            theme === 'dark' ? TILE_OPTIONS_DARK : TILE_OPTIONS_LIGHT
-        ).addTo(radarMap);
         applyTileDarkFilter(theme);
-    }
-    // 同步切換熱區色階；leaflet.heat 需手動 redraw 才會套用新 gradient
-    if (heatLayer) {
-        heatLayer.setOptions({
-            gradient: theme === 'dark' ? HEAT_GRADIENT_DARK : HEAT_GRADIENT_LIGHT,
-        });
-        if (typeof heatLayer.redraw === 'function') heatLayer.redraw();
     }
 }
 
@@ -326,7 +389,7 @@ const ThemeToggleControl = L.Control.extend({
     },
 });
 
-// ── 主雷達地圖 ──────────────────────────────────────────────
+// ── 主地圖 ──────────────────────────────────────────────────
 function initRadar() {
     const el = document.getElementById('radar-map');
     if (!el || radarMap) return;
@@ -334,60 +397,22 @@ function initRadar() {
     const lat = parseFloat(el.dataset.defaultLat);
     const lng = parseFloat(el.dataset.defaultLng);
     const zoom = parseInt(el.dataset.defaultZoom, 10);
-    const points = JSON.parse(el.dataset.heatPoints || '[]');
-    const markersData = JSON.parse(el.dataset.markers || '[]');
-    const poisonData = JSON.parse(el.dataset.poisonMarkers || '[]');
 
     el.classList.toggle('map-theme-dark', currentTheme === 'dark');
     radarMap = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], zoom);
 
-    currentTileLayer = L.tileLayer(
-        currentTheme === 'dark' ? TILE_URL_DARK : TILE_URL_LIGHT,
-        currentTheme === 'dark' ? TILE_OPTIONS_DARK : TILE_OPTIONS_LIGHT
-    ).addTo(radarMap);
+    currentTileLayer = L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(radarMap);
     // dark filter 需在 map 初始化後再套用
     radarMap.whenReady(() => applyTileDarkFilter(currentTheme));
     L.control.zoom({ position: 'topright' }).addTo(radarMap);
 
-    heatLayer = L.heatLayer(points, {
-        radius: 30,
-        blur: 18,
-        maxZoom: 17,
-        minOpacity: 0.35,
-        gradient: currentTheme === 'dark' ? HEAT_GRADIENT_DARK : HEAT_GRADIENT_LIGHT,
-    }).addTo(radarMap);
-
-    markersLayer = buildMarkersLayer(markersData);
-    clusterLayer = buildClusterLayer(markersData);
-    poisonLayer  = buildPoisonLayer(poisonData);
-    poisonLayer.addTo(radarMap);
-    radarMap.on('zoomend', () => updateMarkersVisibility(radarMap.getZoom()));
-    updateMarkersVisibility(zoom);
-
-    // 圖層切換控制（右上）
-    const overlayMaps = {
-        [window.i18n?.ratLayerLabel ?? '🐀 鼠蹤熱區']:   heatLayer,
-        [window.i18n?.poisonLayerLabel ?? '☠️ 毒餌分佈']: poisonLayer,
-    };
-    L.control.layers(null, overlayMaps, { position: 'topright', collapsed: false }).addTo(radarMap);
-
-    // 取消勾選「鼠蹤熱區」時同步隱藏數字 cluster；重新勾選時恢復
-    radarMap.on('overlayremove', (e) => {
-        if (e.layer === heatLayer) {
-            ratLayerVisible = false;
-            updateMarkersVisibility(radarMap.getZoom());
-        }
-    });
-    radarMap.on('overlayadd', (e) => {
-        if (e.layer === heatLayer) {
-            ratLayerVisible = true;
-            updateMarkersVisibility(radarMap.getZoom());
-        }
-    });
+    radarMap.on('moveend', scheduleFetch);
+    radarMap.on('zoomend', scheduleFetch);
+    fetchReports();
 
     new ThemeToggleControl().addTo(radarMap);
 
-    // 地標搜尋（訪客可用，右上縮合圖示，展開後搜尋）
+    // 地標搜尋（訪客可用，左上縮合圖示，展開後搜尋）
     createGeocoder({
         defaultMarkGeocode: false,
         collapsed: true,
@@ -406,44 +431,15 @@ function initRadar() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                const { latitude: userLat, longitude: userLng } = pos.coords;
-                radarMap.setView([userLat, userLng], 16);
-                updateNearbyCount(points, userLat, userLng, parseFloat(el.dataset.nearbyRadius));
-                // 畫 1km 防禦圈
-                if (radarCircle) radarMap.removeLayer(radarCircle);
-                radarCircle = L.circle([userLat, userLng], {
-                    radius: 1000,
-                    color: '#4ade80',
-                    weight: 1.5,
-                    opacity: 0.55,
-                    fillColor: '#4ade80',
-                    fillOpacity: 0.04,
-                    className: 'radar-scan-circle',
-                }).addTo(radarMap);
+                radarMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
             },
-            () => updateNearbyCount(points, lat, lng, parseFloat(el.dataset.nearbyRadius)),
+            () => {},
             { enableHighAccuracy: true, timeout: 8000 }
         );
-    } else {
-        updateNearbyCount(points, lat, lng, parseFloat(el.dataset.nearbyRadius));
     }
+
+    initChips();
     initTicker();
-}
-
-function haversineKm(a, b) {
-    const R = 6371;
-    const dLat = ((b[0] - a[0]) * Math.PI) / 180;
-    const dLng = ((b[1] - a[1]) * Math.PI) / 180;
-    const lat1 = (a[0] * Math.PI) / 180;
-    const lat2 = (b[0] * Math.PI) / 180;
-    const x = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-    return 2 * R * Math.asin(Math.sqrt(x));
-}
-
-function updateNearbyCount(points, lat, lng, radiusKm) {
-    const counter = document.getElementById('nearby-count');
-    if (!counter) return;
-    counter.textContent = points.filter((p) => haversineKm([lat, lng], [p[0], p[1]]) <= radiusKm).length;
 }
 
 // ── 回報表單小地圖（由 Alpine x-init 呼叫）──────────────────
@@ -459,7 +455,7 @@ window.initPinMap = function (el, wire) {
     const map = L.map(el, { zoomControl: true, attributionControl: false })
         .setView([DEFAULT_LAT, DEFAULT_LNG], 17);
 
-    L.tileLayer(TILE_URL_LIGHT, TILE_OPTIONS_LIGHT).addTo(map);
+    L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(map);
 
     // 地址搜尋（Nominatim / OSM，免費無 API Key）
     createGeocoder({
@@ -604,26 +600,12 @@ document.addEventListener('livewire:initialized', () => {
     initLiff();
     initRadar();
 
-    window.addEventListener('mouseradar:report-clicked', () => {
+    window.addEventListener('civicshield:report-clicked', () => {
         window.Livewire.dispatch('open-report-form');
     });
 
-    window.addEventListener('mouseradar:heat-updated', (e) => {
-        if (heatLayer && Array.isArray(e.detail?.points)) {
-            heatLayer.setLatLngs(e.detail.points);
-        }
-        if (radarMap && Array.isArray(e.detail?.markers)) {
-            if (markersLayer) radarMap.removeLayer(markersLayer);
-            if (clusterLayer) radarMap.removeLayer(clusterLayer);
-            markersLayer = buildMarkersLayer(e.detail.markers);
-            clusterLayer = buildClusterLayer(e.detail.markers);
-            updateMarkersVisibility(radarMap.getZoom());
-        }
-        if (radarMap && Array.isArray(e.detail?.poisonMarkers)) {
-            if (poisonLayer) radarMap.removeLayer(poisonLayer);
-            poisonLayer = buildPoisonLayer(e.detail.poisonMarkers);
-            poisonLayer.addTo(radarMap);
-        }
+    // 回報送出或後端通知資料更新 → 重新向 bbox API 取點位
+    window.addEventListener('civicshield:reports-updated', () => {
+        scheduleFetch();
     });
 });
-

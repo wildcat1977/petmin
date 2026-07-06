@@ -7,11 +7,9 @@ use Illuminate\Support\Facades\Storage;
 use App\Filament\Resources\Reports\ReportResource;
 
 $statusColor = fn (string $s) => match($s) {
-    "approved"      => "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-    "reported_1999" => "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-    "resolved"      => "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-    "rejected"      => "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
-    default         => "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
+    "approved" => "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+    "rejected" => "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+    default    => "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
 };
 $reasonsJson = json_encode(\App\Models\Report::REJECTION_REASONS, JSON_UNESCAPED_UNICODE);
 @endphp
@@ -28,11 +26,9 @@ $reasonsJson = json_encode(\App\Models\Report::REJECTION_REASONS, JSON_UNESCAPED
                 reasons: {!! $reasonsJson !!},
                 statusLabel(s) {
                     return {
-                        pending:       '待審核',
-                        approved:      '🔴 已核准',
-                        rejected:      '❌ 已拒絕',
-                        reported_1999: '🟡 通報 1999',
-                        resolved:      '🟢 已處理'
+                        pending:  '待審核',
+                        approved: '✅ 已核准（照片公開）',
+                        rejected: '❌ 已拒絕'
                     }[s] ?? s;
                 }
             }"
@@ -63,7 +59,7 @@ $reasonsJson = json_encode(\App\Models\Report::REJECTION_REASONS, JSON_UNESCAPED
                         @if($report->id === $currentId)
                             <span class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 dark:bg-primary-900 dark:text-primary-300">當前</span>
                         @endif
-                        <span>{{ $report->type === 'rat' ? '🐀 鼠蹤' : '☠️ 毒餌' }}</span>
+                        <span>{{ \App\Models\Report::CATEGORY_LABELS[$report->category] ?? $report->category }}</span>
                         <span class="ml-auto text-gray-400 flex-none">{{ $report->created_at->format('m/d H:i') }}</span>
                     </div>
 
@@ -90,8 +86,8 @@ $reasonsJson = json_encode(\App\Models\Report::REJECTION_REASONS, JSON_UNESCAPED
                         wire:click="updateReportStatus({{ $report->id }}, 'approved')"
                         x-on:click="newStatus = 'approved'; newReason = ''; rejectOpen = false"
                         x-bind:disabled="newStatus === 'approved'"
-                        x-bind:class="newStatus === 'approved' ? 'opacity-40 cursor-default' : 'hover:bg-red-600'"
-                        class="rounded bg-red-500 px-2.5 py-1 text-xs font-medium text-white transition active:scale-95 w-14 text-center">
+                        x-bind:class="newStatus === 'approved' ? 'opacity-40 cursor-default' : 'hover:bg-green-600'"
+                        class="rounded bg-green-500 px-2.5 py-1 text-xs font-medium text-white transition active:scale-95 w-14 text-center">
                         核准
                     </button>
                     <button

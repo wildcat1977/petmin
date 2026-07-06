@@ -61,7 +61,7 @@ class UserForm
 
                 Toggle::make('is_private')
                     ->label('隱私模式')
-                    ->helperText('開啟後排行榜以「匿名捕鼠手」顯示，隱藏名稱與頭像'),
+                    ->helperText('開啟後公開頁面以「匿名市民」顯示，隱藏名稱與頭像'),
             ]);
     }
 }

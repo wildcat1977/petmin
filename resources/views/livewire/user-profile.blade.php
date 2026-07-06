@@ -104,7 +104,7 @@ new class extends Component
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-sm font-medium text-slate-200">{{ __('隱私模式') }}</p>
-                    <p class="mt-0.5 text-xs text-slate-500">{{ __('開啟後，排行榜將以「匿名捕鼠手」顯示，隱藏你的名稱與頭像') }}</p>
+                    <p class="mt-0.5 text-xs text-slate-500">{{ __('開啟後，公開頁面將以「匿名市民」顯示，隱藏你的名稱與頭像') }}</p>
                 </div>
                 <button wire:click="togglePrivate"
                         type="button"
@@ -120,40 +120,6 @@ new class extends Component
             </div>
         </div>
 
-        {{-- 分享成就卡 --}}
-        <div class="mt-5 border-t border-white/10 pt-5"
-             x-data="{
-                 copied: false,
-                 shareUrl: '{{ route('share.show', Auth::id()) }}',
-                 doShare() {
-                     if (navigator.share) {
-                         navigator.share({
-                             title: 'Rat Radar {{ __("捕鼠成就") }}',
-                             text: '{{ __("我在 Rat Radar 累積通報了老鼠蹤跡，快來看看！") }}',
-                             url: this.shareUrl,
-                         }).catch(() => {});
-                     } else {
-                         navigator.clipboard.writeText(this.shareUrl).then(() => {
-                             this.copied = true;
-                             setTimeout(() => this.copied = false, 2500);
-                         });
-                     }
-                 }
-             }">
-            <button x-on:click="doShare()"
-                    class="flex w-full items-center justify-center gap-2 rounded-xl
-                           bg-white/5 py-2.5 text-sm text-slate-300 ring-1 ring-white/10
-                           hover:bg-white/10 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47A3 3 0 1015 12a3 3 0 00-2.977-2.63L7.083 6.9a3 3 0 000-1.8l4.94-2.47A3 3 0 0015 8z"/>
-                </svg>
-                <span x-show="!copied">{{ __('分享成就卡') }}</span>
-                <span x-show="copied" x-cloak class="text-green-400">{{ __('連結已複製！') }}</span>
-            </button>
-            <p class="mt-1.5 text-center text-[11px] text-slate-600">
-                {{ __('分享後可預覽成就勳章圖片') }}
-            </p>
-        </div>
     </div>
 
     {{-- 我的回報清單 --}}
@@ -161,7 +127,7 @@ new class extends Component
 
     @if ($reports->isEmpty())
         <div class="mt-4 rounded-2xl bg-white/5 p-8 text-center text-slate-500">
-            {{ __('還沒有任何回報，快去發現老鼠吧！') }}
+            {{ __('還沒有任何回報，發現災情時歡迎隨手回報！') }}
         </div>
     @else
         <div class="mt-4 flex flex-col gap-3">
@@ -182,7 +148,7 @@ new class extends Component
                                  alt="{{ __('回報照片') }}"
                                  class="h-full w-full object-cover">
                         @else
-                            <div class="flex h-full w-full items-center justify-center bg-black/30 text-2xl">🐀</div>
+                            <div class="flex h-full w-full items-center justify-center bg-black/30 text-2xl">📷</div>
                         @endif
                     </div>
 
@@ -190,6 +156,9 @@ new class extends Component
                     <div class="flex min-w-0 flex-1 flex-col justify-between">
                         <div>
                             <div class="flex items-center gap-2">
+                                <span class="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                                    {{ Report::CATEGORY_LABELS[$report->category] ?? $report->category }}
+                                </span>
                                 <span class="rounded-full px-2 py-0.5 text-[11px] font-medium {{ $badge['class'] }}">
                                     {{ $badge['text'] }}
                                 </span>

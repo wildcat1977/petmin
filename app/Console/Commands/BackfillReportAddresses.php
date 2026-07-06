@@ -3,11 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Models\Report;
+use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 
 class BackfillReportAddresses extends Command
 {
-    protected $signature   = 'reports:backfill-addresses {--force : 覆蓋已有地址的紀錄}';
+    protected $signature = 'reports:backfill-addresses {--force : 覆蓋已有地址的紀錄}';
+
     protected $description = '對資料庫中缺少地址的通報，呼叫 Nominatim reverse geocode 補上縣市/區';
 
     public function handle(): int
@@ -22,6 +24,7 @@ class BackfillReportAddresses extends Command
 
         if ($reports->isEmpty()) {
             $this->info('所有通報已有地址，無需補跑。');
+
             return self::SUCCESS;
         }
 
@@ -29,32 +32,32 @@ class BackfillReportAddresses extends Command
         $bar = $this->output->createProgressBar($reports->count());
         $bar->start();
 
-        $client = new \GuzzleHttp\Client([
-            'headers' => ['User-Agent' => 'RatRadar/1.0 (ratdar.taipei)'],
+        $client = new Client([
+            'headers' => ['User-Agent' => 'CivicShield/1.0'],
             'timeout' => 8,
         ]);
 
-        $ok    = 0;
+        $ok = 0;
         $error = 0;
 
         foreach ($reports as $report) {
             try {
                 $resp = $client->get('https://nominatim.openstreetmap.org/reverse', [
                     'query' => [
-                        'lat'            => $report->latitude,
-                        'lon'            => $report->longitude,
-                        'format'         => 'json',
-                        'accept-language'=> 'zh-TW',
+                        'lat' => $report->latitude,
+                        'lon' => $report->longitude,
+                        'format' => 'json',
+                        'accept-language' => 'zh-TW',
                     ],
                 ]);
 
                 $data = json_decode((string) $resp->getBody(), true);
-                $a    = $data['address'] ?? [];
+                $a = $data['address'] ?? [];
 
-                $city     = $a['city'] ?? $a['county'] ?? $a['state'] ?? '';
+                $city = $a['city'] ?? $a['county'] ?? $a['state'] ?? '';
                 $district = $a['city_district'] ?? $a['suburb'] ?? $a['town'] ?? $a['village'] ?? '';
-                $parts    = array_filter([$city, $district]);
-                $address  = implode(' ', $parts) ?: null;
+                $parts = array_filter([$city, $district]);
+                $address = implode(' ', $parts) ?: null;
 
                 $report->update(['address' => $address]);
                 $ok++;

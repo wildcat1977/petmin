@@ -108,6 +108,30 @@ path.radar-scan-circle {
     transition: opacity 0.4s ease;
 }
 
+/* ── 分類篩選 chips（--chip-color 由 blade 依分類注入）──────── */
+.map-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 9999px;
+    cursor: pointer;
+    color: #94a3b8;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(6px);
+    transition: all 0.15s ease;
+}
+.map-chip:hover { border-color: rgba(255, 255, 255, 0.3); }
+.map-chip.chip-on {
+    color: #f8fafc;
+    border-color: color-mix(in srgb, var(--chip-color) 70%, transparent);
+    background: color-mix(in srgb, var(--chip-color) 22%, rgba(0, 0, 0, 0.6));
+    box-shadow: 0 0 14px color-mix(in srgb, var(--chip-color) 40%, transparent);
+}
+
 /* ── 暗色地圖：縮放 / 圖層控制元件 ──────────────────────────── */
 #radar-map.map-theme-dark .leaflet-control-zoom a {
     background: #1e293b !important;
