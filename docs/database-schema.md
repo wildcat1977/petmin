@@ -1,8 +1,8 @@
 # 資料庫結構
 
 沿用 ratdar 既有 `users` / `contacts` 表；`reports` 表以 delta migration 改造
-（`2026_07_06_000001_adapt_reports_for_civicshield.php`），並新增四張 CivicShield 表
-（`2026_07_06_000002_create_civicshield_tables.php`）。
+（`2026_07_06_000001_adapt_reports_for_hazdar.php`），並新增四張 Hazdar 表
+（`2026_07_06_000002_create_hazdar_tables.php`）。
 
 ## `users`
 
@@ -73,7 +73,7 @@ CWA 測站觀測歷史，供 24H 雨量趨勢圖。保留 7 天，daily prune。
 
 唯一索引：`(station_id, observed_at)` — 同觀測時間 upsert 不重複
 
-即時最新值另存 Redis key `civicshield:cwa:latest`（前端不打外部 API）。
+即時最新值另存 Redis key `hazdar:cwa:latest`（前端不打外部 API）。
 
 ## `external_alerts`
 
@@ -142,9 +142,9 @@ weather_observations · external_alerts · shelters · dashboard_resources
 
 ## 即時性快取（不進表）
 
-- CWA 最新觀測值 → Redis `civicshield:cwa:latest`
+- CWA 最新觀測值 → Redis `hazdar:cwa:latest`
 - 雷達回波圖檔 → `storage/app/public/radar/latest.png`（前端經 `/api/radar-echo` proxy 讀取）
-- 各外部源健康狀態 → Redis `civicshield:health:{source}:*`（`DataSourceHealth`）
+- 各外部源健康狀態 → Redis `hazdar:health:{source}:*`（`DataSourceHealth`）
 
 ## Scale-up path（現在不做，只避免封死）
 

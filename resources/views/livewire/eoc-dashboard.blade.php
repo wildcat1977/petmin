@@ -29,7 +29,7 @@ new class extends Component
     /** CWA 最新觀測（scheduled fetch 落地的 Redis 快取；不打外部 API） */
     public function getWeatherProperty(): ?array
     {
-        return Cache::get('civicshield:cwa:latest');
+        return Cache::get('hazdar:cwa:latest');
     }
 
     /** 24H 每小時雨量（該小時觀測的 rain_1h 最大值） */

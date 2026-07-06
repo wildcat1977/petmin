@@ -97,7 +97,7 @@ class MapPointsApiTest extends TestCase
 
     public function test_points_are_capped_and_flagged_truncated(): void
     {
-        config(['civicshield.map.max_points' => 3]);
+        config(['hazdar.map.max_points' => 3]);
         Report::factory()->count(5)->create([
             'latitude' => 25.0330,
             'longitude' => 121.5654,

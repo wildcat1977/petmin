@@ -18,13 +18,13 @@ use Throwable;
  */
 class FetchRadarEcho extends Command
 {
-    protected $signature = 'civicshield:fetch-radar-echo';
+    protected $signature = 'hazdar:fetch-radar-echo';
 
     protected $description = '拉取 CWA 雷達回波整合圖並快取為本站圖檔';
 
     public function handle(DataSourceHealth $health): int
     {
-        $config = config('civicshield.sources.radar_echo');
+        $config = config('hazdar.sources.radar_echo');
 
         try {
             $response = Http::timeout(10)->get($config['image_url']);
@@ -36,7 +36,7 @@ class FetchRadarEcho extends Command
             }
 
             Storage::disk('public')->put('radar/latest.png', $response->body());
-            Cache::forever('civicshield:radar:meta', [
+            Cache::forever('hazdar:radar:meta', [
                 'fetched_at' => now()->toIso8601String(),
                 'bytes' => strlen($response->body()),
             ]);
@@ -46,7 +46,7 @@ class FetchRadarEcho extends Command
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-            Log::error('civicshield: radar echo fetch failed', ['error' => $e->getMessage()]);
+            Log::error('hazdar: radar echo fetch failed', ['error' => $e->getMessage()]);
             $health->recordFailure('radar_echo', $e->getMessage());
             $this->error("Radar echo fetch failed: {$e->getMessage()}");
 

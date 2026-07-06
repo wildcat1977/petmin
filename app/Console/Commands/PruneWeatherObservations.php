@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
  */
 class PruneWeatherObservations extends Command
 {
-    protected $signature = 'civicshield:prune-weather';
+    protected $signature = 'hazdar:prune-weather';
 
     protected $description = '刪除 7 天前的 weather_observations';
 

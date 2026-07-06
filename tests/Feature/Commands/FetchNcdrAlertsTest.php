@@ -84,7 +84,7 @@ XML;
     {
         $this->fakeSources();
 
-        $this->artisan('civicshield:fetch-ncdr-alerts')->assertSuccessful();
+        $this->artisan('hazdar:fetch-ncdr-alerts')->assertSuccessful();
 
         // feed 內重複 cap_id 只入庫一次
         $this->assertSame(2, ExternalAlert::count());
@@ -109,8 +109,8 @@ XML;
     {
         $this->fakeSources();
 
-        $this->artisan('civicshield:fetch-ncdr-alerts')->assertSuccessful();
-        $this->artisan('civicshield:fetch-ncdr-alerts')->assertSuccessful();
+        $this->artisan('hazdar:fetch-ncdr-alerts')->assertSuccessful();
+        $this->artisan('hazdar:fetch-ncdr-alerts')->assertSuccessful();
 
         $this->assertSame(2, ExternalAlert::count());
     }
@@ -119,7 +119,7 @@ XML;
     {
         Http::fake(['alerts.ncdr.nat.gov.tw/*' => Http::response('oops', 503)]);
 
-        $this->artisan('civicshield:fetch-ncdr-alerts')->assertFailed();
+        $this->artisan('hazdar:fetch-ncdr-alerts')->assertFailed();
 
         // 驗收 §1-5：失敗必須記錄並反映在狀態燈，不得默默跳過
         $status = app(DataSourceHealth::class)->status('ncdr_alerts');

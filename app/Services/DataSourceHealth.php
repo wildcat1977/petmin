@@ -41,7 +41,7 @@ class DataSourceHealth
      */
     public function status(string $source): array
     {
-        $intervalMinutes = (int) config("civicshield.sources.{$source}.interval_minutes", 5);
+        $intervalMinutes = (int) config("hazdar.sources.{$source}.interval_minutes", 5);
         $lastSuccess = Cache::get($this->key($source, 'last_success_at'));
 
         $status = self::STATUS_DOWN;
@@ -64,13 +64,13 @@ class DataSourceHealth
     /** @return array<string, array{status: string, last_success_at: ?string, last_error: ?array}> */
     public function all(): array
     {
-        return collect(array_keys(config('civicshield.sources', [])))
+        return collect(array_keys(config('hazdar.sources', [])))
             ->mapWithKeys(fn (string $source) => [$source => $this->status($source)])
             ->all();
     }
 
     private function key(string $source, string $field): string
     {
-        return "civicshield:health:{$source}:{$field}";
+        return "hazdar:health:{$source}:{$field}";
     }
 }

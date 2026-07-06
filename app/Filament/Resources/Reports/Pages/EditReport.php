@@ -27,7 +27,7 @@ class EditReport extends EditRecord
 
         try {
             $resp = (new Client([
-                'headers' => ['User-Agent' => 'CivicShield/1.0'],
+                'headers' => ['User-Agent' => 'Hazdar/1.0'],
                 'timeout' => 8,
             ]))->get('https://nominatim.openstreetmap.org/reverse', [
                 'query' => [

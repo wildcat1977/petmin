@@ -4,7 +4,7 @@
 
 ```
 ┌────────────────────────────────┐
-│ ● CIVICSHIELD 全民災情回報地圖 EN│ ← 頂部品牌 + 語言切換
+│ ● HAZDAR 全民災情回報地圖 EN│ ← 頂部品牌 + 語言切換
 │ 💧淹水 🚧道路 ⚡停電 🏚️結構     │ ← 分類篩選 chips（可多選）
 │ 🏠收容所 🌀雷達回波            │ ← 圖層開關 chips
 │ 🔍 🌙                          │ ← 左上：地標搜尋 / 亮暗切換
@@ -51,14 +51,14 @@
 
 ### F. 地標搜尋 / 亮暗切換 / 多語系
 - 地標搜尋（Nominatim OSM，`countrycodes: tw`）、地圖亮暗切換、中/EN 語言切換皆**無需登入**
-- 地圖主題偏好存 `localStorage`（key: `civicshield_map_theme`，預設暗色）
+- 地圖主題偏好存 `localStorage`（key: `hazdar_map_theme`，預設暗色）
 
 ## EOC 戰情室（`/dashboard`，公開唯讀大屏）
 
 版面對應 mockup：
 
 ```
-┌─ CIVICSHIELD  [MONITORING/TYPHOON]  NCDR 跑馬燈    03:40:12 ─┐
+┌─ HAZDAR  [MONITORING/TYPHOON]  NCDR 跑馬燈    03:40:12 ─┐
 ├─────────────┬──────────────────────────┬─────────────────────┤
 │ CWA 即時    │                          │ 事件統計（近24H）    │
 │ 27°C 時雨量 │      中央情勢地圖         │ ┌────┐┌────┐        │
@@ -99,6 +99,6 @@
 
 定義於 `resources/views/layouts/app.blade.php`：
 
-- `og:title` CivicShield 全民韌性災害回報系統
+- `og:title` Hazdar 全民韌性災害回報系統
 - `og:description` 颱風豪雨災時，回報淹水、道路中斷、停電、結構受損，即時匯聚成台北市單一災情情勢圖。
 - `theme-color` `#0d1117`

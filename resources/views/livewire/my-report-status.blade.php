@@ -30,11 +30,11 @@ new class extends Component
 @if(Auth::check() && isset($reports) && $reports->isNotEmpty())
 <div
     x-data="{
-        dismissed: JSON.parse(localStorage.getItem('civicshield_reviews') || '{}'),
+        dismissed: JSON.parse(localStorage.getItem('hazdar_reviews') || '{}'),
         isDismissed(id, ts) { return !!this.dismissed[id + '_' + ts]; },
         dismiss(id, ts) {
             this.dismissed[id + '_' + ts] = true;
-            localStorage.setItem('civicshield_reviews', JSON.stringify(this.dismissed));
+            localStorage.setItem('hazdar_reviews', JSON.stringify(this.dismissed));
         },
         hasVisible(reports) {
             return reports.some(r => !this.isDismissed(r.id, r.ts));

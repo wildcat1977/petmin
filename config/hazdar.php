@@ -11,20 +11,20 @@ return [
     'auto_approve' => (bool) env('RADAR_AUTO_APPROVE', false),
 
     // 反濫用（spec §10-5，災時參數可由 env 調整）
-    'report_cooldown_seconds' => (int) env('CIVICSHIELD_REPORT_COOLDOWN', 60),
-    'report_hourly_limit' => (int) env('CIVICSHIELD_REPORT_HOURLY_LIMIT', 10),
+    'report_cooldown_seconds' => (int) env('HAZDAR_REPORT_COOLDOWN', 60),
+    'report_hourly_limit' => (int) env('HAZDAR_REPORT_HOURLY_LIMIT', 10),
 
     // 佐證規則（spec §4.3）：同 geohash7 + 同分類，滑動窗內不同帳號數達標 → corroborated
     'corroboration' => [
-        'window_hours' => (int) env('CIVICSHIELD_CORROBORATION_WINDOW_HOURS', 6),
-        'min_distinct_users' => (int) env('CIVICSHIELD_CORROBORATION_MIN_USERS', 3),
+        'window_hours' => (int) env('HAZDAR_CORROBORATION_WINDOW_HOURS', 6),
+        'min_distinct_users' => (int) env('HAZDAR_CORROBORATION_MIN_USERS', 3),
     ],
 
     // 點位 API（spec §7.2）
     'map' => [
-        'max_points' => (int) env('CIVICSHIELD_MAP_MAX_POINTS', 2000),
+        'max_points' => (int) env('HAZDAR_MAP_MAX_POINTS', 2000),
         'cluster_below_zoom' => 15,          // zoom < 15 回傳 geohash 聚合
-        'cache_seconds' => (int) env('CIVICSHIELD_MAP_CACHE_SECONDS', 20),
+        'cache_seconds' => (int) env('HAZDAR_MAP_CACHE_SECONDS', 20),
     ],
 
     // 外部資料整合層（spec §5）：scheduled command 拉 → 落地 → 前端只讀落地資料

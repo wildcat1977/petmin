@@ -77,7 +77,7 @@ class ReportSubmissionTest extends TestCase
 
     public function test_hourly_limit_blocks_further_reports(): void
     {
-        config(['civicshield.report_hourly_limit' => 3, 'civicshield.report_cooldown_seconds' => 0]);
+        config(['hazdar.report_hourly_limit' => 3, 'hazdar.report_cooldown_seconds' => 0]);
         $user = User::factory()->create();
 
         Report::factory()->count(3)->create([

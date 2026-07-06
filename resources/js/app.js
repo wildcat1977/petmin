@@ -89,7 +89,7 @@ window.onPhotoChange = async function (input, wire) {
 };
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const MAP_THEME_KEY = 'civicshield_map_theme';
+const MAP_THEME_KEY = 'hazdar_map_theme';
 const TILE_OPTIONS = {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     subdomains: 'abc',
@@ -665,12 +665,12 @@ document.addEventListener('livewire:initialized', () => {
     initLiff();
     initRadar();
 
-    window.addEventListener('civicshield:report-clicked', () => {
+    window.addEventListener('hazdar:report-clicked', () => {
         window.Livewire.dispatch('open-report-form');
     });
 
     // 回報送出或後端通知資料更新 → 重新向 bbox API 取點位
-    window.addEventListener('civicshield:reports-updated', () => {
+    window.addEventListener('hazdar:reports-updated', () => {
         scheduleFetch();
     });
 });

@@ -52,7 +52,7 @@ class DataSourceHealthTest extends TestCase
         Storage::fake('public');
         Http::fake(['www.cwa.gov.tw/*' => Http::response('png-bytes', 200, ['Content-Type' => 'image/png'])]);
 
-        $this->artisan('civicshield:fetch-radar-echo')->assertSuccessful();
+        $this->artisan('hazdar:fetch-radar-echo')->assertSuccessful();
 
         Storage::disk('public')->assertExists('radar/latest.png');
         $this->assertSame(Health::STATUS_OK, app(Health::class)->status('radar_echo')['status']);
@@ -63,7 +63,7 @@ class DataSourceHealthTest extends TestCase
         Storage::fake('public');
         Http::fake(['www.cwa.gov.tw/*' => Http::response('<html>error page</html>', 200, ['Content-Type' => 'text/html'])]);
 
-        $this->artisan('civicshield:fetch-radar-echo')->assertFailed();
+        $this->artisan('hazdar:fetch-radar-echo')->assertFailed();
 
         // 來源回錯誤頁不能覆寫掉最後一張好圖
         Storage::disk('public')->assertMissing('radar/latest.png');

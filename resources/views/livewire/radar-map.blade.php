@@ -60,7 +60,7 @@ new class extends Component
     public function refreshMap(): void
     {
         // 點位改由前端向 bbox API 取，只需通知 JS 重新抓取
-        $this->dispatch('civicshield:reports-updated');
+        $this->dispatch('hazdar:reports-updated');
     }
 }; ?>
 
@@ -68,14 +68,14 @@ new class extends Component
     id="radar-map"
     wire:ignore
     class="absolute inset-0 z-0"
-    data-default-lat="{{ config('civicshield.default_lat') }}"
-    data-default-lng="{{ config('civicshield.default_lng') }}"
-    data-default-zoom="{{ config('civicshield.default_zoom') }}"
+    data-default-lat="{{ config('hazdar.default_lat') }}"
+    data-default-lng="{{ config('hazdar.default_lng') }}"
+    data-default-zoom="{{ config('hazdar.default_zoom') }}"
     data-reports-url="{{ route('api.map.reports') }}"
     data-shelters-url="{{ route('api.map.shelters') }}"
     data-radar-echo-url="{{ route('api.radar-echo') }}"
-    data-radar-echo-bounds='@json(config('civicshield.sources.radar_echo.bounds'))'
-    data-flood-potential='@json(config('civicshield.flood_potential'))'
+    data-radar-echo-bounds='@json(config('hazdar.sources.radar_echo.bounds'))'
+    data-flood-potential='@json(config('hazdar.flood_potential'))'
     @if ($showDistricts) data-districts-url="{{ asset('geo/taipei-districts.json') }}" @endif
     data-ticker='@json($this->tickerMessages)'
 ></div>

@@ -22,13 +22,13 @@ class FetchNcdrAlerts extends Command
 {
     private const CAP_NS = 'urn:oasis:names:tc:emergency:cap:1.1';
 
-    protected $signature = 'civicshield:fetch-ncdr-alerts';
+    protected $signature = 'hazdar:fetch-ncdr-alerts';
 
     protected $description = '拉取 NCDR 民生示警 CAP feed 並落地 external_alerts';
 
     public function handle(DataSourceHealth $health): int
     {
-        $config = config('civicshield.sources.ncdr_alerts');
+        $config = config('hazdar.sources.ncdr_alerts');
 
         try {
             $response = Http::timeout(10)->get($config['feed_url']);
@@ -88,7 +88,7 @@ class FetchNcdrAlerts extends Command
             return self::SUCCESS;
         } catch (Throwable $e) {
             // 失敗記 log + 健康降級；不 retry storm，下一輪 schedule 自然重試（spec §8）
-            Log::error('civicshield: NCDR fetch failed', ['error' => $e->getMessage()]);
+            Log::error('hazdar: NCDR fetch failed', ['error' => $e->getMessage()]);
             $health->recordFailure('ncdr_alerts', $e->getMessage());
             $this->error("NCDR fetch failed: {$e->getMessage()}");
 
@@ -152,7 +152,7 @@ class FetchNcdrAlerts extends Command
 
             return [array_values(array_unique($areas)), $severity];
         } catch (Throwable $e) {
-            Log::warning('civicshield: CAP detail fetch failed', ['url' => $url, 'error' => $e->getMessage()]);
+            Log::warning('hazdar: CAP detail fetch failed', ['url' => $url, 'error' => $e->getMessage()]);
 
             return [[], null];
         }

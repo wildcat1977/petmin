@@ -1,4 +1,4 @@
-# CivicShield 全民風災回報系統 — 技術規格 v0.1
+# Hazdar 全民風災回報系統 — 技術規格 v0.1
 
 - 基底:fork [ratdar](https://github.com/wildcat1977/ratdar)(Laravel 13 / Livewire 4 / Filament 5 / Horizon / PostgreSQL / Leaflet)
 - 範圍:台北市(行政區沿用 ratdar 既有 GeoJSON)

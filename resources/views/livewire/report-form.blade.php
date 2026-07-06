@@ -128,7 +128,7 @@ new class extends Component
         // 無照片時內容無需 AI 審核；有照片時照片通過審核前不公開（點位照常顯示）
         $status = $this->photo
             ? Report::STATUS_PENDING
-            : (config('civicshield.auto_approve') ? Report::STATUS_APPROVED : Report::STATUS_PENDING);
+            : (config('hazdar.auto_approve') ? Report::STATUS_APPROVED : Report::STATUS_PENDING);
 
         $report = Report::create([
             'user_id'        => Auth::id(),
@@ -153,7 +153,7 @@ new class extends Component
     /** 反濫用：cooldown + 每帳號每小時上限（spec §6.1-5） */
     private function rateLimitError(): ?string
     {
-        $cooldown = (int) config('civicshield.report_cooldown_seconds');
+        $cooldown = (int) config('hazdar.report_cooldown_seconds');
         $lastAt = Report::where('user_id', Auth::id())->latest()->value('created_at');
 
         if ($lastAt && $lastAt->diffInSeconds(now()) < $cooldown) {
@@ -162,7 +162,7 @@ new class extends Component
             return __('回報間隔太短，請 :s 秒後再試。', ['s' => max($wait, 1)]);
         }
 
-        $hourlyLimit = (int) config('civicshield.report_hourly_limit');
+        $hourlyLimit = (int) config('hazdar.report_hourly_limit');
         $lastHour = Report::where('user_id', Auth::id())
             ->where('created_at', '>=', now()->subHour())
             ->count();

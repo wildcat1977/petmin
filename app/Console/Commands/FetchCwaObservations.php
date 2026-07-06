@@ -20,13 +20,13 @@ use Throwable;
  */
 class FetchCwaObservations extends Command
 {
-    protected $signature = 'civicshield:fetch-cwa-observations';
+    protected $signature = 'hazdar:fetch-cwa-observations';
 
     protected $description = '拉取 CWA 測站即時觀測並落地 weather_observations + Redis 最新值';
 
     public function handle(DataSourceHealth $health): int
     {
-        $config = config('civicshield.sources.cwa_observations');
+        $config = config('hazdar.sources.cwa_observations');
 
         try {
             if (empty($config['api_key'])) {
@@ -67,7 +67,7 @@ class FetchCwaObservations extends Command
                 [...$values, 'raw' => $station],
             );
 
-            Cache::forever('civicshield:cwa:latest', [
+            Cache::forever('hazdar:cwa:latest', [
                 ...$values,
                 'station_id' => $config['station_id'],
                 'observed_at' => Carbon::parse($observedAt)->toIso8601String(),
@@ -78,7 +78,7 @@ class FetchCwaObservations extends Command
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-            Log::error('civicshield: CWA fetch failed', ['error' => $e->getMessage()]);
+            Log::error('hazdar: CWA fetch failed', ['error' => $e->getMessage()]);
             $health->recordFailure('cwa_observations', $e->getMessage());
             $this->error("CWA fetch failed: {$e->getMessage()}");
 

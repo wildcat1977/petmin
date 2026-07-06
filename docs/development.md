@@ -92,6 +92,6 @@ npm run dev -- --host
 各 fetch command 可獨立執行觀察落地結果與健康燈：
 
 ```bash
-php artisan civicshield:fetch-ncdr-alerts   # 落地 external_alerts，印出 new/total
+php artisan hazdar:fetch-ncdr-alerts   # 落地 external_alerts，印出 new/total
 php artisan tinker --execute 'print_r(app(App\Services\DataSourceHealth::class)->all());'
 ```

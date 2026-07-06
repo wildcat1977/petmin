@@ -22,7 +22,7 @@ class EocDashboardTest extends TestCase
 
     public function test_dashboard_is_publicly_readable(): void
     {
-        $this->get('/dashboard')->assertOk()->assertSee('CIVICSHIELD');
+        $this->get('/dashboard')->assertOk()->assertSee('HAZDAR');
     }
 
     public function test_category_stats_count_last_24h_excluding_rejected_only(): void

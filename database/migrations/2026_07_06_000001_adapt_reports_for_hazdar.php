@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * CivicShield schema delta（spec §4.1）：
+     * Hazdar schema delta（spec §4.1）：
      *   - type（rat/poison）改為 category（flood/road_blocked/power_outage/structural_damage）
      *   - status 語義收斂為「內容適切性審核」（pending/approved/rejected），
      *     災情核實改由正交欄位 verification_level 承載

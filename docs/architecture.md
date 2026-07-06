@@ -47,14 +47,14 @@
 ### 2. 點位 API（`MapPointsController`，取代 ratdar 前端全量模式）
 1. 驗證 bbox（west,south,east,north）與 zoom
 2. `zoom ≥ cluster_below_zoom(15)` → 回個別點位（`Report::visible()->unresolved()`，
-   筆數上限 `civicshield.map.max_points`，超過標記 `truncated`）
+   筆數上限 `hazdar.map.max_points`，超過標記 `truncated`）
 3. `zoom` 低 → 依 `substr(geohash7, 1, precision)`（precision 隨 zoom 4~6）分桶聚合，
    回 `{center, count, dominant_category}`
-4. 回應以 bbox（3 位小數）+ zoom + filter 為 key 快取 `civicshield.map.cache_seconds` 秒
+4. 回應以 bbox（3 位小數）+ zoom + filter 為 key 快取 `hazdar.map.cache_seconds` 秒
 5. 照片 URL 只在 `status = approved` 時輸出（`Report::publicImageUrl()`），審核前不公開
 
 ### 3. 回報送出（`ReportForm::submit()`）
-1. 反濫用檢查：帳號封禁 → cooldown → 每小時上限（`config('civicshield.report_*')`）
+1. 反濫用檢查：帳號封禁 → cooldown → 每小時上限（`config('hazdar.report_*')`）
 2. 驗證欄位（四類分類必選、淹水深度僅 flood、照片選填）
 3. 有照片 → 重新編碼 JPEG 存至 `storage/app/public/reports/`（不含 AI 審核）
 4. 寫入 `reports`（有照片 → `pending`；無照片 → 依 `auto_approve`）

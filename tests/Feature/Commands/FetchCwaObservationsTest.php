@@ -19,7 +19,7 @@ class FetchCwaObservationsTest extends TestCase
 
     private function fakeCwa(array $weatherElement): void
     {
-        config(['civicshield.sources.cwa_observations.api_key' => 'test-key']);
+        config(['hazdar.sources.cwa_observations.api_key' => 'test-key']);
         Http::fake([
             'opendata.cwa.gov.tw/*' => Http::response([
                 'records' => [
@@ -42,7 +42,7 @@ class FetchCwaObservationsTest extends TestCase
             'Now' => ['Precipitation' => '78.0'],
         ]);
 
-        $this->artisan('civicshield:fetch-cwa-observations')->assertSuccessful();
+        $this->artisan('hazdar:fetch-cwa-observations')->assertSuccessful();
 
         $obs = WeatherObservation::sole();
         $this->assertSame(27.3, $obs->temp);
@@ -51,7 +51,7 @@ class FetchCwaObservationsTest extends TestCase
         // 能見度文字欄 ">10" 萃取數字
         $this->assertSame(10.0, $obs->visibility);
 
-        $latest = Cache::get('civicshield:cwa:latest');
+        $latest = Cache::get('hazdar:cwa:latest');
         $this->assertSame(27.3, $latest['temp']);
         $this->assertSame(DataSourceHealth::STATUS_OK, app(DataSourceHealth::class)->status('cwa_observations')['status']);
     }
@@ -64,7 +64,7 @@ class FetchCwaObservationsTest extends TestCase
             'Now' => ['Precipitation' => '-99.0'],
         ]);
 
-        $this->artisan('civicshield:fetch-cwa-observations')->assertSuccessful();
+        $this->artisan('hazdar:fetch-cwa-observations')->assertSuccessful();
 
         $obs = WeatherObservation::sole();
         // CWA 以 -99 表缺測；存 null 才不會污染 24H 趨勢圖
@@ -77,8 +77,8 @@ class FetchCwaObservationsTest extends TestCase
     {
         $this->fakeCwa(['AirTemperature' => '27.3']);
 
-        $this->artisan('civicshield:fetch-cwa-observations')->assertSuccessful();
-        $this->artisan('civicshield:fetch-cwa-observations')->assertSuccessful();
+        $this->artisan('hazdar:fetch-cwa-observations')->assertSuccessful();
+        $this->artisan('hazdar:fetch-cwa-observations')->assertSuccessful();
 
         // unique(station_id, observed_at)：同一觀測時間不重複入庫
         $this->assertSame(1, WeatherObservation::count());
@@ -86,9 +86,9 @@ class FetchCwaObservationsTest extends TestCase
 
     public function test_missing_api_key_fails_loudly(): void
     {
-        config(['civicshield.sources.cwa_observations.api_key' => null]);
+        config(['hazdar.sources.cwa_observations.api_key' => null]);
 
-        $this->artisan('civicshield:fetch-cwa-observations')->assertFailed();
+        $this->artisan('hazdar:fetch-cwa-observations')->assertFailed();
 
         $status = app(DataSourceHealth::class)->status('cwa_observations');
         $this->assertSame(DataSourceHealth::STATUS_DOWN, $status['status']);
@@ -97,10 +97,10 @@ class FetchCwaObservationsTest extends TestCase
 
     public function test_http_failure_degrades_health(): void
     {
-        config(['civicshield.sources.cwa_observations.api_key' => 'test-key']);
+        config(['hazdar.sources.cwa_observations.api_key' => 'test-key']);
         Http::fake(['opendata.cwa.gov.tw/*' => Http::response('', 500)]);
 
-        $this->artisan('civicshield:fetch-cwa-observations')->assertFailed();
+        $this->artisan('hazdar:fetch-cwa-observations')->assertFailed();
 
         $this->assertSame(DataSourceHealth::STATUS_DOWN, app(DataSourceHealth::class)->status('cwa_observations')['status']);
     }

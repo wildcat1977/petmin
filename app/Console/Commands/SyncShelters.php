@@ -21,7 +21,7 @@ use Throwable;
  */
 class SyncShelters extends Command
 {
-    protected $signature = 'civicshield:sync-shelters {--limit= : 覆寫本輪 geocode 上限}';
+    protected $signature = 'hazdar:sync-shelters {--limit= : 覆寫本輪 geocode 上限}';
 
     protected $description = '同步 data.taipei 收容所清單並 geocode 補座標（is_open 不覆寫）';
 
@@ -33,7 +33,7 @@ class SyncShelters extends Command
 
     public function handle(DataSourceHealth $health): int
     {
-        $config = config('civicshield.sources.shelters');
+        $config = config('hazdar.sources.shelters');
 
         try {
             if (empty($config['resource_id'])) {
@@ -81,7 +81,7 @@ class SyncShelters extends Command
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-            Log::error('civicshield: shelter sync failed', ['error' => $e->getMessage()]);
+            Log::error('hazdar: shelter sync failed', ['error' => $e->getMessage()]);
             $health->recordFailure('shelters', $e->getMessage());
             $this->error("Shelter sync failed: {$e->getMessage()}");
 
@@ -148,7 +148,7 @@ class SyncShelters extends Command
         foreach ($candidates as $i => $query) {
             try {
                 $response = Http::timeout(10)
-                    ->withHeaders(['User-Agent' => 'CivicShield/1.0 (disaster reporting; contact admin)'])
+                    ->withHeaders(['User-Agent' => 'Hazdar/1.0 (disaster reporting; contact admin)'])
                     ->get($url, [
                         'q' => $query,
                         'format' => 'json',
@@ -175,7 +175,7 @@ class SyncShelters extends Command
                     }
                 }
             } catch (Throwable $e) {
-                Log::warning('civicshield: shelter geocode failed', [
+                Log::warning('hazdar: shelter geocode failed', [
                     'shelter' => $shelter->name,
                     'query' => $query,
                     'error' => $e->getMessage(),
@@ -193,7 +193,7 @@ class SyncShelters extends Command
 
     private function geocodeDelay(): int
     {
-        return (int) config('civicshield.sources.shelters.geocode_delay_us', 1_100_000);
+        return (int) config('hazdar.sources.shelters.geocode_delay_us', 1_100_000);
     }
 
     /**

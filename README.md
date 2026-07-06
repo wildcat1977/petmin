@@ -1,4 +1,4 @@
-# CivicShield 全民韌性災害回報系統
+# Hazdar 全民韌性災害回報系統
 
 > 颱風／豪雨災時，讓民眾以最低摩擦回報四類災情（淹水、道路中斷、停電、結構受損），
 > 經自動佐證與官方核實分層後，即時呈現在民眾地圖與 EOC 戰情室大屏上，
@@ -6,7 +6,7 @@
 
 本專案 fork 自 [ratdar（見鼠地圖）](https://github.com/wildcat1977/ratdar)，
 沿用其回報 pipeline、Socialite 登入、Leaflet 地圖基底與 Claude Vision 審核，
-domain 由「鼠患通報」改造為「災害回報」。完整技術規格見 [docs/civicshield-spec.md](docs/civicshield-spec.md)。
+domain 由「鼠患通報」改造為「災害回報」。完整技術規格見 [docs/hazdar-spec.md](docs/hazdar-spec.md)。
 
 ## 技術堆疊
 
@@ -117,7 +117,7 @@ resources/
     └── livewire/eoc-dashboard.blade.php# 戰情室資料 SFC（統計/健康/物資）
 
 config/
-├── civicshield.php                     # 地圖、反濫用、佐證、點位 API、外部源設定
+├── hazdar.php                     # 地圖、反濫用、佐證、點位 API、外部源設定
 └── services.php                        # Google / LINE / LIFF / Claude 設定
 
 public/geo/taipei-districts.json        # 台北市 12 行政區界（EOC 疊層用）
@@ -128,10 +128,10 @@ routes/console.php                      # 外部整合排程（CWA/NCDR/雷達/�
 
 ```bash
 # 外部資料源可獨立手動執行（排程之外）
-php artisan civicshield:fetch-cwa-observations
-php artisan civicshield:fetch-ncdr-alerts
-php artisan civicshield:fetch-radar-echo
-php artisan civicshield:sync-shelters
+php artisan hazdar:fetch-cwa-observations
+php artisan hazdar:fetch-ncdr-alerts
+php artisan hazdar:fetch-radar-echo
+php artisan hazdar:sync-shelters
 
 # 對缺少地址的回報批次補跑 reverse geocode（Nominatim，1 req/sec）
 php artisan reports:backfill-addresses
@@ -150,12 +150,12 @@ php artisan reports:backfill-addresses
 | `TAIPEI_SHELTER_RESOURCE_ID`  | data.taipei 收容所 dataset rid（預設帶台北市收容所 rid；此源無座標，同步時以機構名稱 geocode 補） |      |
 | `FLOOD_POTENTIAL_XYZ_URL` 或 `FLOOD_POTENTIAL_WMS_URL`+`_LAYERS` | 淹水潛勢圖層（XYZ 圖磚或 WMS；未填則前端不掛此圖層） |      |
 | `RADAR_AUTO_APPROVE`          | `true` 讓無照片回報跳過人工審核直接公開               |      |
-| `CIVICSHIELD_REPORT_COOLDOWN` | 每帳號回報間隔秒數（預設 60）                         |      |
-| `CIVICSHIELD_REPORT_HOURLY_LIMIT` | 每帳號每小時回報上限（預設 10）                  |      |
+| `HAZDAR_REPORT_COOLDOWN` | 每帳號回報間隔秒數（預設 60）                         |      |
+| `HAZDAR_REPORT_HOURLY_LIMIT` | 每帳號每小時回報上限（預設 10）                  |      |
 
 ## 文件索引
 
-- [docs/civicshield-spec.md](docs/civicshield-spec.md) — 技術規格與驗收標準
+- [docs/hazdar-spec.md](docs/hazdar-spec.md) — 技術規格與驗收標準
 - [docs/architecture.md](docs/architecture.md) — 系統架構與關鍵流程
 - [docs/database-schema.md](docs/database-schema.md) — 資料庫結構
 - [docs/features.md](docs/features.md) — 功能與 UI 動線

@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 /**
  * 點位 API（spec §7.2）——server-side bbox query，取代 ratdar 前端全量模式。
  *
- * zoom ≥ cluster_below_zoom：回傳個別點位（筆數上限 civicshield.map.max_points）
+ * zoom ≥ cluster_below_zoom：回傳個別點位（筆數上限 hazdar.map.max_points）
  * zoom 低：依 geohash（precision 隨 zoom 4~6）聚合回傳 {center, count, dominant_category}
  * 回應以 bbox+filter+zoom 為 key 快取 15~30 秒。
  */
@@ -54,7 +54,7 @@ class MapPointsController extends Controller
 
         $payload = Cache::remember(
             $cacheKey,
-            (int) config('civicshield.map.cache_seconds'),
+            (int) config('hazdar.map.cache_seconds'),
             function () use ($west, $south, $east, $north, $zoom, $categories, $showResolved) {
                 $base = Report::query()
                     ->visible()
@@ -63,7 +63,7 @@ class MapPointsController extends Controller
                     ->whereBetween('latitude', [$south, $north])
                     ->whereBetween('longitude', [$west, $east]);
 
-                if ($zoom >= (int) config('civicshield.map.cluster_below_zoom')) {
+                if ($zoom >= (int) config('hazdar.map.cluster_below_zoom')) {
                     return $this->points($base);
                 }
 
@@ -76,7 +76,7 @@ class MapPointsController extends Controller
 
     private function points($query): array
     {
-        $limit = (int) config('civicshield.map.max_points');
+        $limit = (int) config('hazdar.map.max_points');
 
         $reports = $query
             ->latest()

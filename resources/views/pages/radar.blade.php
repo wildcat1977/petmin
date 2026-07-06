@@ -50,7 +50,7 @@
                     class="map-chip">🏠 {{ __('收容所') }}</button>
             <button type="button" data-map-chip="radar_echo" style="--chip-color:#22d3ee"
                     class="map-chip">🌀 {{ __('雷達回波') }}</button>
-            @if (config('civicshield.flood_potential.xyz') || config('civicshield.flood_potential.wms_url'))
+            @if (config('hazdar.flood_potential.xyz') || config('hazdar.flood_potential.wms_url'))
                 <button type="button" data-map-chip="flood_potential" style="--chip-color:#818cf8"
                         class="map-chip">🗺️ {{ __('淹水潛勢') }}</button>
             @endif
@@ -76,7 +76,7 @@
             </div>
 
             <button type="button"
-                    onclick="window.dispatchEvent(new CustomEvent('civicshield:report-clicked'))"
+                    onclick="window.dispatchEvent(new CustomEvent('hazdar:report-clicked'))"
                     class="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(8,145,178,0.6)] transition active:scale-95 hover:bg-cyan-500">
                 <span class="text-xl">⚠️</span>
                 <span>{{ __('立即回報災情') }}</span>

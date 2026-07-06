@@ -12,7 +12,7 @@
 ## 環境變數重點
 
 ```dotenv
-APP_URL=https://civicshield.example.com   # 必須含 https，影響 OAuth redirect
+APP_URL=https://hazdar.example.com   # 必須含 https，影響 OAuth redirect
 
 DB_CONNECTION=pgsql
 DB_DATABASE=civic_shield
@@ -93,10 +93,10 @@ php artisan filament:cache-components
 各 command 亦可獨立手動執行（除錯用）：
 
 ```bash
-php artisan civicshield:fetch-cwa-observations
-php artisan civicshield:fetch-ncdr-alerts
-php artisan civicshield:fetch-radar-echo
-php artisan civicshield:sync-shelters
+php artisan hazdar:fetch-cwa-observations
+php artisan hazdar:fetch-ncdr-alerts
+php artisan hazdar:fetch-radar-echo
+php artisan hazdar:sync-shelters
 ```
 
 ### Horizon (Supervisor)
@@ -104,14 +104,14 @@ php artisan civicshield:sync-shelters
 處理 AI 照片審核（`ModerateReportImage`）與佐證判定（`EvaluateCorroboration`）queue：
 
 ```ini
-[program:civicshield-horizon]
+[program:hazdar-horizon]
 process_name=%(program_name)s
 command=php /var/www/html/civic_shield/artisan horizon
 autostart=true
 autorestart=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=/var/log/civicshield-horizon.log
+stdout_logfile=/var/log/hazdar-horizon.log
 stopwaitsecs=3600
 ```
 
@@ -120,7 +120,7 @@ stopwaitsecs=3600
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name civicshield.example.com;
+    server_name hazdar.example.com;
     root /var/www/html/civic_shield/public;
 
     index index.php;

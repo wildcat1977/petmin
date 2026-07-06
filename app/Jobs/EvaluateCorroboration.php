@@ -24,8 +24,8 @@ class EvaluateCorroboration implements ShouldQueue
 
     public function handle(): void
     {
-        $windowStart = now()->subHours((int) config('civicshield.corroboration.window_hours'));
-        $minUsers = (int) config('civicshield.corroboration.min_distinct_users');
+        $windowStart = now()->subHours((int) config('hazdar.corroboration.window_hours'));
+        $minUsers = (int) config('hazdar.corroboration.min_distinct_users');
 
         $group = Report::query()
             ->where('geohash7', $this->geohash7)

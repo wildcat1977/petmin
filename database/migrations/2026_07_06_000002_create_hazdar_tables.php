@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * CivicShield 外部資料落地表（spec §4.2）。
+     * Hazdar 外部資料落地表（spec §4.2）。
      * 即時性快取（雷達回波圖檔、颱風路徑、CWA 最新值）走 Redis，不進表。
      */
     public function up(): void

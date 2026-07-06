@@ -20,10 +20,10 @@ class SyncSheltersTest extends TestCase
     private function fakeSources(bool $geocodeHits = true): void
     {
         config([
-            'civicshield.sources.shelters.resource_id' => 'RID',
-            'civicshield.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
-            'civicshield.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
-            'civicshield.sources.shelters.geocode_delay_us' => 0, // 測試不 sleep
+            'hazdar.sources.shelters.resource_id' => 'RID',
+            'hazdar.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
+            'hazdar.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
+            'hazdar.sources.shelters.geocode_delay_us' => 0, // 測試不 sleep
         ]);
 
         Http::fake([
@@ -51,7 +51,7 @@ class SyncSheltersTest extends TestCase
     {
         $this->fakeSources();
 
-        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+        $this->artisan('hazdar:sync-shelters')->assertSuccessful();
 
         $this->assertSame(2, Shelter::count());
         $shelter = Shelter::where('external_id', 'RID_SA100-0002')->sole();
@@ -69,14 +69,14 @@ class SyncSheltersTest extends TestCase
     public function test_sync_does_not_overwrite_manual_is_open(): void
     {
         $this->fakeSources();
-        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+        $this->artisan('hazdar:sync-shelters')->assertSuccessful();
 
         // 官方後台在災時手動開設
         $shelter = Shelter::first();
         $shelter->update(['is_open' => true]);
 
         // 再同步一次不得把 is_open 打回 false
-        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+        $this->artisan('hazdar:sync-shelters')->assertSuccessful();
         $this->assertTrue($shelter->fresh()->is_open);
         $this->assertSame(2, Shelter::count()); // upsert 不重複建檔
     }
@@ -85,7 +85,7 @@ class SyncSheltersTest extends TestCase
     {
         $this->fakeSources(geocodeHits: false);
 
-        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+        $this->artisan('hazdar:sync-shelters')->assertSuccessful();
 
         // geocode 失敗仍建檔（保留 name/address），只是不上圖，下輪重試
         $this->assertSame(2, Shelter::count());
@@ -95,19 +95,19 @@ class SyncSheltersTest extends TestCase
 
     public function test_missing_resource_id_fails_loudly(): void
     {
-        config(['civicshield.sources.shelters.resource_id' => null]);
+        config(['hazdar.sources.shelters.resource_id' => null]);
 
-        $this->artisan('civicshield:sync-shelters')->assertFailed();
+        $this->artisan('hazdar:sync-shelters')->assertFailed();
         $this->assertSame(DataSourceHealth::STATUS_DOWN, app(DataSourceHealth::class)->status('shelters')['status']);
     }
 
     public function test_geocode_result_outside_taipei_is_rejected(): void
     {
         config([
-            'civicshield.sources.shelters.resource_id' => 'RID',
-            'civicshield.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
-            'civicshield.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
-            'civicshield.sources.shelters.geocode_delay_us' => 0,
+            'hazdar.sources.shelters.resource_id' => 'RID',
+            'hazdar.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
+            'hazdar.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
+            'hazdar.sources.shelters.geocode_delay_us' => 0,
         ]);
         Http::fake([
             'data.taipei/*' => Http::response(['result' => ['results' => [[
@@ -118,7 +118,7 @@ class SyncSheltersTest extends TestCase
             'nominatim.openstreetmap.org/*' => Http::response([['lat' => '22.6273', 'lon' => '120.3014']]),
         ]);
 
-        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+        $this->artisan('hazdar:sync-shelters')->assertSuccessful();
 
         // 誤定位到台北市外者不採用，留 null 待下輪重試
         $this->assertSame(1, Shelter::count());
@@ -128,10 +128,10 @@ class SyncSheltersTest extends TestCase
     public function test_rate_limit_stops_batch_gracefully(): void
     {
         config([
-            'civicshield.sources.shelters.resource_id' => 'RID',
-            'civicshield.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
-            'civicshield.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
-            'civicshield.sources.shelters.geocode_delay_us' => 0,
+            'hazdar.sources.shelters.resource_id' => 'RID',
+            'hazdar.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
+            'hazdar.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
+            'hazdar.sources.shelters.geocode_delay_us' => 0,
         ]);
         Http::fake([
             'data.taipei/*' => Http::response(['result' => ['results' => [
@@ -142,7 +142,7 @@ class SyncSheltersTest extends TestCase
         ]);
 
         // 429 不得讓整個同步失敗；建檔照常，座標留待下輪
-        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+        $this->artisan('hazdar:sync-shelters')->assertSuccessful();
         $this->assertSame(2, Shelter::count());
         $this->assertSame(0, Shelter::mappable()->count());
     }
