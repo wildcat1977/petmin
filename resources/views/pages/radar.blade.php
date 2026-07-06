@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="relative min-h-dvh">
+<div class="relative min-h-dvh radar-page">
     {{-- 全螢幕地圖 --}}
     <livewire:radar-map />
 

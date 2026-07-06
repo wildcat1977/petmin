@@ -81,6 +81,23 @@ php artisan view:cache
 php artisan filament:cache-components
 ```
 
+### 檔案權限（重要）
+
+網站由 php-fpm 以 `www-data` 服務。`storage/` 與 `bootstrap/cache/` 必須讓 `www-data` 可寫，
+否則 Livewire 4 執行期編譯元件時會因無法寫入 `storage/framework/views/livewire/` 而拋
+`tempnam(): file created in the system's temporary directory` → 500。
+
+```bash
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+sudo find storage bootstrap/cache -type d -exec chmod g+s {} \;   # 新建物繼承群組
+```
+
+以 CLI 執行 artisan（migrate、排程、fetch）時，建議一律用 `sudo -u www-data php artisan ...`，
+避免產生 `www-data` 不可寫的檔案。**切勿**混用不同使用者對同一 `storage` 寫入（會造成
+編譯目錄權限打架）。若可用 ACL，`setfacl -R -d -m u:www-data:rwx storage bootstrap/cache`
+最為乾淨。
+
 ### 排程（Laravel Scheduler）
 
 外部資料整合 command 由 `routes/console.php` 排程（CWA/NCDR 5min、雷達 10min、收容所 daily）。

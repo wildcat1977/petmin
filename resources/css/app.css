@@ -69,6 +69,28 @@
     margin-right: 20px;
 }
 
+/*
+ * 民眾地圖頁（.radar-page）：左上地圖控制項（搜尋放大鏡 + 亮/暗切換）
+ * 需下推到分類 chips 之下，避免與 chips 重疊。手機版 chips 會換成兩排，
+ * 需要更多留白。僅限 #radar-map，不影響回報表單小地圖與 dashboard。
+ */
+.radar-page #radar-map .leaflet-top.leaflet-left {
+    margin-top: 96px;
+}
+.radar-page #radar-map button.leaflet-theme-toggle.leaflet-control {
+    margin-top: 6px !important;
+}
+@media (max-width: 640px) {
+    /* 手機：header + 兩排 chips 約 130px，下推至 156px 完全避開 */
+    .radar-page #radar-map .leaflet-top.leaflet-left {
+        margin-top: 156px;
+    }
+    /* 右上縮放同步下移，避免與右側使用者/登入 pill 重疊 */
+    .radar-page #radar-map .leaflet-top.leaflet-right .leaflet-control-zoom {
+        margin-top: 120px;
+    }
+}
+
 /* 小螢幕額外加大點擊區 */
 @media (max-width: 640px) {
     .leaflet-control-zoom a {
