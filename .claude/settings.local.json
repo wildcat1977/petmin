@@ -42,7 +42,8 @@
       "Bash(google-chrome --headless=new --disable-gpu --no-sandbox --window-size=1440,900 --hide-scrollbars --virtual-time-budget=12000 --screenshot=dashboard.png http://localhost:8100/dashboard)",
       "Bash(google-chrome --headless=new --disable-gpu --no-sandbox --window-size=1440,900 --hide-scrollbars --virtual-time-budget=12000 --screenshot=home.png http://localhost:8100/)",
       "Bash(git commit -q -m 'feat: Phase 1c — EOC dashboard, Filament admin resources, docs pending *)",
-      "Bash(git commit -q -m 'docs: rewrite ratdar docs for CivicShield *)"
+      "Bash(git commit -q -m 'docs: rewrite ratdar docs for CivicShield *)",
+      "Bash(git commit -q -m 'chore: verify acceptance criteria at 50k reports *)"
     ]
   }
 }
