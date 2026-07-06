@@ -26,10 +26,30 @@ new class extends Component
         'shelters' => 'DATA.TPE',
     ];
 
-    /** CWA 最新觀測（scheduled fetch 落地的 Redis 快取；不打外部 API） */
+    /**
+     * CWA 最新觀測。Redis 快取為快路徑；快取冷啟（部署/cache:clear/Redis 驅逐）
+     * 時退回 DB 最新觀測，避免只因快取空就誤顯示「資料更新中斷」。
+     * CWA 測站更新有數十分鐘的發布延遲，觀測本身略舊屬正常，不視為中斷。
+     */
     public function getWeatherProperty(): ?array
     {
-        return Cache::get('hazdar:cwa:latest');
+        if ($cached = Cache::get('hazdar:cwa:latest')) {
+            return $cached;
+        }
+
+        $obs = WeatherObservation::latest('observed_at')->first();
+        if (! $obs) {
+            return null;
+        }
+
+        return [
+            'temp' => $obs->temp,
+            'rain_1h' => $obs->rain_1h,
+            'wind_speed' => $obs->wind_speed,
+            'visibility' => $obs->visibility,
+            'station_id' => $obs->station_id,
+            'observed_at' => $obs->observed_at->toIso8601String(),
+        ];
     }
 
     /** 24H 每小時雨量（該小時觀測的 rain_1h 最大值） */

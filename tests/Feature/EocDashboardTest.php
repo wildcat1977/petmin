@@ -6,8 +6,10 @@ use App\Models\DashboardResource;
 use App\Models\ExternalAlert;
 use App\Models\Report;
 use App\Models\User;
+use App\Models\WeatherObservation;
 use App\Services\DataSourceHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -53,13 +55,37 @@ class EocDashboardTest extends TestCase
         $this->assertSame(1, $stats[Report::CATEGORY_POWER_OUTAGE]['delta']);
     }
 
-    public function test_cwa_outage_shows_degraded_panel_not_broken_layout(): void
+    public function test_cwa_outage_shows_degraded_panel_only_when_no_data_at_all(): void
     {
-        // 驗收 §1-1：外部 API 全掛時 dashboard 顯示「資料更新中斷 + 最後更新時間」
+        // 驗收 §1-1：真的一筆觀測都沒有時才顯示「資料更新中斷」
         $this->get('/dashboard')
             ->assertOk()
             ->assertSee('CWA 資料更新中斷')
             ->assertSee('尚無成功紀錄');
+    }
+
+    public function test_weather_panel_falls_back_to_db_when_cache_is_cold(): void
+    {
+        // 快取冷啟（部署/cache:clear/Redis 驅逐）但 DB 有觀測 → 顯示數據，不誤報中斷。
+        // CWA 每小時發布延遲造成的快取空窗不該讓面板閃「抓不到」。
+        WeatherObservation::create([
+            'station_id' => '466920',
+            'observed_at' => now()->subMinutes(15),
+            'temp' => 27.6,
+            'rain_1h' => 42.0,
+            'wind_speed' => 3.1,
+            'visibility' => 8.0,
+        ]);
+        // 確保沒有 Redis 快取（測試環境 cache=array，本就空）
+        Cache::forget('hazdar:cwa:latest');
+
+        $weather = Livewire::test('eoc-dashboard')->get('weather');
+        $this->assertNotNull($weather);
+        $this->assertSame(27.6, $weather['temp']);
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('CWA 資料更新中斷');
     }
 
     public function test_footer_shows_real_health_lights_for_all_sources(): void
