@@ -9,6 +9,7 @@ use App\Models\Shelter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/locale/{locale}', function (string $locale) {
     if (in_array($locale, SetLocale::SUPPORTED, true)) {
@@ -226,6 +227,17 @@ Route::get('/contact', fn () => view('pages.contact'))->name('contact');
 
 // EOC dashboard（公開唯讀大屏，spec §7.3）
 Route::view('/dashboard', 'pages.dashboard')->name('dashboard');
+
+// 雷達回波 proxy（scheduled fetch 落地的圖檔；前端 ImageOverlay 讀本站，spec §5）
+Route::get('/api/radar-echo', function () {
+    $path = Storage::disk('public')->path('radar/latest.png');
+    abort_unless(file_exists($path), 404);
+
+    return response()->file($path, [
+        'Content-Type' => 'image/png',
+        'Cache-Control' => 'public, max-age=60',
+    ]);
+})->name('api.radar-echo');
 
 Route::post('/logout', function () {
     auth()->logout();

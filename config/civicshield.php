@@ -26,4 +26,36 @@ return [
         'cluster_below_zoom' => 15,          // zoom < 15 回傳 geohash 聚合
         'cache_seconds' => (int) env('CIVICSHIELD_MAP_CACHE_SECONDS', 20),
     ],
+
+    // 外部資料整合層（spec §5）：scheduled command 拉 → 落地 → 前端只讀落地資料
+    'sources' => [
+        'cwa_observations' => [
+            // ⚠ CWA 開放資料平台採授權碼制，dataset 欄位以實際回應為準（平台常改版）
+            'api_key' => env('CWA_API_KEY'),
+            'url' => env('CWA_OBS_URL', 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/O-A0003-001'),
+            'station_id' => env('CWA_STATION_ID', '466920'), // 臺北測站
+            'interval_minutes' => 5,
+        ],
+        'ncdr_alerts' => [
+            'feed_url' => env('NCDR_FEED_URL', 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx'),
+            'interval_minutes' => 5,
+            'max_detail_fetches' => 30,      // 每輪最多抓幾筆 CAP 明細（僅新 cap_id）
+        ],
+        'radar_echo' => [
+            // 雷達回波整合圖（免授權碼公開圖檔）；後端 proxy + cache 避免 CORS 與打爆來源
+            'image_url' => env('CWA_RADAR_URL', 'https://www.cwa.gov.tw/Data/radar/CV1_3600.png'),
+            // ⚠ CV1_3600 固定地理範圍（Leaflet ImageOverlay bounds），換圖源時需一併校正
+            'bounds' => [[17.75, 115.0], [29.25, 126.5]],
+            'interval_minutes' => 10,
+        ],
+        'shelters' => [
+            // ⚠ data.taipei 收容所 dataset rid 待確認（搜尋 API 目前查無），設定後才會同步
+            'resource_id' => env('TAIPEI_SHELTER_RESOURCE_ID'),
+            'url' => env('TAIPEI_SHELTER_URL', 'https://data.taipei/api/v1/dataset/%s?scope=resourceAquire&limit=1000'),
+            'interval_minutes' => 1440,
+        ],
+    ],
+
+    // 淹水潛勢 WMTS（⚠ 驗證服務 URL 與嵌入授權；未設定則前端不掛此圖層，不阻塞）
+    'flood_potential_wmts' => env('FLOOD_POTENTIAL_WMTS_URL'),
 ];

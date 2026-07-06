@@ -29,7 +29,11 @@
       "Bash(curl -s -m 15 \"https://data.taipei/api/v1/dataset/search?q=%E9%81%BF%E9%9B%A3%E6%94%B6%E5%AE%B9&limit=5\")",
       "Bash(php vendor/bin/pint --dirty --format agent)",
       "Bash(git add *)",
-      "Bash(git commit -q -m 'feat: fork ratdar into CivicShield — Phase 0 + 1a *)"
+      "Bash(git commit -q -m 'feat: fork ratdar into CivicShield — Phase 0 + 1a *)",
+      "Bash(curl -s -m 12 \"https://data.taipei/api/v1/dataset/search?q=%E6%94%B6%E5%AE%B9&limit=5\")",
+      "Bash(curl -s -m 12 \"https://data.taipei/api/v1/dataset/search?q=shelter&limit=5\")",
+      "Bash(npm run *)",
+      "Bash(git commit -q -m 'feat: Phase 1b — external data integration layer *)"
     ]
   }
 }

@@ -36,12 +36,15 @@ return new class extends Migration
             $table->string('headline', 512);
             $table->string('severity', 32)->nullable();
             $table->jsonb('areas')->nullable();
+            // 是否涵蓋台北市：ingest 時以 areaDesc 判定（跑馬燈過濾用，避免 JSON 查詢）
+            $table->boolean('covers_taipei')->default(false);
             $table->timestamp('effective_at')->nullable();
             $table->timestamp('expires_at')->nullable();
             $table->jsonb('raw')->nullable();
             $table->timestamps();
 
             $table->index('expires_at');
+            $table->index(['covers_taipei', 'expires_at']);
         });
 
         // 收容所（data.taipei 同步 + Filament 手動切開設狀態）

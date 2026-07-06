@@ -131,6 +131,9 @@ const VERIFICATION_LABEL = {
 let radarMap = null;
 let reportsLayer = null;       // 目前顯示的點位/聚合圖層
 let sheltersLayer = null;      // 收容所圖層
+let radarEchoLayer = null;     // 雷達回波 ImageOverlay
+let radarEchoTimer = null;
+let floodLayer = null;         // 淹水潛勢 WMTS
 let currentTileLayer = null;   // 底圖圖層（隨主題切換）
 let activeCategories = new Set(Object.keys(CATEGORY_META));
 let sheltersVisible = false;
@@ -337,15 +340,50 @@ async function renderShelters() {
     sheltersLayer = layer.addTo(radarMap);
 }
 
+// ── 雷達回波 overlay（後端 proxy 圖檔；開啟時每 10 分鐘換新圖）────
+function toggleRadarEcho(on) {
+    const el = document.getElementById('radar-map');
+    if (!radarMap || !el) return;
+
+    if (!on) {
+        if (radarEchoLayer) { radarMap.removeLayer(radarEchoLayer); radarEchoLayer = null; }
+        if (radarEchoTimer) { clearInterval(radarEchoTimer); radarEchoTimer = null; }
+        return;
+    }
+
+    const bounds = JSON.parse(el.dataset.radarEchoBounds || '[[17.75,115.0],[29.25,126.5]]');
+    const freshUrl = () => `${el.dataset.radarEchoUrl}?t=${Date.now()}`;
+    radarEchoLayer = L.imageOverlay(freshUrl(), bounds, { opacity: 0.6 }).addTo(radarMap);
+    radarEchoTimer = setInterval(() => radarEchoLayer?.setUrl(freshUrl()), 10 * 60 * 1000);
+}
+
+// ── 淹水潛勢 WMTS（未設定服務 URL 時 chip 不會渲染）──────────────
+function toggleFloodPotential(on) {
+    const el = document.getElementById('radar-map');
+    if (!radarMap || !el?.dataset.floodWmts) return;
+
+    if (!on) {
+        if (floodLayer) { radarMap.removeLayer(floodLayer); floodLayer = null; }
+        return;
+    }
+    floodLayer = L.tileLayer(el.dataset.floodWmts, { opacity: 0.5, maxZoom: 19 }).addTo(radarMap);
+}
+
 // ── 分類篩選 chips（radar 頁 header 渲染，data-map-chip 綁定）──
 function initChips() {
+    const layerToggles = {
+        shelters: (on) => { sheltersVisible = on; renderShelters(); },
+        radar_echo: toggleRadarEcho,
+        flood_potential: toggleFloodPotential,
+    };
+
     document.querySelectorAll('[data-map-chip]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const cat = btn.dataset.mapChip;
-            if (cat === 'shelters') {
-                sheltersVisible = ! sheltersVisible;
-                btn.classList.toggle('chip-on', sheltersVisible);
-                renderShelters();
+            if (layerToggles[cat]) {
+                const on = ! btn.classList.contains('chip-on');
+                btn.classList.toggle('chip-on', on);
+                layerToggles[cat](on);
                 return;
             }
             if (activeCategories.has(cat)) {

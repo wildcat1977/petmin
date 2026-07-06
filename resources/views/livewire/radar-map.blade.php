@@ -12,9 +12,10 @@ new class extends Component
     {
         $messages = [];
 
-        // NCDR 未過期警戒優先播報（涵蓋台北市者由 fetch 端過濾落地）
+        // NCDR 未過期 + 涵蓋台北市之警戒優先播報（spec §5）
         ExternalAlert::query()
             ->active()
+            ->coversTaipei()
             ->latest('effective_at')
             ->limit(5)
             ->get(['alert_type', 'headline'])
@@ -69,5 +70,8 @@ new class extends Component
     data-default-zoom="{{ config('civicshield.default_zoom') }}"
     data-reports-url="{{ route('api.map.reports') }}"
     data-shelters-url="{{ route('api.map.shelters') }}"
+    data-radar-echo-url="{{ route('api.radar-echo') }}"
+    data-radar-echo-bounds='@json(config('civicshield.sources.radar_echo.bounds'))'
+    data-flood-wmts="{{ config('civicshield.flood_potential_wmts') }}"
     data-ticker='@json($this->tickerMessages)'
 ></div>
