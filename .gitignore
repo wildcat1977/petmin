@@ -24,3 +24,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Claude Code session-local settings (machine-specific, not shared)
+/.claude/settings.local.json
