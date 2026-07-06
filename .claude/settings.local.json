@@ -41,7 +41,8 @@
       "Bash(CHROME=$\\(command -v chromium chromium-browser google-chrome google-chrome-stable chrome 2>/dev/null | head -1\\); echo \"chrome: $CHROME\"; ls ~/.cache/puppeteer/chrome*/ 2>/dev/null | head -3; ls /opt/google 2>/dev/null)",
       "Bash(google-chrome --headless=new --disable-gpu --no-sandbox --window-size=1440,900 --hide-scrollbars --virtual-time-budget=12000 --screenshot=dashboard.png http://localhost:8100/dashboard)",
       "Bash(google-chrome --headless=new --disable-gpu --no-sandbox --window-size=1440,900 --hide-scrollbars --virtual-time-budget=12000 --screenshot=home.png http://localhost:8100/)",
-      "Bash(git commit -q -m 'feat: Phase 1c — EOC dashboard, Filament admin resources, docs pending *)"
+      "Bash(git commit -q -m 'feat: Phase 1c — EOC dashboard, Filament admin resources, docs pending *)",
+      "Bash(git commit -q -m 'docs: rewrite ratdar docs for CivicShield *)"
     ]
   }
 }

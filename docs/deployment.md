@@ -6,33 +6,43 @@
 - Composer 2.x
 - Node.js 20+
 - Redis 6+
-- MySQL 8+ / PostgreSQL 15+
-- 必要 PHP extensions: `pdo_mysql`（或 `pdo_pgsql`）, `mbstring`, `gd`/`imagick`, `redis`, `intl`, `bcmath`
+- PostgreSQL 15+（本專案以 PostgreSQL 為前提；geohash 分桶 + CHECK constraint enum）
+- 必要 PHP extensions: `pdo_pgsql`, `mbstring`, `gd`/`imagick`, `redis`, `intl`, `bcmath`, `simplexml`
 
 ## 環境變數重點
 
-`.env` 中需要實際填寫的：
-
 ```dotenv
-APP_URL=https://mouseradar.example.com   # 必須含 https，影響 OAuth redirect
+APP_URL=https://civicshield.example.com   # 必須含 https，影響 OAuth redirect
 
-DB_CONNECTION=mysql
-DB_DATABASE=mouse_radar
+DB_CONNECTION=pgsql
+DB_DATABASE=civic_shield
 DB_USERNAME=...
 DB_PASSWORD=...
 
 REDIS_HOST=127.0.0.1
+QUEUE_CONNECTION=redis
+CACHE_STORE=redis
 
-# Google Cloud Console → OAuth 2.0 Client (Web application)
-GOOGLE_CLIENT_ID=...
+# 認證（災時主入口預期是 LINE）
+GOOGLE_CLIENT_ID=...          # Google Cloud Console → OAuth 2.0 Client (Web)
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
-
-# LINE Developers → LINE Login Channel
-LINE_CLIENT_ID=...      # Channel ID
-LINE_CLIENT_SECRET=...  # Channel secret
+LINE_CLIENT_ID=...            # LINE Developers → LINE Login Channel
+LINE_CLIENT_SECRET=...
 LINE_REDIRECT_URI="${APP_URL}/auth/line/callback"
+LIFF_ID=...                   # LINE LIFF App ID
+
+# AI 照片審核（未填時 fail-open，照片留待人工）
+CLAUDE_API_KEY=...
+
+# 外部資料源
+CWA_API_KEY=...               # opendata.cwa.gov.tw 授權碼（未填時該源亮紅燈，不影響回報）
+TAIPEI_SHELTER_RESOURCE_ID=...# data.taipei 收容所 dataset rid（未填則不同步）
+FLOOD_POTENTIAL_WMTS_URL=...  # 淹水潛勢 WMTS（未填則前端不掛此圖層）
 ```
+
+> **注意**：fork 自 ratdar，若沿用既有 Google/LINE OAuth app，需在各自 console 為新網域補上
+> redirect URI 才能登入。
 
 ## Socialite Provider 設定
 
@@ -43,14 +53,14 @@ LINE_REDIRECT_URI="${APP_URL}/auth/line/callback"
 
 ### LINE
 1. 前往 <https://developers.line.biz/console/>
-2. 建立 LINE Login Channel
-3. Callback URL 填入 `${APP_URL}/auth/line/callback`
-4. 啟用 `profile` scope（預設）；若要 email 需開啟 `openid email` 並送審
+2. 建立 LINE Login Channel，Callback URL 填入 `${APP_URL}/auth/line/callback`
+3. 啟用 `profile` scope；若要 email 需開啟 `openid email` 並送審
+4. LIFF：新增 LIFF app 取得 `LIFF_ID`，Endpoint URL 指向 `${APP_URL}`
 
 ## 部署步驟
 
 ```bash
-git clone <repo> mouse_radar && cd mouse_radar
+git clone <repo> civic_shield && cd civic_shield
 composer install --no-dev --optimize-autoloader
 cp .env.example .env && nano .env
 php artisan key:generate
@@ -68,17 +78,37 @@ php artisan view:cache
 php artisan filament:cache-components
 ```
 
-### Horizon (Supervisor / systemd)
+### 排程（Laravel Scheduler）
+
+外部資料整合 command 由 `routes/console.php` 排程（CWA/NCDR 5min、雷達 10min、收容所 daily）。
+需在 crontab 掛上 Laravel scheduler：
+
+```cron
+* * * * * cd /var/www/html/civic_shield && php artisan schedule:run >> /dev/null 2>&1
+```
+
+各 command 亦可獨立手動執行（除錯用）：
+
+```bash
+php artisan civicshield:fetch-cwa-observations
+php artisan civicshield:fetch-ncdr-alerts
+php artisan civicshield:fetch-radar-echo
+php artisan civicshield:sync-shelters
+```
+
+### Horizon (Supervisor)
+
+處理 AI 照片審核（`ModerateReportImage`）與佐證判定（`EvaluateCorroboration`）queue：
 
 ```ini
-[program:mouseradar-horizon]
+[program:civicshield-horizon]
 process_name=%(program_name)s
-command=php /var/www/html/mouse_radar/artisan horizon
+command=php /var/www/html/civic_shield/artisan horizon
 autostart=true
 autorestart=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=/var/log/mouseradar-horizon.log
+stdout_logfile=/var/log/civicshield-horizon.log
 stopwaitsecs=3600
 ```
 
@@ -87,11 +117,11 @@ stopwaitsecs=3600
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name mouseradar.example.com;
-    root /var/www/html/mouse_radar/public;
+    server_name civicshield.example.com;
+    root /var/www/html/civic_shield/public;
 
     index index.php;
-    client_max_body_size 12M;   # 允許照片上傳
+    client_max_body_size 24M;   # 允許照片上傳（Livewire 規則上限 20MB）
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -106,26 +136,15 @@ server {
 
 ## Filament Admin 訪問控制
 
-預設 Filament v5 會在 `production` 環境拒絕未實作 `FilamentUser` 的使用者。
-若你的 admin 想限定特定 email：
+沿用 ratdar：`User` 以 `is_admin` 旗標 + `PROTECTED_ADMIN_EMAILS` 設定控制後台存取。
+公開唯讀的 EOC dashboard（`/dashboard`）與民眾地圖無權限概念，MVP 不做角色系統（spec §7.3）。
 
-```php
-// app/Models/User.php
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
+## 韌性與安全注意事項
 
-class User extends Authenticatable implements FilamentUser
-{
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return str_ends_with($this->email, '@mouseradar.tw');
-    }
-}
-```
-
-## 安全注意事項
-
-- `image_path` 來自 `storage/app/public`，已透過 `php artisan storage:link` 暴露為 `/storage/...`，請在前端使用 `Storage::url()`
-- 上傳檔案類型強制由 Livewire `image` 規則檢查，最大 8MB
-- Socialite redirect 受 `whereIn('provider', [...])` 限制，避免任意 provider 注入
-- `provider+provider_id` 唯一鍵，避免帳戶綁架
+- **回報寫入與外部整合零共用依賴**：外部 fetch 全掛時整站仍可回報、可看已落地的圖（spec §8）
+- 每支外部 fetch 有 10s timeout 與獨立 try/catch；失敗記 log + 健康狀態降級，不 retry storm
+- `image_path` 來自 `storage/app/public`，僅在 `status = approved` 時經 `publicImageUrl()` 輸出
+- 上傳檔案類型由 Livewire `image` 規則檢查，最大 20MB
+- 反濫用：帳號封禁 + cooldown（預設 60s）+ 每帳號每小時上限（預設 10）
+- Socialite redirect 受 `whereIn('provider', [...])` 限制；`(provider, provider_id)` 唯一鍵防帳戶綁架
+- 雷達回波經後端 proxy（`/api/radar-echo`）供圖，避免 CORS 與打爆來源
