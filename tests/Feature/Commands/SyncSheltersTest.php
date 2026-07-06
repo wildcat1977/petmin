@@ -100,4 +100,50 @@ class SyncSheltersTest extends TestCase
         $this->artisan('civicshield:sync-shelters')->assertFailed();
         $this->assertSame(DataSourceHealth::STATUS_DOWN, app(DataSourceHealth::class)->status('shelters')['status']);
     }
+
+    public function test_geocode_result_outside_taipei_is_rejected(): void
+    {
+        config([
+            'civicshield.sources.shelters.resource_id' => 'RID',
+            'civicshield.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
+            'civicshield.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
+            'civicshield.sources.shelters.geocode_delay_us' => 0,
+        ]);
+        Http::fake([
+            'data.taipei/*' => Http::response(['result' => ['results' => [[
+                '收容所編號' => 'X1', '名稱' => '同名學校', '縣市' => '臺北市', '鄉鎮' => '中正區',
+                '門牌地址' => '某路1號', '容納人數' => '10',
+            ]]]]),
+            // Nominatim 回高雄座標（同名誤命中）→ 必須被 bbox 驗證擋掉
+            'nominatim.openstreetmap.org/*' => Http::response([['lat' => '22.6273', 'lon' => '120.3014']]),
+        ]);
+
+        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+
+        // 誤定位到台北市外者不採用，留 null 待下輪重試
+        $this->assertSame(1, Shelter::count());
+        $this->assertNull(Shelter::first()->latitude);
+    }
+
+    public function test_rate_limit_stops_batch_gracefully(): void
+    {
+        config([
+            'civicshield.sources.shelters.resource_id' => 'RID',
+            'civicshield.sources.shelters.url' => 'https://data.taipei/api/v1/dataset/%s',
+            'civicshield.sources.shelters.geocode_url' => 'https://nominatim.openstreetmap.org/search',
+            'civicshield.sources.shelters.geocode_delay_us' => 0,
+        ]);
+        Http::fake([
+            'data.taipei/*' => Http::response(['result' => ['results' => [
+                ['收容所編號' => 'A', '名稱' => '甲校', '縣市' => '臺北市', '鄉鎮' => '中正區', '門牌地址' => '路1號'],
+                ['收容所編號' => 'B', '名稱' => '乙校', '縣市' => '臺北市', '鄉鎮' => '中正區', '門牌地址' => '路2號'],
+            ]]]),
+            'nominatim.openstreetmap.org/*' => Http::response('rate limited', 429),
+        ]);
+
+        // 429 不得讓整個同步失敗；建檔照常，座標留待下輪
+        $this->artisan('civicshield:sync-shelters')->assertSuccessful();
+        $this->assertSame(2, Shelter::count());
+        $this->assertSame(0, Shelter::mappable()->count());
+    }
 }

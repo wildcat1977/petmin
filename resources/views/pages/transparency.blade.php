@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '審核透明度報告 · CivicShield 災情回報')
+@section('title', '審核透明度報告 · Hazdar 災情回報')
 
 @section('content')
 @php
@@ -504,10 +504,10 @@
                 </div>
 
                 <blockquote class="border-l-2 border-violet-500 pl-4 italic text-sm leading-relaxed text-slate-400">
-                    「CivicShield 災情回報是一個由市民自發的資訊公開計畫。我們相信透過科技和社群的力量，
+                    「Hazdar 災情回報是一個由市民自發的資訊公開計畫。我們相信透過科技和社群的力量，
                     讓每個人在颱風、豪雨等災害期間都能即時掌握鄰里的災情狀況。每一筆經過審核的回報，
                     都是對社區防災的一份貢獻。」
-                    <footer class="mt-2 text-xs text-slate-600 not-italic">— CivicShield 開發者</footer>
+                    <footer class="mt-2 text-xs text-slate-600 not-italic">— Hazdar 開發者</footer>
                 </blockquote>
 
                 <div class="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
@@ -522,7 +522,7 @@
 
         {{-- ── 頁腳 ── --}}
         <footer class="border-t border-white/10 pt-6 text-center text-xs text-slate-600">
-            <p>CivicShield · 台北市災情回報地圖 · 本頁資料每小時自動更新</p>
+            <p>Hazdar · 台北市災情回報地圖 · 本頁資料每小時自動更新</p>
             <p class="mt-1">
                 <a href="{{ route('home') }}" class="hover:text-slate-400">回地圖</a>
                 <span class="mx-2">·</span>

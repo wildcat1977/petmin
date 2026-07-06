@@ -14,7 +14,7 @@
         <header class="pointer-events-auto flex items-center justify-between p-4">
             <div class="flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 backdrop-blur">
                 <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-cyan-400"></span>
-                <span class="text-xs font-bold tracking-widest text-cyan-300">CIVICSHIELD</span>
+                <span class="text-xs font-bold tracking-widest text-cyan-300">HAZDAR</span>
                 <span class="text-xs text-slate-300">{{ __('全民災情回報地圖') }}</span>
             </div>
 
@@ -90,7 +90,7 @@
                 @auth
                     <a href="{{ route('profile') }}" class="hover:text-slate-300">{{ __('我的回報') }}</a>
                 @else
-                    <span class="text-slate-700">© {{ date('Y') }} CivicShield</span>
+                    <span class="text-slate-700">© {{ date('Y') }} Hazdar</span>
                 @endauth
                 <button type="button"
                         onclick="window.dispatchEvent(new CustomEvent('open-contact-form'))"

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '災情統計地圖 · CivicShield 災情回報')
+@section('title', '災情統計地圖 · Hazdar 災情回報')
 
 @section('content')
 @php

@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'CivicShield 全民韌性災害回報系統 | 台北市災情地圖')</title>
+    <title>@yield('title', 'Hazdar 全民韌性災害回報系統 | 台北市災情地圖')</title>
 
     {{-- SEO / OG --}}
     <meta name="description" content="颱風豪雨災時，回報淹水、道路中斷、停電、結構受損，即時匯聚成台北市單一災情情勢圖。">
     <meta name="theme-color" content="#0d1117">
     <link rel="canonical" href="{{ url()->current() }}">
 
-    <meta property="og:title" content="CivicShield 全民韌性災害回報系統">
+    <meta property="og:title" content="Hazdar 全民韌性災害回報系統">
     <meta property="og:description" content="颱風豪雨災時，回報淹水、道路中斷、停電、結構受損，即時匯聚成台北市單一災情情勢圖。">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">

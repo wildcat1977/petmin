@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'CivicShield EOC 戰情室 | 台北市災情情勢圖')
+@section('title', 'Hazdar EOC 戰情室 | 台北市災情情勢圖')
 
 @section('content')
 {{-- EOC 大屏（公開唯讀，spec §7.3）：統計/跑馬燈 wire:poll.10s；

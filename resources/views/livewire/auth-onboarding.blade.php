@@ -35,7 +35,7 @@ new class extends Component
         <div class="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
              wire:click.self="close">
             <div class="w-full max-w-md rounded-t-3xl bg-[#161b22] p-6 text-slate-100 shadow-2xl ring-1 ring-white/10 sm:rounded-3xl">
-                <h2 class="text-xl font-bold">{{ __('加入 CivicShield · 一起回報災情') }}</h2>
+                <h2 class="text-xl font-bold">{{ __('加入 Hazdar · 一起回報災情') }}</h2>
                 <p class="mt-2 text-sm text-slate-400">{{ __('為了回報精準度，我們需要您協助：') }}</p>
 
                 <ol class="mt-4 space-y-3 text-sm">

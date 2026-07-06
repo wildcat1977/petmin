@@ -25,6 +25,12 @@ class SyncShelters extends Command
 
     protected $description = '同步 data.taipei 收容所清單並 geocode 補座標（is_open 不覆寫）';
 
+    /** 台北市概略邊界 [minLat, maxLat, minLng, maxLng]，用於約束與驗證 geocode 結果 */
+    private const TAIPEI_BBOX = [24.95, 25.22, 121.45, 121.67];
+
+    /** geocode 服務回傳限流（429）時中止本輪，下一輪 schedule 自然續跑 */
+    private bool $rateLimited = false;
+
     public function handle(DataSourceHealth $health): int
     {
         $config = config('civicshield.sources.shelters');
@@ -101,6 +107,10 @@ class SyncShelters extends Command
         $done = 0;
         foreach ($pending as $shelter) {
             $coords = $this->geocode($config['geocode_url'], $shelter);
+            if ($this->rateLimited) {
+                $this->warn('geocode 服務回傳限流，本輪提前結束，剩餘留待下一輪');
+                break;
+            }
             if ($coords) {
                 $shelter->forceFill([
                     'latitude' => $coords[0],
@@ -118,17 +128,22 @@ class SyncShelters extends Command
     /**
      * 依序嘗試多個查詢字串（機構名稱最準，地址為後備）。
      * Nominatim 對台灣「三段四號」中文門牌很弱，但收容所多為學校/公共設施，
-     * 以機構名稱查命中率高。
+     * 以機構名稱查命中率高。以台北市 viewbox 約束並驗證結果落在市界內，
+     * 避免同名地點誤定位到外縣市。
      *
      * @return array{0: float, 1: float}|null
      */
     private function geocode(string $url, Shelter $shelter): ?array
     {
-        $candidates = array_values(array_filter([
-            $shelter->name ? $shelter->name.' 臺北市' : null,
-            $shelter->name,
+        // 名稱已含「臺北市」時不再重複附加，避免干擾比對
+        $name = (string) $shelter->name;
+        $candidates = array_values(array_unique(array_filter([
+            $name,
+            str_contains($name, '臺北市') || str_contains($name, '台北市') ? null : $name.' 臺北市',
             $shelter->address,
-        ]));
+        ])));
+
+        [$minLat, $maxLat, $minLng, $maxLng] = self::TAIPEI_BBOX;
 
         foreach ($candidates as $i => $query) {
             try {
@@ -138,12 +153,26 @@ class SyncShelters extends Command
                         'q' => $query,
                         'format' => 'json',
                         'countrycodes' => 'tw',
+                        // 約束在台北市 viewbox 內（x1,y1,x2,y2 = 左上,右下 的經緯）
+                        'viewbox' => "{$minLng},{$maxLat},{$maxLng},{$minLat}",
+                        'bounded' => 1,
                         'limit' => 1,
                     ]);
 
+                if ($response->status() === 429) {
+                    $this->rateLimited = true;
+
+                    return null;
+                }
+
                 $hit = data_get($response->json(), '0');
                 if ($hit && isset($hit['lat'], $hit['lon'])) {
-                    return [(float) $hit['lat'], (float) $hit['lon']];
+                    $lat = (float) $hit['lat'];
+                    $lng = (float) $hit['lon'];
+                    // 二次驗證：務必落在台北市界內才採用（擋掉誤定位）
+                    if ($lat >= $minLat && $lat <= $maxLat && $lng >= $minLng && $lng <= $maxLng) {
+                        return [$lat, $lng];
+                    }
                 }
             } catch (Throwable $e) {
                 Log::warning('civicshield: shelter geocode failed', [

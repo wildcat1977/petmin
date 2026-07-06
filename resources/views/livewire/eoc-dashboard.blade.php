@@ -144,7 +144,7 @@ new class extends Component
         <div class="flex items-center gap-2">
             <span class="text-lg">⚠️</span>
             <div>
-                <p class="text-sm font-black tracking-[0.25em] text-cyan-300">CIVICSHIELD</p>
+                <p class="text-sm font-black tracking-[0.25em] text-cyan-300">HAZDAR</p>
                 <p class="text-[10px] text-slate-500">全民韌性災害回報系統</p>
             </div>
         </div>

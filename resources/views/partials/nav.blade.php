@@ -12,7 +12,7 @@
 
     <header class="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <a href="{{ route('home') }}" class="flex items-center gap-2 text-sm font-semibold text-slate-200">
-            <span class="text-sky-500">◎</span> CivicShield
+            <span class="text-sky-500">◎</span> Hazdar
         </a>
 
         <div class="flex items-center gap-3">
