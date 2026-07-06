@@ -27,7 +27,7 @@
 ### B. 分類篩選與圖層
 - 頂部 chips 可切換四類災情顯示（多選）；關掉某類即從地圖移除
 - `🏠 收容所`（綠）與 `🌀 雷達回波`（半透明 ImageOverlay）為獨立圖層開關
-- 淹水潛勢 WMTS 圖層僅在設定 `FLOOD_POTENTIAL_WMTS_URL` 時才出現 chip
+- 淹水潛勢圖層（XYZ 圖磚或 WMS）僅在設定對應 env 時才出現 chip
 
 ### C. 訪客回報（未登入）
 1. 點「立即回報災情」→ 觸發 `AuthOnboarding` 抽屜（底部彈出）

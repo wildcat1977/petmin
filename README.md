@@ -147,8 +147,8 @@ php artisan reports:backfill-addresses
 | `LIFF_ID`                     | LINE LIFF App ID（in-app 瀏覽器自動登入用）          |      |
 | `CLAUDE_API_KEY`              | Anthropic API Key（未填時照片 fail-open 通過）       |      |
 | `CWA_API_KEY`                 | CWA 開放資料平台授權碼（opendata.cwa.gov.tw）        |      |
-| `TAIPEI_SHELTER_RESOURCE_ID`  | data.taipei 收容所 dataset rid（未填則不同步）       |      |
-| `FLOOD_POTENTIAL_WMTS_URL`    | 淹水潛勢 WMTS 服務 URL（未填則前端不掛此圖層）        |      |
+| `TAIPEI_SHELTER_RESOURCE_ID`  | data.taipei 收容所 dataset rid（預設帶台北市收容所 rid；此源無座標，同步時以機構名稱 geocode 補） |      |
+| `FLOOD_POTENTIAL_XYZ_URL` 或 `FLOOD_POTENTIAL_WMS_URL`+`_LAYERS` | 淹水潛勢圖層（XYZ 圖磚或 WMS；未填則前端不掛此圖層） |      |
 | `RADAR_AUTO_APPROVE`          | `true` 讓無照片回報跳過人工審核直接公開               |      |
 | `CIVICSHIELD_REPORT_COOLDOWN` | 每帳號回報間隔秒數（預設 60）                         |      |
 | `CIVICSHIELD_REPORT_HOURLY_LIMIT` | 每帳號每小時回報上限（預設 10）                  |      |

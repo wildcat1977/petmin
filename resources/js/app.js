@@ -357,16 +357,29 @@ function toggleRadarEcho(on) {
     radarEchoTimer = setInterval(() => radarEchoLayer?.setUrl(freshUrl()), 10 * 60 * 1000);
 }
 
-// ── 淹水潛勢 WMTS（未設定服務 URL 時 chip 不會渲染）──────────────
+// ── 淹水潛勢圖層（支援 XYZ 圖磚或標準 WMS；未設定則 chip 不渲染）──
 function toggleFloodPotential(on) {
     const el = document.getElementById('radar-map');
-    if (!radarMap || !el?.dataset.floodWmts) return;
+    if (!radarMap || !el?.dataset.floodPotential) return;
 
     if (!on) {
         if (floodLayer) { radarMap.removeLayer(floodLayer); floodLayer = null; }
         return;
     }
-    floodLayer = L.tileLayer(el.dataset.floodWmts, { opacity: 0.5, maxZoom: 19 }).addTo(radarMap);
+
+    let cfg;
+    try { cfg = JSON.parse(el.dataset.floodPotential); } catch (_) { return; }
+
+    if (cfg.xyz) {
+        floodLayer = L.tileLayer(cfg.xyz, { opacity: 0.5, maxZoom: 19 }).addTo(radarMap);
+    } else if (cfg.wms_url && cfg.wms_layers) {
+        floodLayer = L.tileLayer.wms(cfg.wms_url, {
+            layers: cfg.wms_layers,
+            format: 'image/png',
+            transparent: true,
+            opacity: 0.5,
+        }).addTo(radarMap);
+    }
 }
 
 // ── 分類篩選 chips（radar 頁 header 渲染，data-map-chip 綁定）──

@@ -38,7 +38,10 @@ CLAUDE_API_KEY=...
 # 外部資料源
 CWA_API_KEY=...               # opendata.cwa.gov.tw 授權碼（未填時該源亮紅燈，不影響回報）
 TAIPEI_SHELTER_RESOURCE_ID=...# data.taipei 收容所 dataset rid（未填則不同步）
-FLOOD_POTENTIAL_WMTS_URL=...  # 淹水潛勢 WMTS（未填則前端不掛此圖層）
+# 淹水潛勢圖層（擇一；此圖資無公開即插即用圖磚，需自 TGOS/WRA 取得後填入）
+FLOOD_POTENTIAL_XYZ_URL=...    # XYZ 圖磚模板，含 {z}/{x}/{y}
+FLOOD_POTENTIAL_WMS_URL=...    # 或標準 WMS base URL
+FLOOD_POTENTIAL_WMS_LAYERS=... # 搭配 WMS 的 layer 名稱
 ```
 
 > **注意**：fork 自 ratdar，若沿用既有 Google/LINE OAuth app，需在各自 console 為新網域補上

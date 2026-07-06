@@ -29,6 +29,7 @@ Route::get('/api/map/reports', MapPointsController::class)->name('api.map.report
 // 收容所點位（開設中的優先呈現；資料由 data.taipei 同步 + 後台維護）
 Route::get('/api/map/shelters', function () {
     return response()->json(Cache::remember('map.shelters', 60, fn () => Shelter::query()
+        ->mappable()
         ->orderByDesc('is_open')
         ->get(['id', 'name', 'latitude', 'longitude', 'address', 'capacity', 'is_open'])
         ->map(fn (Shelter $s) => [

@@ -49,13 +49,28 @@ return [
             'interval_minutes' => 10,
         ],
         'shelters' => [
-            // ⚠ data.taipei 收容所 dataset rid 待確認（搜尋 API 目前查無），設定後才會同步
-            'resource_id' => env('TAIPEI_SHELTER_RESOURCE_ID'),
+            // data.taipei「臺北市可供避難收容處所一覽表」resource id（dataset 134683）
+            'resource_id' => env('TAIPEI_SHELTER_RESOURCE_ID', '4c92dbd4-d259-495a-8390-52628119a4dd'),
             'url' => env('TAIPEI_SHELTER_URL', 'https://data.taipei/api/v1/dataset/%s?scope=resourceAquire&limit=1000'),
             'interval_minutes' => 1440,
+            // 此 dataset 無經緯度，需以機構名稱向 Nominatim geocode；每輪補齊上限（政策：1 req/sec）
+            'geocode_per_run' => (int) env('TAIPEI_SHELTER_GEOCODE_PER_RUN', 500),
+            'geocode_url' => 'https://nominatim.openstreetmap.org/search',
+            'geocode_delay_us' => (int) env('TAIPEI_SHELTER_GEOCODE_DELAY_US', 1_100_000),
         ],
     ],
 
-    // 淹水潛勢 WMTS（⚠ 驗證服務 URL 與嵌入授權；未設定則前端不掛此圖層，不阻塞）
-    'flood_potential_wmts' => env('FLOOD_POTENTIAL_WMTS_URL'),
+    /*
+     * 淹水潛勢圖層（spec §10-3，非阻塞）。
+     * 此圖資無公開即插即用圖磚服務：data.gov.tw 開放資料僅 CSV/JSON 描述、
+     * TGOS WMS 需申請 API key、WRA GIS 檢視器（gic.wra.gov.tw）圖磚未開放嵌入。
+     * 取得來源後擇一設定即可讓前端掛上此圖層：
+     *   - xyz：RESTful 圖磚模板（含 {z}/{x}/{y}），如自建切片或 NLSC WMTS RESTful
+     *   - wms：標準 WMS（多數政府圖資，需 base url + layers 名稱）
+     */
+    'flood_potential' => [
+        'xyz' => env('FLOOD_POTENTIAL_XYZ_URL'),          // e.g. https://host/tiles/{z}/{x}/{y}.png
+        'wms_url' => env('FLOOD_POTENTIAL_WMS_URL'),       // e.g. https://www.tgos.tw/.../wms
+        'wms_layers' => env('FLOOD_POTENTIAL_WMS_LAYERS'), // WMS layer 名稱
+    ],
 ];

@@ -13,6 +13,7 @@ class Shelter extends Model
         'name',
         'latitude',
         'longitude',
+        'geocoded_at',
         'address',
         'capacity',
         'is_open',
@@ -25,8 +26,15 @@ class Shelter extends Model
         return [
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
+            'geocoded_at' => 'datetime',
             'capacity' => 'integer',
             'is_open' => 'boolean',
         ];
+    }
+
+    /** 已取得座標、可上圖者 */
+    public function scopeMappable($query)
+    {
+        return $query->whereNotNull('latitude')->whereNotNull('longitude');
     }
 }

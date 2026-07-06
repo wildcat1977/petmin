@@ -75,7 +75,7 @@ new class extends Component
     data-shelters-url="{{ route('api.map.shelters') }}"
     data-radar-echo-url="{{ route('api.radar-echo') }}"
     data-radar-echo-bounds='@json(config('civicshield.sources.radar_echo.bounds'))'
-    data-flood-wmts="{{ config('civicshield.flood_potential_wmts') }}"
+    data-flood-potential='@json(config('civicshield.flood_potential'))'
     @if ($showDistricts) data-districts-url="{{ asset('geo/taipei-districts.json') }}" @endif
     data-ticker='@json($this->tickerMessages)'
 ></div>
