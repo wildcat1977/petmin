@@ -112,16 +112,9 @@ const CATEGORY_META = {};
 {
     const el = document.getElementById('radar-map');
     (JSON.parse(el?.dataset.categories || '[]')).forEach((c) => {
-        CATEGORY_META[c.slug] = { color: c.color, label: () => c.name, active: c.active, extra: c.extra };
+        CATEGORY_META[c.slug] = { color: c.color, emoji: c.emoji, label: () => c.name, active: c.active, extra: c.extra };
     });
 }
-
-// 視覺分層：unverified 半透明 → corroborated 實心 → official 加白框
-const VERIFICATION_STYLE = {
-    unverified:   { fillOpacity: 0.4,  weight: 1,   ring: false },
-    corroborated: { fillOpacity: 0.9,  weight: 1.5, ring: false },
-    official:     { fillOpacity: 0.95, weight: 3,   ring: true  },
-};
 
 const VERIFICATION_LABEL = {
     unverified:   () => window.i18n?.vlUnverified ?? '未核實',
@@ -139,6 +132,9 @@ let currentTileLayer = null;   // 底圖圖層（隨主題切換）
 // 含停用分類：停用只關新回報入口，既有點位不得消失（spec §11.7）
 let activeCategories = new Set(Object.keys(CATEGORY_META));
 let showResolved = true;
+// 回報三態篩選（spec §12.8）：reported/notified 純前端過濾已下發點；
+// resolved 另由 showResolved 伺服端 gating（隱藏時根本不下發已排除點）。
+let activeStatuses = new Set(['reported', 'notified', 'resolved']);
 let sheltersVisible = false;
 let sheltersCache = null;      // 收容所清單快取（每次頁面生命週期抓一次）
 let fetchController = null;
@@ -215,24 +211,32 @@ function createPopupEl(p) {
     return wrap;
 }
 
+// 分類色水滴 pin（spec §12.3）：中置分類 emoji；三態 reported=實色 / notified=20% / resolved=灰階
+function pinIcon(meta, status) {
+    const color = meta?.color ?? '#94a3b8';
+    const emoji = meta?.emoji ?? '📍';
+    const opacity = status === 'notified' ? 0.2 : 1;
+    const grayscale = status === 'resolved' ? 'grayscale(1)' : 'none';
+    const html =
+        `<div style="opacity:${opacity};filter:${grayscale}">` +
+          `<div style="width:28px;height:28px;background:${color};border:2px solid #fff;` +
+          `border-radius:50% 50% 50% 0;transform:rotate(-45deg);` +
+          `box-shadow:0 2px 6px rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center">` +
+            `<span style="transform:rotate(45deg);font-size:14px;line-height:1">${emoji}</span>` +
+          `</div>` +
+        `</div>`;
+    return L.divIcon({ html, className: '', iconSize: [28, 34], iconAnchor: [14, 30], popupAnchor: [0, -28] });
+}
+
 function buildPointsLayer(points) {
     const layer = L.layerGroup();
     points.forEach((p) => {
+        const status = p.st ?? 'reported';
+        if (! activeStatuses.has(status)) return; // 三態篩選（spec §12.8）
         const meta = CATEGORY_META[p.cat];
-        const style = VERIFICATION_STYLE[p.vl] ?? VERIFICATION_STYLE.unverified;
-        const resolved = p.st === 'resolved';
-        const notified = p.st === 'notified';
-        const baseColor = resolved ? '#64748b' : (meta?.color ?? '#94a3b8');
-        const circle = L.circleMarker([p.lat, p.lng], {
-            radius: 8,
-            fillColor: baseColor,
-            color: notified ? '#22d3ee' : (style.ring ? '#ffffff' : baseColor),
-            weight: notified ? 3 : style.weight,
-            opacity: 1,
-            fillOpacity: resolved ? 0.35 : style.fillOpacity,
-        });
-        circle.bindPopup(createPopupEl(p), { maxWidth: 280 });
-        layer.addLayer(circle);
+        const marker = L.marker([p.lat, p.lng], { icon: pinIcon(meta, status) });
+        marker.bindPopup(createPopupEl(p), { maxWidth: 280 });
+        layer.addLayer(marker);
     });
     return layer;
 }
