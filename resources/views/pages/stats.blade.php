@@ -308,13 +308,10 @@
 
     </div>
 
-    {{-- ── 頁尾 ── --}}
-    <footer class="border-t border-white/10 px-4 py-6 text-center text-xs text-slate-600">
-        <div class="flex justify-center gap-4">
-            <a href="{{ route('home') }}" class="hover:text-slate-400">首頁</a>
-            <a href="{{ route('transparency') }}" class="hover:text-slate-400">透明度報告</a>
-        </div>
-    </footer>
+    {{-- ── 頁尾（共用，v0.3 二次回饋 item 6）── --}}
+    <div class="border-t border-white/10 px-4 py-6">
+        @include('partials.footer-links')
+    </div>
 
 </div>
 @endsection

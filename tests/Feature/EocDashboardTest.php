@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\ExternalAlert;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\WeatherObservation;
@@ -95,24 +94,6 @@ class EocDashboardTest extends TestCase
         $this->assertSame(27.6, $weather['temp']);
 
         $component->assertDontSee('CWA 資料更新中斷');
-    }
-
-    public function test_typhoon_badge_when_typhoon_alert_active(): void
-    {
-        ExternalAlert::create([
-            'source' => 'CWA', 'cap_id' => 'TY1', 'alert_type' => '颱風',
-            'headline' => '海上陸上颱風警報', 'covers_taipei' => true,
-            'effective_at' => now(), 'expires_at' => now()->addDay(),
-        ]);
-
-        Livewire::test('eoc-dashboard')->assertSee('TYPHOON-EMERGENCY');
-    }
-
-    public function test_monitoring_badge_without_typhoon(): void
-    {
-        Livewire::test('eoc-dashboard')
-            ->assertSee('MONITORING')
-            ->assertDontSee('TYPHOON-EMERGENCY');
     }
 
     public function test_dashboard_url_redirects_to_home(): void

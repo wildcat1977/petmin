@@ -517,15 +517,10 @@
             </div>
         </section>
 
-        {{-- ── 頁腳 ── --}}
-        <footer class="border-t border-white/10 pt-6 text-center text-xs text-slate-600">
-            <p>Hazdar · 台北市災情回報地圖 · 本頁資料每小時自動更新</p>
-            <p class="mt-1">
-                <a href="{{ route('home') }}" class="hover:text-slate-400">回地圖</a>
-                <span class="mx-2">·</span>
-                <a href="{{ route('reports') }}" class="hover:text-slate-400">通報清單</a>
-            </p>
-        </footer>
+        {{-- ── 頁腳（共用，v0.3 二次回饋 item 6）── --}}
+        <div class="border-t border-white/10 pt-6">
+            @include('partials.footer-links')
+        </div>
 
     </div>
 </div>

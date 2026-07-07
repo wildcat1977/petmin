@@ -46,7 +46,7 @@ class HomeChromeTest extends TestCase
         $this->get('/contact')->assertOk()->assertDontSee('bg-[#0d1117]', false);
     }
 
-    public function test_footer_shows_published_news_counts_and_hides_removed_links(): void
+    public function test_footer_shows_published_news_counts(): void
     {
         // 注意：announcements.content 為 NOT NULL，create 必帶 content（見 NewsPageTest）
         Announcement::create(['title' => '停課通知', 'content' => 'x', 'category' => 'school_closure', 'is_active' => true, 'published_at' => now()->subHour()]);
@@ -58,10 +58,20 @@ class HomeChromeTest extends TestCase
             ->assertOk()
             ->assertSee('停班停課')
             ->assertSee('居家災防')
-            ->assertDontSee('災情通報')                 // 該分類無已發佈 → 不列
-            ->assertSee(route('news'), false)
-            ->assertDontSee(route('reports'), false)      // 回報清單隱藏
-            ->assertDontSee(route('transparency'), false) // 透明度報告隱藏
-            ->assertDontSee(route('stats'), false);       // 統計地圖隱藏
+            ->assertDontSee('災情通報')  // 該分類無已發佈 → 不列
+            ->assertSee(route('news'), false);
+    }
+
+    /**
+     * v0.3 二次回饋 item 6：首頁頂帶與次要頁面共用同一份選單連結（partials.nav-page-links），
+     * 不再只有 news——舊版本刻意隱藏這些連結的行為已被此需求取代。
+     */
+    public function test_top_nav_shares_page_links_with_secondary_pages(): void
+    {
+        $this->withHeader('Accept-Language', 'zh-TW')->get('/')
+            ->assertOk()
+            ->assertSee(route('reports'), false)
+            ->assertSee(route('transparency'), false)
+            ->assertSee(route('stats'), false);
     }
 }

@@ -20,10 +20,7 @@
             <div class="hidden md:flex items-center gap-3">
                 @include('partials.locale-switcher')
 
-                <a href="{{ route('news') }}" class="{{ $navClsXs('news') }}">{{ __('最新消息') }}</a>
-                <a href="{{ route('reports') }}" class="{{ $navClsXs('reports') }}">{{ __('通報清單') }}</a>
-                <a href="{{ route('transparency') }}" class="{{ $navClsXs('transparency') }}">{{ __('透明度報告') }}</a>
-                <a href="{{ route('stats') }}" class="{{ $navClsXs('stats') }}">{{ __('統計地圖') }}</a>
+                @include('partials.nav-page-links')
                 <button type="button"
                         onclick="window.dispatchEvent(new CustomEvent('open-contact-form'))"
                         class="text-xs text-slate-400 hover:text-slate-200 transition-colors">{{ __('聯絡管理員') }}</button>

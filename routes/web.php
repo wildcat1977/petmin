@@ -20,16 +20,8 @@ Route::get('/locale/{locale}', function (string $locale) {
     return redirect()->back(302, [], route('home'));
 })->name('locale.set');
 
-Route::get('/', function () {
-    $newsCounts = Cache::remember('hazdar:home:news-counts', 60, fn () => Announcement::published()
-        ->selectRaw('category, count(*) as c')
-        ->groupBy('category')
-        ->orderByRaw('count(*) desc')
-        ->pluck('c', 'category')
-        ->all());
-
-    return view('pages.radar', ['newsCounts' => $newsCounts]);
-})->name('home');
+// newsCounts 由共用 partials.footer-links 自算（Announcement::publishedCountsByCategory()），無需在此傳入
+Route::view('/', 'pages.radar')->name('home');
 
 Route::view('/reports', 'pages.reports')->name('reports');
 

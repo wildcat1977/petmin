@@ -13,6 +13,10 @@
         <p class="text-sm text-slate-500">{{ __('有問題、建議或需要回報異常，歡迎直接留言') }}</p>
     </div>
 
+    <div class="px-4 py-6">
+        @include('partials.footer-links')
+    </div>
+
 </div>
 
 <script>

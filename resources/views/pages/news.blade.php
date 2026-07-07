@@ -43,6 +43,10 @@
                 <p class="text-sm text-slate-500">{{ __('目前沒有消息。') }}</p>
             @endforelse
         </div>
+
+        <div class="mt-10 border-t border-white/10 pt-6">
+            @include('partials.footer-links')
+        </div>
     </div>
 </div>
 @endsection

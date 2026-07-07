@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Announcement extends Model
 {
@@ -39,5 +40,25 @@ class Announcement extends Model
     public function scopePublished($query)
     {
         return $query->whereNotNull('published_at')->where('published_at', '<=', now());
+    }
+
+    /**
+     * footer 用：各分類已發佈篇數（只列有篇數的分類），60s 快取，純陣列。
+     * 自給自足供共用 footer partial 直接呼叫，不需每個 route 各自算一次。
+     *
+     * @return array<string, int>
+     */
+    public static function publishedCountsByCategory(): array
+    {
+        return Cache::remember(
+            'hazdar:footer:news-counts',
+            60,
+            fn () => static::published()
+                ->selectRaw('category, count(*) as c')
+                ->groupBy('category')
+                ->orderByRaw('count(*) desc')
+                ->pluck('c', 'category')
+                ->all()
+        );
     }
 }

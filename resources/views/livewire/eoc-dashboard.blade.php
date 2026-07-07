@@ -208,17 +208,10 @@ new class extends Component
 }; ?>
 
 <div wire:poll.10s>
-    {{-- 颱風/監測狀態 pill（保留自舊 header；其餘 header/ticker/health footer 已移除，
-         首頁已有自己的品牌 header 與跑馬燈——spec §11.1） --}}
-    @php $typhoon = collect($this->alerts)->contains(fn ($a) => str_contains($a['type'], '颱風')); @endphp
-    <div class="pointer-events-none fixed left-1/2 top-16 z-[400] -translate-x-1/2">
-        <span class="pointer-events-auto rounded-full px-3 py-1 text-[11px] font-bold {{ $typhoon ? 'bg-rose-600/80 text-white animate-pulse' : 'bg-black/60 text-emerald-300' }}">
-            {{ $typhoon ? 'TYPHOON-EMERGENCY' : 'MONITORING' }}
-        </span>
-    </div>
-
-    {{-- 左欄浮動卡片（桌機）：CWA 即時 / 24H 雨量 / NCDR 警戒 --}}
-    <div class="pointer-events-none fixed left-2 top-28 z-[400] hidden w-[280px] flex-col gap-2 lg:flex">
+    {{-- 左欄浮動卡片（桌機）：CWA 即時 / 24H 雨量 / NCDR 警戒
+         top-36（v0.3 二次回饋 item 3）：實測地圖明暗切換按鈕於 top-28 時會與本卡重疊
+         （按鈕 y=[102,132.8]，卡片原 top-28=112 提前於按鈕結束前就開始），下移淨空。 --}}
+    <div class="pointer-events-none fixed left-2 top-36 z-[400] hidden w-[280px] flex-col gap-2 lg:flex">
         <x-dashboard-card card-key="weather" :title="__('CWA 即時觀測')">
             @include('livewire.partials.card-weather')
         </x-dashboard-card>
@@ -230,8 +223,8 @@ new class extends Component
         </x-dashboard-card>
     </div>
 
-    {{-- 右欄浮動卡片（桌機）：事件統計 / 交通與清運資訊彙整 --}}
-    <div class="pointer-events-none fixed right-2 top-28 z-[400] hidden w-[300px] flex-col gap-2 lg:flex">
+    {{-- 右欄浮動卡片（桌機）：事件統計 / 交通與清運資訊彙整（top-36 同左欄理由）--}}
+    <div class="pointer-events-none fixed right-2 top-36 z-[400] hidden w-[300px] flex-col gap-2 lg:flex">
         <x-dashboard-card card-key="stats" :title="__('事件統計')">
             @include('livewire.partials.card-stats')
         </x-dashboard-card>
@@ -303,7 +296,7 @@ new class extends Component
         @php
             $mobileCards = [
                 'weather' => ['CWA 即時觀測', 'livewire.partials.card-weather', []],
-                'rain' => ['24H 累積雨量', 'livewire.partials.card-rain', ['withChart' => false]],
+                'rain' => ['24H 累積雨量', 'livewire.partials.card-rain', ['withChart' => true, 'chartId' => 'rain-trend-chart-mobile']],
                 'alerts' => ['NCDR 警戒', 'livewire.partials.card-alerts', []],
                 'stats' => ['事件統計', 'livewire.partials.card-stats', []],
                 'info' => ['交通與清運資訊彙整', 'livewire.partials.card-info', []],
