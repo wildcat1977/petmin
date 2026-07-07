@@ -201,7 +201,8 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
   - 左欄:CWA 即時觀測、24H 雨量趨勢、NCDR 燈號。
   - 右欄:統計卡片、交通與清運資訊彙整(§11.5,取代物資看板)。
   - 每張卡右上角 ﹀ 收合/展開,狀態記 localStorage;行動版預設收合。
-- 頂部警戒跑馬燈、footer 健康指標照舊掛在首頁。
+- 保留原 dashboard 的頂部 nav 與 footer,上下包住整頁;頂部警戒跑馬燈照舊。
+- **footer 變更(2026-07-07 補充)**:資料源狀態燈自公開 footer 移除,改放「最新消息/公告」連結;狀態燈移至 Filament 後台儀表,§1-5 驗收的失敗可視性由後台承接,不得刪除。
 - `/dashboard` 302 轉向 `/`(EOC 大屏同用此頁);既有 eoc-dashboard 拆成卡片子元件重用,`wire:poll` 週期不變。
 
 ### 11.2 雷達回波對位校正
@@ -238,7 +239,7 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 
 ### 11.7 回報分類後台化(含新增 2 類)
 
-- 新表 `report_categories`:`slug`(unique,**建立後唯讀**,程式與 reports.category 以 slug 為鍵)、`name`、`color`(hex)、`sort_order`、`is_active`、`extra_field` jsonb nullable `{label, unit, min, max}`(**單一選填數值欄位**)。
+- 新表 `report_categories`:`slug`(unique,**建立後唯讀**,程式與 reports.category 以 slug 為鍵)、`name`、`emoji`、`color`(hex)、`sort_order`、`is_active`、`extra_field` jsonb nullable `{label, unit, min, max, presets?: [{value, hint}]}`(**單一選填數值欄位**;presets 為表單快選鈕,如淹水 10=腳踝/30=小腿)。
 - Seed 6 類:既有 4 類 + `water_outage`(停水/紫)、`falling_object`(大型物品含樹木掉落/棕);`flood` 帶 `extra_field {積水深度, cm, 0, 500}`。
 - `reports.water_depth_cm` 更名 `extra_value`(integer,資料保留);表單依所選分類的 `extra_field` 動態顯示數值欄,驗證規則由設定推導。
 - 前端分類鈕/篩選 chips/圖例/統計卡與點位 API 分類白名單改讀 DB(cache 60s,後台變更時 bust)。
