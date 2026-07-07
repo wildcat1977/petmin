@@ -20,6 +20,7 @@
             <div class="hidden md:flex items-center gap-3">
                 @include('partials.locale-switcher')
 
+                <a href="{{ route('news') }}" class="{{ $navClsXs('news') }}">{{ __('最新消息') }}</a>
                 <a href="{{ route('reports') }}" class="{{ $navClsXs('reports') }}">{{ __('通報清單') }}</a>
                 <a href="{{ route('transparency') }}" class="{{ $navClsXs('transparency') }}">{{ __('透明度報告') }}</a>
                 <a href="{{ route('stats') }}" class="{{ $navClsXs('stats') }}">{{ __('統計地圖') }}</a>
@@ -67,6 +68,10 @@
          class="border-b border-white/10 bg-[#0d1117] px-4 py-3 md:hidden">
 
         <nav class="flex flex-col gap-1">
+            <a href="{{ route('news') }}"
+               class="rounded-lg px-3 py-2 {{ $navCls('news') }}"
+               @click="open = false">{{ __('最新消息') }}</a>
+
             <a href="{{ route('reports') }}"
                class="rounded-lg px-3 py-2 {{ $navCls('reports') }}"
                @click="open = false">{{ __('通報清單') }}</a>

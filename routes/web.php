@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\MapPointsController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\GmailAuthController;
 use App\Http\Middleware\SetLocale;
+use App\Models\Announcement;
 use App\Models\Report;
 use App\Models\Shelter;
 use Illuminate\Support\Facades\Cache;
@@ -22,6 +23,25 @@ Route::get('/locale/{locale}', function (string $locale) {
 Route::view('/', 'pages.radar')->name('home');
 
 Route::view('/reports', 'pages.reports')->name('reports');
+
+// 最新消息（spec §11.4）：上稿看 published_at；cache 60s 存純陣列
+Route::get('/news', function () {
+    $items = Cache::remember('hazdar:news-page:'.app()->getLocale(), 60, fn () => Announcement::published()
+        ->orderByDesc('is_pinned')
+        ->orderByDesc('published_at')
+        ->get()
+        ->map(fn (Announcement $a) => [
+            'title' => $a->title,
+            'category' => $a->category,
+            'body' => $a->body,
+            'content' => $a->content,
+            'link_url' => $a->link_url,
+            'is_pinned' => $a->is_pinned,
+            'published_at' => $a->published_at->format('Y-m-d H:i'),
+        ])->all());
+
+    return view('pages.news', ['items' => $items]);
+})->name('news');
 
 // 點位 API（server-side bbox query + geohash 聚合，spec §7.2）
 Route::get('/api/map/reports', MapPointsController::class)->name('api.map.reports');

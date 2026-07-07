@@ -7,6 +7,13 @@ use App\Filament\Resources\Announcements\Pages\EditAnnouncement;
 use App\Filament\Resources\Announcements\Pages\ListAnnouncements;
 use App\Models\Announcement;
 use BackedEnum;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -23,7 +30,7 @@ class AnnouncementResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
-    protected static ?string $navigationLabel = '公告管理';
+    protected static ?string $navigationLabel = '公告與消息';
 
     protected static ?int $navigationSort = 20;
 
@@ -45,6 +52,26 @@ class AnnouncementResource extends Resource
             Toggle::make('is_active')
                 ->label('立即顯示')
                 ->default(true),
+
+            Select::make('category')
+                ->label('分類')
+                ->options(Announcement::CATEGORY_LABELS)
+                ->nullable(),
+
+            RichEditor::make('body')
+                ->label('內文（最新消息頁，選填；空白時顯示上方公告內容）')
+                ->columnSpanFull(),
+
+            TextInput::make('link_url')
+                ->label('相關連結')
+                ->url()
+                ->maxLength(500),
+
+            Toggle::make('is_pinned')
+                ->label('置頂'),
+
+            DateTimePicker::make('published_at')
+                ->label('發布時間（設定後出現在最新消息頁；留空＝僅跑馬燈）'),
         ]);
     }
 
@@ -70,6 +97,14 @@ class AnnouncementResource extends Resource
                     ->limit(60)
                     ->searchable(),
 
+                IconColumn::make('is_pinned')
+                    ->boolean()
+                    ->label('置頂'),
+
+                TextColumn::make('published_at')
+                    ->dateTime('Y-m-d H:i')
+                    ->label('發布時間'),
+
                 TextColumn::make('created_at')
                     ->label('建立時間')
                     ->dateTime('Y-m-d H:i')
@@ -77,12 +112,12 @@ class AnnouncementResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->recordActions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -90,9 +125,9 @@ class AnnouncementResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListAnnouncements::route('/'),
+            'index' => ListAnnouncements::route('/'),
             'create' => CreateAnnouncement::route('/create'),
-            'edit'   => EditAnnouncement::route('/{record}/edit'),
+            'edit' => EditAnnouncement::route('/{record}/edit'),
         ];
     }
 }

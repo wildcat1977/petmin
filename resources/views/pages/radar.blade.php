@@ -82,6 +82,7 @@
 
             <footer class="mx-auto flex w-full max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
                 <a href="{{ route('dashboard') }}" class="hover:text-slate-300">{{ __('EOC 戰情室') }}</a>
+                <a href="{{ route('news') }}" class="hover:text-slate-300">{{ __('最新消息') }}</a>
                 <a href="{{ route('reports') }}" class="hover:text-slate-300">{{ __('回報清單') }}</a>
                 <a href="{{ route('transparency') }}" class="hover:text-slate-300">{{ __('透明度報告') }}</a>
                 <a href="{{ route('stats') }}" class="hover:text-slate-300">{{ __('統計地圖') }}</a>
