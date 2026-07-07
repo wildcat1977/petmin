@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\DataSourceHealth;
+use App\Support\MercatorReprojector;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -22,7 +23,7 @@ class FetchRadarEcho extends Command
 
     protected $description = '拉取 CWA 雷達回波整合圖並快取為本站圖檔';
 
-    public function handle(DataSourceHealth $health): int
+    public function handle(DataSourceHealth $health, MercatorReprojector $reprojector): int
     {
         $config = config('hazdar.sources.radar_echo');
 
@@ -35,14 +36,18 @@ class FetchRadarEcho extends Command
                 throw new RuntimeException('radar 回應非圖片（'.$response->header('Content-Type').'）');
             }
 
-            Storage::disk('public')->put('radar/latest.png', $response->body());
+            // 等經緯 → Mercator 逐列重採樣（spec §11.2），bounds 與前端不動
+            [[$latMin], [$latMax]] = $config['bounds'];
+            $png = $reprojector->reproject($response->body(), $latMin, $latMax);
+
+            Storage::disk('public')->put('radar/latest.png', $png);
             Cache::forever('hazdar:radar:meta', [
                 'fetched_at' => now()->toIso8601String(),
-                'bytes' => strlen($response->body()),
+                'bytes' => strlen($png),
             ]);
 
             $health->recordSuccess('radar_echo');
-            $this->info('Radar echo image cached ('.strlen($response->body()).' bytes)');
+            $this->info('Radar echo image cached ('.strlen($png).' bytes)');
 
             return self::SUCCESS;
         } catch (Throwable $e) {
