@@ -74,4 +74,26 @@ class HomeChromeTest extends TestCase
             ->assertSee(route('transparency'), false)
             ->assertSee(route('stats'), false);
     }
+
+    /**
+     * v0.3 三次回饋：手機寬度塞不下完整 nav（尤其登入後 我的回報/頭像/登出 一起擠進來會
+     * 橫向溢出），改漢堡收合面板；桌機 nav（hidden lg:flex）維持不受影響，兩者各自
+     * 獨立持有一份連結——用出現次數＝2 佐證漢堡面板不是空殼，桌機版也還在。
+     */
+    public function test_mobile_has_hamburger_menu_with_full_link_set(): void
+    {
+        $user = User::factory()->create();
+
+        $html = $this->actingAs($user)
+            ->withHeader('Accept-Language', 'zh-TW')
+            ->get('/')
+            ->assertOk()
+            ->assertSee('mobileNavOpen', false)
+            ->getContent();
+
+        // route('news') 另在 footer-links 出現一次（3 次），改用 footer 不會用到的 route('stats') 驗證桌機+手機各一份
+        $this->assertSame(2, substr_count($html, route('stats')), '桌機 nav-page-links + 手機漢堡面板應各出現一次');
+        $this->assertSame(2, substr_count($html, '聯絡管理員'));
+        $this->assertSame(2, substr_count($html, '我的回報'));
+    }
 }
