@@ -16,7 +16,8 @@ class ReportCategory extends Model
 {
     use HasFactory;
 
-    private const CACHE_KEY = 'hazdar:report-categories';
+    // v2：快取只存純陣列（見 allOrdered），換版號避開 v1 的物件序列化 blob
+    private const CACHE_KEY = 'hazdar:report-categories:v2';
 
     protected $fillable = ['slug', 'name', 'emoji', 'color', 'sort_order', 'is_active', 'extra_field'];
 
@@ -35,10 +36,28 @@ class ReportCategory extends Model
         static::deleted(fn () => Cache::forget(self::CACHE_KEY));
     }
 
-    /** 全部分類（含停用），依 sort_order；60s 快取 */
+    /**
+     * 全部分類（含停用），依 sort_order；60s 快取。
+     *
+     * 快取只存純陣列、讀取時 hydrate：序列化 Eloquent 物件會在寫入端
+     * （CLI 排程/Horizon worker）與讀取端（FPM）autoload 狀態不一致時
+     * 反序列化成 __PHP_Incomplete_Class 而 500，純陣列不依賴任何 class。
+     */
     public static function allOrdered(): Collection
     {
-        return Cache::remember(self::CACHE_KEY, 60, fn () => static::query()->orderBy('sort_order')->get());
+        $rows = Cache::remember(
+            self::CACHE_KEY,
+            60,
+            fn () => static::query()->orderBy('sort_order')->get()->map(fn (self $c) => $c->getAttributes())->all()
+        );
+
+        if (! is_array($rows)) { // 防禦：非預期 blob 一律重建
+            Cache::forget(self::CACHE_KEY);
+
+            return static::query()->orderBy('sort_order')->get()->toBase();
+        }
+
+        return static::hydrate($rows)->toBase();
     }
 
     public static function activeOrdered(): Collection
