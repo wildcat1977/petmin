@@ -17,7 +17,8 @@ class PromoCardForm
             ->components([
                 TextInput::make('title')
                     ->label('標題')
-                    ->required(),
+                    ->required()
+                    ->maxLength(100),
 
                 Select::make('group')
                     ->label('分區')

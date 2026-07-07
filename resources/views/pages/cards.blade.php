@@ -19,7 +19,7 @@
                     <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
                         @foreach ($cards as $card)
                             <button type="button"
-                                    @click="open = '{{ Storage::disk('public')->url($card->image_path) }}'"
+                                    @click="open = '{{ addslashes(Storage::disk('public')->url($card->image_path)) }}'"
                                     class="rounded-2xl border border-white/10 bg-[#161b22] p-2 text-left">
                                 <img src="{{ Storage::disk('public')->url($card->image_path) }}"
                                      alt="{{ $card->title }}" loading="lazy"
