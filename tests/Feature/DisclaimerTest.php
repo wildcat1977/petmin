@@ -15,7 +15,8 @@ class DisclaimerTest extends TestCase
 
     public function test_entry_disclaimer_renders_on_home(): void
     {
-        $this->get('/')
+        $this->withHeader('Accept-Language', 'zh-TW')
+            ->get('/')
             ->assertOk()
             ->assertSee('使用前請注意')
             ->assertSee('僅供大眾參考')

@@ -29,21 +29,11 @@ class SetLocale
 
     private function preferredLocale(Request $request): string
     {
-        $acceptLanguage = $request->header('Accept-Language', '');
+        $preferred = $request->getPreferredLanguage(['zh_TW', 'zh', 'en']);
 
-        // If no header, default to Chinese
-        if (empty($acceptLanguage)) {
-            return 'zh_TW';
-        }
-
-        // If header explicitly requests Chinese, use Chinese
-        if (preg_match('/\b(zh|CN|TW)/i', $acceptLanguage)) {
-            return 'zh_TW';
-        }
-
-        // For this Chinese-focused app, if only en-US/en is in header (typical test/client default),
-        // still default to Chinese unless user has navigated to English via the locale switcher
-        // (which would be stored in session, handled in the main handle() method)
-        return 'zh_TW';
+        return match (true) {
+            str_starts_with($preferred, 'zh') => 'zh_TW',
+            default => 'en',
+        };
     }
 }
