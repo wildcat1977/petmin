@@ -84,24 +84,26 @@
 
         <div class="flex-1"></div>
 
-        {{-- 底帶：#002923 實色帶（spec §12.2/12.6）--}}
-        <div class="pointer-events-auto flex flex-col gap-3 bg-[#002923] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.35)]">
-            {{-- 管理員公告 --}}
+        {{-- 公告 / 我的回報狀態 / 立即回報鈕：浮在地圖上、各自半透明底（bg-[#111827]/90、backdrop-blur
+             等既有樣式），不再共用實色帶——PM 三次回饋：這幾個元件本來就有自己的半透明卡片樣式，
+             外面再包一層 #002923 實色帶等於把它們悶成不透明，且不必要地擴大覆蓋地圖的面積。 --}}
+        <div class="pointer-events-auto mx-auto flex w-full max-w-md flex-col gap-3 px-4 pb-3">
             <livewire:announcement-banner />
 
-            {{-- 我的回報審核結果（已登入才顯示）--}}
             @auth
             <livewire:my-report-status />
             @endauth
 
             <button type="button"
                     onclick="window.dispatchEvent(new CustomEvent('hazdar:report-clicked'))"
-                    class="mx-auto flex w-full max-w-md items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(8,145,178,0.6)] transition active:scale-95 hover:bg-cyan-500">
+                    class="flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(8,145,178,0.6)] transition active:scale-95 hover:bg-cyan-500">
                 <span class="text-xl">⚠️</span>
                 <span>{{ __('立即回報災情') }}</span>
             </button>
+        </div>
 
-            {{-- 共用 footer（v0.3 二次回饋 item 2/6）：跳出跑馬燈與按鈕後縮小為純連結+燈號 --}}
+        {{-- 底帶：只剩 footer 這行小字連結 + 燈號，實色帶壓到最薄，減少覆蓋地圖面積（PM 三次回饋）--}}
+        <div class="pointer-events-auto bg-[#002923] px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_10px_rgba(0,0,0,0.35)]">
             <div class="mx-auto w-full max-w-3xl">
                 @include('partials.footer-links')
             </div>
