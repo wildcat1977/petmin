@@ -107,13 +107,14 @@ function applyTileDarkFilter(theme) {
     }
 }
 
-// ── 災情分類視覺（對應圖例：淹水藍/道路橘/停電黃/結構紅/收容所綠）──
-const CATEGORY_META = {
-    flood:             { color: '#38bdf8', label: () => window.i18n?.catFlood ?? '淹水' },
-    road_blocked:      { color: '#fb923c', label: () => window.i18n?.catRoadBlocked ?? '道路中斷' },
-    power_outage:      { color: '#facc15', label: () => window.i18n?.catPowerOutage ?? '停電' },
-    structural_damage: { color: '#f87171', label: () => window.i18n?.catStructural ?? '結構受損' },
-};
+// ── 災情分類視覺：由後台 report_categories 驅動（spec §11.7）──
+const CATEGORY_META = {};
+{
+    const el = document.getElementById('radar-map');
+    (JSON.parse(el?.dataset.categories || '[]')).forEach((c) => {
+        CATEGORY_META[c.slug] = { color: c.color, label: () => c.name, active: c.active, extra: c.extra };
+    });
+}
 
 // 視覺分層：unverified 半透明 → corroborated 實心 → official 加白框
 const VERIFICATION_STYLE = {
@@ -135,7 +136,7 @@ let radarEchoLayer = null;     // 雷達回波 ImageOverlay
 let radarEchoTimer = null;
 let floodLayer = null;         // 淹水潛勢 WMTS
 let currentTileLayer = null;   // 底圖圖層（隨主題切換）
-let activeCategories = new Set(Object.keys(CATEGORY_META));
+let activeCategories = new Set(Object.entries(CATEGORY_META).filter(([, m]) => m.active).map(([slug]) => slug));
 let sheltersVisible = false;
 let sheltersCache = null;      // 收容所清單快取（每次頁面生命週期抓一次）
 let fetchController = null;
@@ -183,7 +184,7 @@ function createPopupEl(p) {
     head.appendChild(dot);
     const title = document.createElement('span');
     let text = meta ? meta.label() : p.cat;
-    if (p.cat === 'flood' && p.extra) text += `（${window.i18n?.waterDepth ?? '水深'} ~${p.extra}cm）`;
+    if (p.extra != null && meta?.extra) text += `（${meta.extra.label} ~${p.extra}${meta.extra.unit}）`;
     title.textContent = text;
     head.appendChild(title);
     const vl = document.createElement('span');

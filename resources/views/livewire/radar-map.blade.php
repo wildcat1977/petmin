@@ -56,6 +56,27 @@ new class extends Component
         return $messages ?: ['📡 系統運作中，等待回報資料…'];
     }
 
+    /**
+     * 分類視覺 meta（含停用：既有點位仍需上色/標籤），注入 data-categories
+     * 供 app.js 於 runtime 建 CATEGORY_META（spec §11.7）。
+     *
+     * @return list<array{slug: string, name: string, emoji: ?string, color: string, active: bool, extra: ?array{label: string, unit: string}}>
+     */
+    public function getCategoryMetaProperty(): array
+    {
+        return \App\Models\ReportCategory::allOrdered()->map(fn ($cat) => [
+            'slug' => $cat->slug,
+            'name' => __($cat->name),
+            'emoji' => $cat->emoji,
+            'color' => $cat->color,
+            'active' => $cat->is_active,
+            'extra' => $cat->extra_field ? [
+                'label' => __($cat->extra_field['label']),
+                'unit' => $cat->extra_field['unit'] ?? '',
+            ] : null,
+        ])->values()->all();
+    }
+
     #[On('report-submitted')]
     public function refreshMap(): void
     {
@@ -76,6 +97,7 @@ new class extends Component
     data-radar-echo-url="{{ route('api.radar-echo') }}"
     data-radar-echo-bounds='@json(config('hazdar.sources.radar_echo.bounds'))'
     data-flood-potential='@json(config('hazdar.flood_potential'))'
+    data-categories='@json($this->categoryMeta)'
     @if ($showDistricts) data-districts-url="{{ asset('geo/taipei-districts.json') }}" @endif
     data-ticker='@json($this->tickerMessages)'
 ></div>

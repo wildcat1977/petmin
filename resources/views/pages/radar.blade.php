@@ -38,14 +38,10 @@
 
         {{-- 分類篩選 chips（對應圖例配色；收容所為獨立圖層開關） --}}
         <div class="pointer-events-auto flex flex-wrap gap-1.5 px-4">
-            <button type="button" data-map-chip="flood" style="--chip-color:#38bdf8"
-                    class="map-chip chip-on">💧 {{ __('淹水') }}</button>
-            <button type="button" data-map-chip="road_blocked" style="--chip-color:#fb923c"
-                    class="map-chip chip-on">🚧 {{ __('道路中斷') }}</button>
-            <button type="button" data-map-chip="power_outage" style="--chip-color:#facc15"
-                    class="map-chip chip-on">⚡ {{ __('停電') }}</button>
-            <button type="button" data-map-chip="structural_damage" style="--chip-color:#f87171"
-                    class="map-chip chip-on">🏚️ {{ __('結構受損') }}</button>
+            @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
+                <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
+                        class="map-chip chip-on">{{ $cat->emoji }} {{ __($cat->name) }}</button>
+            @endforeach
             <button type="button" data-map-chip="shelters" style="--chip-color:#4ade80"
                     class="map-chip">🏠 {{ __('收容所') }}</button>
             <button type="button" data-map-chip="radar_echo" style="--chip-color:#22d3ee"

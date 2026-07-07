@@ -229,42 +229,49 @@ new class extends Component
                     </div>
 
                     <form wire:submit="submit" class="mt-4 space-y-4">
-                        {{-- 災情分類（必選，四鈕；配色對應地圖圖例） --}}
+                        {{-- 災情分類（必選；來源 report_categories，配色對應地圖圖例） --}}
                         <div>
                             <label class="block text-xs font-medium text-slate-400">{{ __('災情分類') }}</label>
                             <div class="mt-2 grid grid-cols-2 gap-2">
-                                @foreach ([
-                                    \App\Models\Report::CATEGORY_FLOOD => ['label' => __('💧 淹水'), 'on' => 'border-sky-400/60 bg-sky-500/15 text-sky-200 shadow-[0_0_18px_rgba(56,189,248,0.35)]'],
-                                    \App\Models\Report::CATEGORY_ROAD_BLOCKED => ['label' => __('🚧 道路中斷'), 'on' => 'border-orange-400/60 bg-orange-500/15 text-orange-200 shadow-[0_0_18px_rgba(251,146,60,0.35)]'],
-                                    \App\Models\Report::CATEGORY_POWER_OUTAGE => ['label' => __('⚡ 停電'), 'on' => 'border-yellow-400/60 bg-yellow-500/15 text-yellow-200 shadow-[0_0_18px_rgba(250,204,21,0.35)]'],
-                                    \App\Models\Report::CATEGORY_STRUCTURAL_DAMAGE => ['label' => __('🏚️ 結構受損'), 'on' => 'border-rose-400/60 bg-rose-500/15 text-rose-200 shadow-[0_0_18px_rgba(244,63,94,0.35)]'],
-                                ] as $value => $opt)
+                                @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
                                     <button type="button"
-                                            wire:click="$set('category', '{{ $value }}')"
-                                            class="flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition
-                                                   {{ $category === $value ? $opt['on'] : 'border-white/10 bg-black/30 text-slate-400 hover:border-white/20' }}">
-                                        {{ $opt['label'] }}
+                                            wire:click="$set('category', '{{ $cat->slug }}')"
+                                            @class([
+                                                'flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition',
+                                                'border-white/10 bg-black/30 text-slate-400 hover:border-white/20' => $category !== $cat->slug,
+                                            ])
+                                            @if ($category === $cat->slug)
+                                                style="border-color: {{ $cat->color }}99; background: {{ $cat->color }}26; color: {{ $cat->color }}; box-shadow: 0 0 18px {{ $cat->color }}59"
+                                            @endif>
+                                        {{ $cat->emoji }} {{ __($cat->name) }}
                                     </button>
                                 @endforeach
                             </div>
                         </div>
 
-                        {{-- 淹水深度（僅淹水顯示，選填） --}}
-                        @if ($category === \App\Models\Report::CATEGORY_FLOOD)
+                        {{-- 分類附加數值欄（extra_field 有設定才顯示，選填） --}}
+                        @php $extraField = \App\Models\ReportCategory::bySlug($category)?->extra_field; @endphp
+                        @if ($extraField)
                             <div>
-                                <label class="block text-xs font-medium text-slate-400">{{ __('💧 目測水深') }} <span class="text-slate-600">（{{ __('選填') }}）</span></label>
-                                <div class="mt-2 grid grid-cols-5 gap-1.5">
-                                    @foreach ([10 => __('腳踝'), 30 => __('小腿'), 50 => __('及膝'), 100 => __('及腰'), 150 => __('一層樓')] as $cm => $label)
-                                        <button type="button"
-                                                wire:click="$set('extraValue', {{ $extraValue === $cm ? 'null' : $cm }})"
-                                                class="rounded-lg border px-1 py-2 text-[11px] font-medium transition
-                                                       {{ $extraValue === $cm
-                                                           ? 'border-sky-400/70 bg-sky-500/20 text-sky-100'
-                                                           : 'border-white/10 bg-black/30 text-slate-400 hover:border-white/20' }}">
-                                            {{ $label }}<br><span class="opacity-60">{{ $cm }}cm</span>
-                                        </button>
-                                    @endforeach
-                                </div>
+                                <label class="block text-xs font-medium text-slate-400">{{ __($extraField['label']) }} <span class="text-slate-600">（{{ $extraField['unit'] ?? '' }}，{{ __('選填') }}）</span></label>
+                                @if (! empty($extraField['presets']))
+                                    <div class="mt-2 grid grid-cols-5 gap-1.5">
+                                        @foreach ($extraField['presets'] as $preset)
+                                            <button type="button"
+                                                    wire:click="$set('extraValue', {{ $extraValue === $preset['value'] ? 'null' : $preset['value'] }})"
+                                                    class="rounded-lg border px-1 py-2 text-[11px] font-medium transition
+                                                           {{ $extraValue === $preset['value']
+                                                               ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100'
+                                                               : 'border-white/10 bg-black/30 text-slate-400 hover:border-white/20' }}">
+                                                {{ __($preset['hint']) }}<br><span class="opacity-60">{{ $preset['value'] }}{{ $extraField['unit'] ?? '' }}</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                <input type="number" wire:model="extraValue"
+                                       min="{{ $extraField['min'] ?? 0 }}" max="{{ $extraField['max'] ?? 9999 }}"
+                                       class="mt-2 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-sm"
+                                       placeholder="{{ __($extraField['label']) }}">
                                 @error('extraValue') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
                             </div>
                         @endif

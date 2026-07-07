@@ -26,14 +26,9 @@
     {{-- i18n for JavaScript --}}
     <script>
         window.i18n = {
-            catFlood:               @js(__('淹水')),
-            catRoadBlocked:         @js(__('道路中斷')),
-            catPowerOutage:         @js(__('停電')),
-            catStructural:          @js(__('結構受損')),
             vlUnverified:           @js(__('未核實')),
             vlCorroborated:         @js(__('多方佐證')),
             vlOfficial:             @js(__('官方核實')),
-            waterDepth:             @js(__('水深')),
             shelterOpen:            @js(__('🟢 開設中')),
             shelterClosed:          @js(__('⚪ 未開設')),
             shelterCapacity:        @js(__('容量')),

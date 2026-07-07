@@ -89,14 +89,13 @@ $verificationConfig = [
     'corroborated' => ['label' => __('多方佐證'), 'class' => 'bg-sky-500/20 text-sky-400'],
     'official'     => ['label' => __('官方核實'), 'class' => 'bg-green-500/20 text-green-400'],
 ];
-$categoryConfig = [
-    'flood'             => ['label' => __('淹水'),     'class' => 'bg-sky-500/15 text-sky-400 ring-1 ring-sky-500/30'],
-    'road_blocked'      => ['label' => __('道路中斷'), 'class' => 'bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30'],
-    'power_outage'      => ['label' => __('停電'),     'class' => 'bg-yellow-500/15 text-yellow-300 ring-1 ring-yellow-500/30'],
-    'structural_damage' => ['label' => __('結構受損'), 'class' => 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30'],
-];
+{{-- 分類徽章：由 report_categories 驅動（含停用，舊通報仍需標籤/配色），色票改 inline style --}}
+$categoryConfig = \App\Models\ReportCategory::allOrdered()->mapWithKeys(fn ($cat) => [$cat->slug => [
+    'label' => __($cat->name),
+    'style' => "background: {$cat->color}26; color: {$cat->color}; box-shadow: inset 0 0 0 1px {$cat->color}4d",
+]])->all();
 $categoryFallback = fn ($category) => $categoryConfig[$category]
-    ?? ['label' => $category, 'class' => 'bg-white/10 text-slate-400'];
+    ?? ['label' => $category, 'style' => 'background: rgba(255,255,255,0.1); color: #94a3b8'];
 @endphp
 
 <div
@@ -261,7 +260,7 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
                         </td>
                         <td class="px-4 py-3">
                             @php $tcfg = $categoryFallback($report->category); @endphp
-                            <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $tcfg['class'] }}">
+                            <span class="rounded-full px-2 py-0.5 text-xs font-medium" style="{{ $tcfg['style'] }}">
                                 {{ $tcfg['label'] }}
                             </span>
                         </td>
@@ -332,7 +331,7 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
                         {{ $report->created_at->format('Y-m-d H:i') }}
                     </span>
                     <div class="flex items-center gap-1.5">
-                        <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $tcfg['class'] }}">
+                        <span class="rounded-full px-2 py-0.5 text-xs font-medium" style="{{ $tcfg['style'] }}">
                             {{ $tcfg['label'] }}
                         </span>
                         <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $cfg['class'] }}">
@@ -427,7 +426,7 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
                                 <span class="text-xs text-slate-600">{{ $report->created_at->format('H:i') }}</span>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $tcfg['class'] }}">
+                                <span class="rounded-full px-2 py-0.5 text-xs font-medium" style="{{ $tcfg['style'] }}">
                                     {{ $tcfg['label'] }}
                                 </span>
                             </td>
@@ -481,7 +480,7 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
                 <div class="rounded-xl border border-amber-500/20 bg-white/5 p-4">
                     <div class="mb-3 flex items-center justify-between gap-2">
                         <span class="text-xs text-slate-400">{{ $report->created_at->format('Y-m-d H:i') }}</span>
-                        <span class="rounded-full px-2 py-0.5 text-xs font-medium {{ $tcfg['class'] }}">
+                        <span class="rounded-full px-2 py-0.5 text-xs font-medium" style="{{ $tcfg['style'] }}">
                             {{ $tcfg['label'] }}
                         </span>
                     </div>

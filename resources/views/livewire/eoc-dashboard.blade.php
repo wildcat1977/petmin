@@ -261,9 +261,10 @@ new class extends Component
             {{-- 圖例 --}}
             <div class="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg bg-black/70 px-3 py-2 text-[11px] backdrop-blur">
                 <p class="mb-1 font-semibold text-slate-400">圖例</p>
-                @foreach ([['#38bdf8', '淹水'], ['#fb923c', '道路中斷'], ['#facc15', '停電'], ['#f87171', '結構受損'], ['#4ade80', '收容所']] as [$color, $label])
-                    <p class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: {{ $color }}"></span>{{ $label }}</p>
+                @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
+                    <p class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: {{ $cat->color }}"></span>{{ $cat->name }}</p>
                 @endforeach
+                <p class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #4ade80"></span>收容所</p>
             </div>
         </section>
 
