@@ -1,9 +1,10 @@
 <?php
 
-use App\Models\DashboardResource;
 use App\Models\ExternalAlert;
+use App\Models\InfoLink;
 use App\Models\Report;
 use App\Models\ReportCategory;
+use App\Models\Shelter;
 use App\Models\WeatherObservation;
 use App\Services\DataSourceHealth;
 use Illuminate\Support\Facades\Cache;
@@ -110,18 +111,21 @@ new class extends Component
             ->all();
     }
 
-    public function getResourcesProperty(): array
+    /** @return array<string, list<array{label: string, url: string, status_text: ?string}>> */
+    public function getInfoLinksProperty(): array
     {
-        return DashboardResource::query()
+        return InfoLink::query()
+            ->where('is_active', true)
             ->orderBy('sort_order')
-            ->get()
-            ->map(fn ($r) => [
-                'label' => $r->label,
-                'current' => $r->current_qty,
-                'max' => $r->max_qty,
-                'unit' => $r->unit,
-                'ratio' => $r->max_qty > 0 ? min($r->current_qty / $r->max_qty, 1) : 0,
-            ])->all();
+            ->get(['section', 'label', 'url', 'status_text'])
+            ->groupBy('section')
+            ->map(fn ($g) => $g->map(fn ($l) => ['label' => $l->label, 'url' => $l->url, 'status_text' => $l->status_text])->all())
+            ->all();
+    }
+
+    public function getOpenShelterCountProperty(): int
+    {
+        return Shelter::query()->where('is_open', true)->count();
     }
 
     /** footer 真實健康指標（spec §2 設計修正：不做假數據） */
@@ -287,26 +291,26 @@ new class extends Component
                 </div>
             </section>
 
-            <section class="flex-1 rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
-                <p class="text-[10px] font-semibold tracking-widest text-slate-500">物資 / 民力調度看板</p>
+            <section class="flex-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
+                <p class="text-[10px] font-semibold tracking-widest text-slate-500">交通與清運資訊彙整</p>
                 <div class="mt-2 space-y-3">
-                    @forelse ($this->resources as $resource)
+                    @foreach ($this->infoLinks as $section => $links)
                         <div>
-                            <div class="flex items-baseline justify-between text-xs">
-                                <span class="font-semibold text-slate-200">{{ $resource['label'] }}@if($resource['unit'])<span class="text-slate-500">（{{ $resource['unit'] }}）</span>@endif</span>
-                                <span class="font-mono text-slate-400">{{ $resource['current'] }} / {{ $resource['max'] }}</span>
-                            </div>
-                            <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
-                                <div class="h-full rounded-full {{ match (true) {
-                                    $resource['ratio'] >= 0.5 => 'bg-emerald-400',
-                                    $resource['ratio'] >= 0.25 => 'bg-yellow-400',
-                                    default => 'bg-rose-500',
-                                } }}" style="width: {{ round($resource['ratio'] * 100) }}%"></div>
-                            </div>
+                            <p class="text-[11px] font-semibold text-slate-400">{{ \App\Models\InfoLink::SECTION_LABELS[$section] ?? $section }}
+                                @if ($section === 'shelter')
+                                    <span class="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300">開設中 {{ $this->openShelterCount }}</span>
+                                @endif
+                            </p>
+                            <ul class="mt-1 space-y-0.5">
+                                @foreach ($links as $link)
+                                    <li class="flex items-baseline justify-between gap-2 text-xs">
+                                        <a href="{{ $link['url'] }}" target="_blank" rel="noopener" class="text-cyan-400 hover:text-cyan-300">{{ $link['label'] }} ↗</a>
+                                        @if ($link['status_text'])<span class="text-[10px] text-slate-500">{{ $link['status_text'] }}</span>@endif
+                                    </li>
+                                @endforeach
+                            </ul>
                         </div>
-                    @empty
-                        <p class="text-xs text-slate-600">尚無物資項目（後台可新增）</p>
-                    @endforelse
+                    @endforeach
                 </div>
             </section>
         </aside>

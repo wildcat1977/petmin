@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\DashboardResource;
 use App\Models\ExternalAlert;
 use App\Models\Report;
 use App\Models\User;
@@ -111,15 +110,5 @@ class EocDashboardTest extends TestCase
         ]);
 
         $this->get('/dashboard')->assertSee('TYPHOON-EMERGENCY');
-    }
-
-    public function test_resource_board_reflects_manual_quantities(): void
-    {
-        DashboardResource::create(['label' => '沙包', 'current_qty' => 340, 'max_qty' => 500, 'unit' => '組', 'sort_order' => 1]);
-
-        $resources = Livewire::test('eoc-dashboard')->get('resources');
-
-        $this->assertSame('沙包', $resources[0]['label']);
-        $this->assertEqualsWithDelta(0.68, $resources[0]['ratio'], 0.001);
     }
 }

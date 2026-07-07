@@ -26,6 +26,15 @@ class DashboardResourceResource extends Resource
 
     protected static ?string $pluralModelLabel = '物資項目';
 
+    /**
+     * 物資看板已由交通與清運資訊彙整看板取代（spec §11.5）；
+     * 資料表與後台管理保留，僅隱藏導覽項目。
+     */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return DashboardResourceForm::configure($schema);
