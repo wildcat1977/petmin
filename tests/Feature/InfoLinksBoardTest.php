@@ -36,4 +36,15 @@ class InfoLinksBoardTest extends TestCase
 
         Livewire::test('eoc-dashboard')->assertDontSee('台北捷運');
     }
+
+    public function test_section_order_follows_section_labels_not_sort_order(): void
+    {
+        // 區塊順序須依 SECTION_LABELS 鍵序結構性固定：sort_order 只排區內連結，
+        // 後台 reorderable 跨區拖曳會全域改號，不能因此打亂區塊排列。
+        InfoLink::where('section', 'shelter')->first()->update(['sort_order' => 1]);
+
+        $html = Livewire::test('eoc-dashboard')->html();
+
+        $this->assertTrue(strpos($html, '大眾交通') < strpos($html, '避難收容所'));
+    }
 }

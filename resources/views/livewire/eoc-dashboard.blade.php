@@ -111,15 +111,23 @@ new class extends Component
             ->all();
     }
 
-    /** @return array<string, list<array{label: string, url: string, status_text: ?string}>> */
+    /**
+     * 區塊順序依 SECTION_LABELS 鍵序結構性固定（sort_order 只排區內連結；
+     * 後台 reorderable 跨區拖曳會全域改號，不能因此打亂區塊排列）。
+     *
+     * @return array<string, list<array{label: string, url: string, status_text: ?string}>>
+     */
     public function getInfoLinksProperty(): array
     {
-        return InfoLink::query()
+        $grouped = InfoLink::query()
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get(['section', 'label', 'url', 'status_text'])
-            ->groupBy('section')
-            ->map(fn ($g) => $g->map(fn ($l) => ['label' => $l->label, 'url' => $l->url, 'status_text' => $l->status_text])->all())
+            ->groupBy('section');
+
+        return collect(array_keys(InfoLink::SECTION_LABELS))
+            ->filter(fn ($s) => $grouped->has($s))
+            ->mapWithKeys(fn ($s) => [$s => $grouped[$s]->map(fn ($l) => ['label' => $l->label, 'url' => $l->url, 'status_text' => $l->status_text])->all()])
             ->all();
     }
 
@@ -272,7 +280,7 @@ new class extends Component
             </div>
         </section>
 
-        {{-- 右欄：事件統計 + 物資看板 --}}
+        {{-- 右欄：事件統計 + 交通與清運資訊彙整 --}}
         <aside class="flex flex-col gap-2">
             <section class="rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
                 <p class="text-[10px] font-semibold tracking-widest text-slate-500">事件統計 / 即時（近 24H）</p>
