@@ -28,6 +28,11 @@ class MobilePanelTest extends TestCase
             ->assertSee('狀態')                                  // 面板三態區標題（面板專有）
             ->assertSee('data-map-chip="notified"', false)       // 面板三態 checkbox（本元件僅面板有）
             ->assertSee('data-map-chip="shelters"', false)       // 面板收容所 checkbox
-            ->assertSee('card-open-btn', false);                 // 面板卡片按鈕
+            ->assertSee('card-open-btn', false)                  // 面板卡片按鈕
+            // 面板圖層/狀態 checkbox 群組須以 <div wire:ignore> 整組隔離 wire:poll.10s
+            // morph，否則 initChips（app.js）切換的 chip-on 勾選狀態每 10s 被還原
+            // （3d review Critical）。注意：card-rain 分量本身也有一個
+            // `wire:ignore class="mt-2 h-28"`，字串不同，故此斷言只認裸 `<div wire:ignore>`。
+            ->assertSee('<div wire:ignore>', false);
     }
 }

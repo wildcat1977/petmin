@@ -253,28 +253,35 @@ new class extends Component
         {{-- 面板 --}}
         <div x-show="panelOpen" x-cloak x-transition.origin.right
              class="pointer-events-auto fixed bottom-24 right-0 top-16 z-[505] flex w-64 flex-col gap-3 overflow-y-auto rounded-l-xl border-l border-white/10 bg-[#002923]/98 p-3 backdrop-blur">
-            {{-- 圖層 --}}
-            <div>
-                <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('圖層') }}</p>
-                <div class="flex flex-col gap-1">
-                    @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
-                        <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
-                                class="layer-check chip-on">{{ $cat->emoji }} {{ __($cat->name) }}</button>
-                    @endforeach
-                    <button type="button" data-map-chip="shelters" style="--chip-color:#4ade80" class="layer-check">🏠 {{ __('收容所') }}</button>
-                    <button type="button" data-map-chip="radar_echo" style="--chip-color:#22d3ee" class="layer-check">🌀 {{ __('雷達回波') }}</button>
-                    @if (config('hazdar.flood_potential.xyz') || config('hazdar.flood_potential.wms_url'))
-                        <button type="button" data-map-chip="flood_potential" style="--chip-color:#818cf8" class="layer-check">🗺️ {{ __('淹水潛勢') }}</button>
-                    @endif
+            {{-- 圖層/狀態 checkbox 群組 wire:ignore（spec §12.7 3d 修正）：
+                 勾選狀態由 initChips（app.js）純前端管理，wire:poll.10s 每次 morph
+                 會把 DOM 蓋回本檔的預設 class，把使用者剛關閉的 chip 打勾狀態還原。
+                 這兩組清單資料是 session 內靜態的（分類/圖層來源不隨 poll 變動），
+                 不需要每次 poll 重新渲染，故整組隔離安全。 --}}
+            <div wire:ignore>
+                {{-- 圖層 --}}
+                <div>
+                    <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('圖層') }}</p>
+                    <div class="flex flex-col gap-1">
+                        @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
+                            <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
+                                    class="layer-check chip-on">{{ $cat->emoji }} {{ __($cat->name) }}</button>
+                        @endforeach
+                        <button type="button" data-map-chip="shelters" style="--chip-color:#4ade80" class="layer-check">🏠 {{ __('收容所') }}</button>
+                        <button type="button" data-map-chip="radar_echo" style="--chip-color:#22d3ee" class="layer-check">🌀 {{ __('雷達回波') }}</button>
+                        @if (config('hazdar.flood_potential.xyz') || config('hazdar.flood_potential.wms_url'))
+                            <button type="button" data-map-chip="flood_potential" style="--chip-color:#818cf8" class="layer-check">🗺️ {{ __('淹水潛勢') }}</button>
+                        @endif
+                    </div>
                 </div>
-            </div>
-            {{-- 狀態三態 --}}
-            <div>
-                <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('狀態') }}</p>
-                <div class="flex flex-col gap-1">
-                    <button type="button" data-map-chip="reported" style="--chip-color:#22d3ee" class="layer-check chip-on">📍 {{ __('回報') }}</button>
-                    <button type="button" data-map-chip="notified" style="--chip-color:#818cf8" class="layer-check chip-on">📣 {{ __('已通報') }}</button>
-                    <button type="button" data-map-chip="resolved" style="--chip-color:#94a3b8" class="layer-check chip-on">✅ {{ __('已排除') }}</button>
+                {{-- 狀態三態 --}}
+                <div>
+                    <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('狀態') }}</p>
+                    <div class="flex flex-col gap-1">
+                        <button type="button" data-map-chip="reported" style="--chip-color:#22d3ee" class="layer-check chip-on">📍 {{ __('回報') }}</button>
+                        <button type="button" data-map-chip="notified" style="--chip-color:#818cf8" class="layer-check chip-on">📣 {{ __('已通報') }}</button>
+                        <button type="button" data-map-chip="resolved" style="--chip-color:#94a3b8" class="layer-check chip-on">✅ {{ __('已排除') }}</button>
+                    </div>
                 </div>
             </div>
             {{-- 資訊卡按鈕 --}}
