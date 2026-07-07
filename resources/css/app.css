@@ -10,7 +10,7 @@
 
 @theme {
     --font-sans: 'Inter', 'Noto Sans TC', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
-    --color-radar-bg: #0d1117;
+    --color-radar-bg: #002923;
     --color-radar-panel: #161b22;
     --color-radar-accent: #ef4444;
 }
@@ -24,7 +24,7 @@
     background: #f1f5f9;
 }
 #radar-map.map-theme-dark {
-    background: #0d1117;
+    background: #002923;
 }
 
 /* Geocoder 搜尋框（亮色預設） */

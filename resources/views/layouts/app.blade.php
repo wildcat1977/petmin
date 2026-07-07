@@ -8,7 +8,7 @@
 
     {{-- SEO / OG --}}
     <meta name="description" content="颱風豪雨災時，回報淹水、道路中斷、停電、結構受損，即時匯聚成台北市單一災情情勢圖。">
-    <meta name="theme-color" content="#0d1117">
+    <meta name="theme-color" content="#002923">
     <link rel="canonical" href="{{ url()->current() }}">
 
     <meta property="og:title" content="Hazdar 全民韌性災害回報系統">
@@ -54,7 +54,7 @@
     </script>
     @endif
 </head>
-<body class="bg-[#0d1117] text-slate-100 antialiased min-h-dvh">
+<body class="bg-[#002923] text-slate-100 antialiased min-h-dvh">
     {{ $slot ?? '' }}
     @yield('content')
 
