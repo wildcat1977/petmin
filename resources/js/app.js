@@ -137,6 +137,7 @@ let radarEchoTimer = null;
 let floodLayer = null;         // 淹水潛勢 WMTS
 let currentTileLayer = null;   // 底圖圖層（隨主題切換）
 let activeCategories = new Set(Object.entries(CATEGORY_META).filter(([, m]) => m.active).map(([slug]) => slug));
+let showResolved = true;
 let sheltersVisible = false;
 let sheltersCache = null;      // 收容所清單快取（每次頁面生命週期抓一次）
 let fetchController = null;
@@ -191,6 +192,12 @@ function createPopupEl(p) {
     vl.style.cssText = 'margin-left:auto;font-weight:500;font-size:11px;color:#64748b';
     vl.textContent = VERIFICATION_LABEL[p.vl]?.() ?? '';
     head.appendChild(vl);
+    if (p.st) {
+        const st = document.createElement('span');
+        st.style.cssText = 'margin-left:6px;font-weight:600;font-size:11px;color:' + (p.st === 'resolved' ? '#94a3b8' : '#22d3ee');
+        st.textContent = p.st === 'resolved' ? (window.i18n?.stResolved ?? '✅ 已排除') : (window.i18n?.stNotified ?? '📣 已通報');
+        head.appendChild(st);
+    }
     wrap.appendChild(head);
 
     if (p.desc) {
@@ -212,13 +219,16 @@ function buildPointsLayer(points) {
     points.forEach((p) => {
         const meta = CATEGORY_META[p.cat];
         const style = VERIFICATION_STYLE[p.vl] ?? VERIFICATION_STYLE.unverified;
+        const resolved = p.st === 'resolved';
+        const notified = p.st === 'notified';
+        const baseColor = resolved ? '#64748b' : (meta?.color ?? '#94a3b8');
         const circle = L.circleMarker([p.lat, p.lng], {
             radius: 8,
-            fillColor: meta?.color ?? '#94a3b8',
-            color: style.ring ? '#ffffff' : (meta?.color ?? '#94a3b8'),
-            weight: style.weight,
+            fillColor: baseColor,
+            color: notified ? '#22d3ee' : (style.ring ? '#ffffff' : baseColor),
+            weight: notified ? 3 : style.weight,
             opacity: 1,
-            fillOpacity: style.fillOpacity,
+            fillOpacity: resolved ? 0.35 : style.fillOpacity,
         });
         circle.bindPopup(createPopupEl(p), { maxWidth: 280 });
         layer.addLayer(circle);
@@ -278,6 +288,7 @@ async function fetchReports() {
         zoom: radarMap.getZoom(),
         categories: [...activeCategories].join(','),
     });
+    if (! showResolved) params.set('show_resolved', '0');
 
     if (fetchController) fetchController.abort();
     fetchController = new AbortController();
@@ -389,6 +400,7 @@ function initChips() {
         shelters: (on) => { sheltersVisible = on; renderShelters(); },
         radar_echo: toggleRadarEcho,
         flood_potential: toggleFloodPotential,
+        resolved: (on) => { showResolved = on; scheduleFetch(); },
     };
 
     document.querySelectorAll('[data-map-chip]').forEach((btn) => {

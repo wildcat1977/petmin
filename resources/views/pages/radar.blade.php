@@ -44,6 +44,8 @@
             @endforeach
             <button type="button" data-map-chip="shelters" style="--chip-color:#4ade80"
                     class="map-chip">🏠 {{ __('收容所') }}</button>
+            <button type="button" data-map-chip="resolved" style="--chip-color:#94a3b8"
+                    class="map-chip chip-on">✅ {{ __('已排除') }}</button>
             <button type="button" data-map-chip="radar_echo" style="--chip-color:#22d3ee"
                     class="map-chip">🌀 {{ __('雷達回波') }}</button>
             @if (config('hazdar.flood_potential.xyz') || config('hazdar.flood_potential.wms_url'))

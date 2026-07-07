@@ -166,6 +166,13 @@ class ReportsTable
                     ->visible(fn (Report $record) => $record->verification_level !== Report::VERIFICATION_OFFICIAL)
                     ->action(fn (Report $record) => $record->update(['verification_level' => Report::VERIFICATION_OFFICIAL])),
 
+                Action::make('mark_notified')
+                    ->label('標記已通報')
+                    ->color('info')
+                    ->icon('heroicon-o-megaphone')
+                    ->visible(fn (Report $record) => $record->notified_at === null && $record->resolved_at === null)
+                    ->action(fn (Report $record) => $record->update(['notified_at' => now()])),
+
                 Action::make('mark_resolved')
                     ->label('標記已排除')
                     ->color('gray')

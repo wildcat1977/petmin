@@ -29,6 +29,8 @@
             vlUnverified:           @js(__('未核實')),
             vlCorroborated:         @js(__('多方佐證')),
             vlOfficial:             @js(__('官方核實')),
+            stNotified:             @js(__('📣 已通報')),
+            stResolved:             @js(__('✅ 已排除')),
             shelterOpen:            @js(__('🟢 開設中')),
             shelterClosed:          @js(__('⚪ 未開設')),
             shelterCapacity:        @js(__('容量')),

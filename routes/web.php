@@ -66,7 +66,7 @@ Route::get('/reports/export', function () {
     $callback = function () use ($reports, $statusLabels) {
         $handle = fopen('php://output', 'w');
         fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-        fputcsv($handle, ['回報時間', '分類', '補充數值', '地點', '審核狀態', '核實層級', '已排除', '說明', '照片網址', '緯度', '經度']);
+        fputcsv($handle, ['回報時間', '分類', '補充數值', '地點', '審核狀態', '核實層級', '已通報', '已排除', '說明', '照片網址', '緯度', '經度']);
 
         foreach ($reports as $report) {
             fputcsv($handle, [
@@ -76,6 +76,7 @@ Route::get('/reports/export', function () {
                 $report->address ?: '',
                 $statusLabels[$report->status] ?? $report->status,
                 Report::VERIFICATION_LABELS[$report->verification_level] ?? $report->verification_level,
+                $report->notified_at?->format('Y-m-d H:i') ?? '',
                 $report->resolved_at?->format('Y-m-d H:i') ?? '',
                 $report->description ?? '',
                 $report->publicImageUrl() ?? '',

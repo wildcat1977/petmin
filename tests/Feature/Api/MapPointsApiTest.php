@@ -52,17 +52,49 @@ class MapPointsApiTest extends TestCase
         $this->assertSame(Report::CATEGORY_POWER_OUTAGE, $points[0]['cat']);
     }
 
-    public function test_pending_is_visible_but_rejected_and_resolved_are_hidden(): void
+    public function test_pending_is_visible_but_rejected_is_hidden(): void
     {
         $this->makeReport(['status' => Report::STATUS_PENDING]);
         $this->makeReport(['status' => Report::STATUS_REJECTED]);
-        $this->makeReport(['status' => Report::STATUS_APPROVED, 'resolved_at' => now()]);
 
         $res = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16');
 
-        // 災時「可能有事」的價值大於等核實 → pending 上圖；
-        // 退件（垃圾內容）與已排除災情不上圖
+        // 災時「可能有事」的價值大於等核實 → pending 上圖；退件（垃圾內容）不上圖
         $this->assertCount(1, $res->json('points'));
+    }
+
+    public function test_resolved_is_visible_by_default_with_state_field(): void
+    {
+        $this->makeReport(['resolved_at' => now()]);
+        $this->makeReport(['notified_at' => now()]);
+        $this->makeReport();
+
+        $points = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16')->assertOk()->json('points');
+
+        $states = collect($points)->pluck('st');
+        $this->assertContains('resolved', $states);
+        $this->assertContains('notified', $states);
+        $this->assertCount(3, $points);
+    }
+
+    public function test_show_resolved_zero_hides_resolved(): void
+    {
+        $this->makeReport(['resolved_at' => now()]);
+        $this->makeReport();
+
+        $points = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16&show_resolved=0')
+            ->assertOk()->json('points');
+
+        $this->assertCount(1, $points);
+        $this->assertArrayNotHasKey('st', $points[0]);
+    }
+
+    public function test_resolved_beats_notified_in_state_derivation(): void
+    {
+        $this->makeReport(['notified_at' => now()->subHour(), 'resolved_at' => now()]);
+
+        $points = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16')->assertOk()->json('points');
+        $this->assertSame('resolved', $points[0]['st']);
     }
 
     public function test_photo_url_exposed_only_after_content_approval(): void

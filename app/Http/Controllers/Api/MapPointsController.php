@@ -42,7 +42,7 @@ class MapPointsController extends Controller
         if ($categories->isEmpty()) {
             $categories = collect(ReportCategory::slugs());
         }
-        $showResolved = (bool) ($validated['show_resolved'] ?? false);
+        $showResolved = (bool) ($validated['show_resolved'] ?? true);
 
         // 快取 key：bbox 取 3 位小數（~110m）讓鄰近請求命中同一快取
         $cacheKey = sprintf(
@@ -83,7 +83,7 @@ class MapPointsController extends Controller
             ->latest()
             ->limit($limit + 1)
             ->get(['id', 'category', 'extra_value', 'latitude', 'longitude',
-                'image_path', 'description', 'status', 'verification_level', 'created_at']);
+                'image_path', 'description', 'status', 'verification_level', 'notified_at', 'resolved_at', 'created_at']);
 
         $truncated = $reports->count() > $limit;
 
@@ -96,6 +96,7 @@ class MapPointsController extends Controller
                 'lng' => (float) $r->longitude,
                 'cat' => $r->category,
                 'vl' => $r->verification_level,
+                'st' => $r->resolved_at ? 'resolved' : ($r->notified_at ? 'notified' : null),
                 'extra' => $r->extra_value,
                 'img' => $r->publicImageUrl(),
                 'desc' => $r->description ? Str::limit($r->description, 60) : null,

@@ -67,6 +67,11 @@ class ReportForm
                     ->helperText('官方核實請用此欄位標記 official')
                     ->required(),
 
+                DateTimePicker::make('notified_at')
+                    ->label('已通報時間')
+                    ->nullable()
+                    ->helperText('已通報市府/相關單位處理'),
+
                 DateTimePicker::make('resolved_at')
                     ->label('已排除時間')
                     ->nullable()
