@@ -20,6 +20,10 @@
 
             <div class="flex items-center gap-2">
                 @include('partials.locale-switcher')
+                <a href="{{ route('cards') }}"
+                   class="flex items-center gap-1 rounded-full bg-black/60 px-3 py-2 text-xs text-slate-200 backdrop-blur hover:bg-black/80">
+                    🖼️ <span class="hidden sm:inline">{{ __('圖卡專區') }}</span>
+                </a>
                 @auth
                     <a href="{{ route('profile') }}"
                        class="flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 backdrop-blur hover:bg-black/80">
@@ -86,6 +90,7 @@
                 <a href="{{ route('reports') }}" class="hover:text-slate-300">{{ __('回報清單') }}</a>
                 <a href="{{ route('transparency') }}" class="hover:text-slate-300">{{ __('透明度報告') }}</a>
                 <a href="{{ route('stats') }}" class="hover:text-slate-300">{{ __('統計地圖') }}</a>
+                <a href="{{ route('cards') }}" class="hover:text-slate-300">{{ __('圖卡專區') }}</a>
                 @auth
                     <a href="{{ route('profile') }}" class="hover:text-slate-300">{{ __('我的回報') }}</a>
                 @else

@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\GmailAuthController;
 use App\Http\Middleware\SetLocale;
 use App\Models\Announcement;
+use App\Models\PromoCard;
 use App\Models\Report;
 use App\Models\Shelter;
 use Illuminate\Support\Facades\Cache;
@@ -42,6 +43,17 @@ Route::get('/news', function () {
 
     return view('pages.news', ['items' => $items]);
 })->name('news');
+
+// 圖卡專區（spec §11.6）
+Route::get('/cards', function () {
+    $groups = PromoCard::query()
+        ->where('is_active', true)
+        ->orderBy('sort_order')
+        ->get()
+        ->groupBy('group');
+
+    return view('pages.cards', ['groups' => $groups]);
+})->name('cards');
 
 // 點位 API（server-side bbox query + geohash 聚合，spec §7.2）
 Route::get('/api/map/reports', MapPointsController::class)->name('api.map.reports');
