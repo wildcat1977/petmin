@@ -2,12 +2,14 @@
 
 use App\Models\ExternalAlert;
 use App\Models\InfoLink;
+use App\Models\PromoCard;
 use App\Models\Report;
 use App\Models\ReportCategory;
 use App\Models\Shelter;
 use App\Models\WeatherObservation;
 use App\Services\DataSourceHealth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 
 new class extends Component
@@ -51,6 +53,7 @@ new class extends Component
             'infoLinks' => $this->computeInfoLinks(),
             'openShelterCount' => $this->computeOpenShelterCount(),
             'rainTrend' => $this->computeRainTrend(),
+            'promoCards' => $this->computePromoCards(),
         ]);
     }
 
@@ -172,6 +175,29 @@ new class extends Component
     }
 
     /**
+     * 啟用中圖卡（spec §12.5）：只存純陣列（title/image_url），避免快取 Eloquent 物件。
+     *
+     * @return list<array{title: string, image_url: string}>
+     */
+    private function computePromoCards(): array
+    {
+        return PromoCard::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['title', 'image_path'])
+            ->map(fn (PromoCard $c) => [
+                'title' => $c->title,
+                'image_url' => Storage::disk('public')->url($c->image_path),
+            ])
+            ->all();
+    }
+
+    public function getPromoCardsProperty(): array
+    {
+        return $this->sharedCardData()['promoCards'];
+    }
+
+    /**
      * CWA 資料源最近一次成功時間，僅供資料中斷警告框顯示用（驗收 §1-1）。
      * 完整健康對照表已移至後台 DataSourceHealthWidget（spec §11.1）。
      */
@@ -212,6 +238,7 @@ new class extends Component
         <x-dashboard-card card-key="info" :title="__('交通與清運資訊彙整')">
             @include('livewire.partials.card-info')
         </x-dashboard-card>
+        @include('livewire.partials.card-promo')
     </div>
 
     {{-- 行動版：底部單欄可捲動卡片抽屜（lg 以下顯示；同五張卡片內容，rain 卡不畫圖避免
@@ -232,5 +259,6 @@ new class extends Component
         <x-dashboard-card card-key="info" :title="__('交通與清運資訊彙整')">
             @include('livewire.partials.card-info')
         </x-dashboard-card>
+        @include('livewire.partials.card-promo')
     </div>
 </div>
