@@ -358,3 +358,19 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 **v0.3 全數完成（2026-07-08）。** 全套 163 測試綠;線上 hazdar.myurl.tw 桌機/手機實機驗收通過（含手機面板圖層切換跨 wire:poll 存活）。最終 whole-branch review：Ready to merge，無 Critical/Important。
 - **重要 pattern**：手機面板的圖層 checkbox 由 vanilla JS（`initChips`）管理 `chip-on` class，卻位於 `wire:poll.10s` scope 內 → 每次 poll 的 morph 會蓋回 blade 預設，故該區塊需 `wire:ignore`（比照 `radar-map.blade.php` 地圖容器）。凡「JS 直接改的 DOM」落在 Livewire poll 元件內都要 `wire:ignore`。
 - **v0.3 backlog（非本版 regression，未修）**：`report-list.blade.php:552` 圓餅圖 `borderColor:'#0d1117'` 為 JS 內嵌 hex（配色 grep 掃不到），該圖位於未變動的 `#161b22` 面板上、非本版重染的頁底，屬既有微視覺、非 v0.3 造成；`--color-radar-panel:#161b22` 為死 token；promo/news-counts 快取僅 TTL 不主動 bust（沿用既有可接受模式）。
+
+### 12.11 v0.3 二次回饋(2026-07-08 PM 二輪視覺調整)
+
+修正 §12.2/§12.6 部分安排、補 §12.9 未涵蓋的細節，並修一個與本版無關但驗收時發現的既有 bug。
+
+1. **跑馬燈移入頂帶**:改置頂帶banner 與 nav 之間(取代原底帶位置,比照舊 EOC 大屏 header 佈局);底帶因而收斂為純小字連結 + 燈號的精簡 footer(修正 §12.2 敘述)。
+2. **共用 footer / nav 連結**:新增 `partials/footer-links.blade.php`(各分類新聞篇數 + 4 個資料源健康燈號,取自 `Announcement::publishedCountsByCategory()` 與既有 `DataSourceHealth::all()`)與 `partials/nav-page-links.blade.php`(最新消息/通報清單/透明度報告/統計地圖),首頁與 profile/reports/stats/transparency/contact/news 六頁全面共用單一來源;**首頁補回**先前 v0.3 一輪隱藏的 4 個選單連結(修正 §12.6 的「隱藏」安排,改為桌機 nav 顯示)。footer 的健康燈號為**新增**顯示面(§11.1 移除的後台燈號本體不變,此為額外公開曝光,非還原)。
+3. **移除 MONITORING pill**:eoc-dashboard 頂部的「MONITORING/TYPHOON-EMERGENCY」浮動 pill 純裝飾、無資訊量,直接移除(隨附 `test_typhoon_badge_when_typhoon_alert_active`/`test_monitoring_badge_without_typhoon` 兩測試一併移除)。
+4. **桌機控制項重疊修正**:實測地圖明暗切換按鈕(y=[102,132.8])與 CWA/事件統計浮動卡(原 `top-28`=112)重疊 20.8px;卡片下移至 `top-36`(144px),淨空 11px。
+5. **管理員後台入口**:`is_admin` 使用者於 `/profile` 顯示「進入後台管理」連結;Filament admin panel 使用者選單加「回首頁」連回 `route('home')`。
+6. **24H 雨量圖表空白 bug 修正**(與本版視覺調整無關,驗收時發現):Chart.js 於容器 0 尺寸(卡片收合、手機 modal 未開)時建圖會畫成空白且不會於容器轉為可見後自動 resize。改用 `ResizeObserver` 延遲初始化:首次量到非 0 尺寸才建圖,之後尺寸變動呼叫 `resize()`;手機 modal 現在也真的顯示圖表(先前 `withChart=false` 完全不畫)。
+7. **附帶修復**:`report-list.blade.php` 在 `@php` 區塊內誤用 `{{-- --}}` blade 註解,新版 Blade 不再於 `@php` 內剝除該註解,編譯成非法 PHP;`view:clear` 重編譯後 `/reports` 500。已改 `//` PHP 註解修復,屬既有潛在 bug、與 v0.3 視覺調整無關,驗收 `view:clear` 時意外觸發並當場修掉。
+
+**驗收**:全套 170 測試綠(新增 `AdminLinkTest`/`LoggedInPagesSmokeTest`);線上 hazdar.myurl.tw 實機驗證跑馬燈位置、footer 燈號、pill 移除、桌機重疊消除(JS 量測 overlap_px=0)、雨量圖表(桌機卡片收合→展開、手機 modal 開啟)實際畫出長條圖、admin/非 admin 使用者看到/看不到後台連結。
+
+**已知非本輪處理項**:首頁公開曝光 4 個「test」標題的公告(災情通報/市府與氣象署/居家防災/停班停課,均含 "test" 字樣)目前線上真實存在於 `announcements` 資料表並會被一般訪客看到——這是驗收時發現的**既有生產資料**,非本輪程式改動造成,未經使用者確認不逕行刪除,留待使用者決定是否清除。
