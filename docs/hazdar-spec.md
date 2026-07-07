@@ -1,4 +1,6 @@
-# Hazdar 全民風災回報系統 — 技術規格 v0.1
+# Hazdar 全民風災回報系統 — 技術規格 v0.2
+
+> v0.2（2026-07-07）：依 PM 會議決議追加 §11 修訂。§1–§10 為 v0.1 基線，與 §11 牴觸處以 §11 為準（牴觸點已於原文標注）。
 
 - 基底:fork [ratdar](https://github.com/wildcat1977/ratdar)(Laravel 13 / Livewire 4 / Filament 5 / Horizon / PostgreSQL / Leaflet)
 - 範圍:台北市(行政區沿用 ratdar 既有 GeoJSON)
@@ -21,7 +23,7 @@
 ## 2. MVP 範圍與非目標
 
 **範圍(依 Phase 切分,見 §9):**
-分類回報 + 民眾地圖、CWA/NCDR/圖層整合、EOC dashboard、物資看板(Filament 官方手動維護)。
+分類回報 + 民眾地圖、CWA/NCDR/圖層整合、EOC dashboard、物資看板(Filament 官方手動維護)。*(v0.2:物資看板由「交通與清運資訊彙整」取代,見 §11.5)*
 
 **非目標(明確不做,防 scope creep):**
 
@@ -141,7 +143,7 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 ### 7.1 民眾地圖頁(改造 ratdar radar 頁)
 
 - 分類篩選 chips(對應圖例配色:淹水藍/道路橘/停電黃/結構紅/收容所綠)。
-- 視覺分層:`unverified` 半透明 → `corroborated` 實心 → `official` 加框/徽章;`resolved` 預設隱藏。
+- 視覺分層:`unverified` 半透明 → `corroborated` 實心 → `official` 加框/徽章;`resolved` 預設隱藏。*(v0.2:resolved 改為第三態顯示,見 §11.8)*
 - 圖層開關:雷達回波、淹水潛勢、收容所;颱風路徑(P1)。
 
 ### 7.2 點位 API(取代 ratdar 前端全量模式)
@@ -152,7 +154,7 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 - zoom 低 → 依 geohash(precision 隨 zoom 4~6)聚合回傳 `{center, count, dominant_category}`;zoom 高(約 ≥15)→ 回傳個別點位。
 - 單次回應筆數上限 + payload 上限(驗收標準 §1-3)。回應 cache 15~30s(依 bbox+filter 為 key)。
 
-### 7.3 EOC Dashboard(`/dashboard`,唯讀)
+### 7.3 EOC Dashboard(`/dashboard`,唯讀)*(v0.2:併入首頁單頁,`/dashboard` 302 轉向,見 §11.1)*
 
 - 版面同 mockup:左欄 CWA 即時 + 24H 雨量趨勢 + NCDR 燈號;中央地圖(同 7.2 API);右欄統計卡片 + 物資看板;頂部警戒跑馬燈;footer 真實健康指標(§2 設計修正)。
 - 更新:`wire:poll.10s`(統計/跑馬燈)、地圖 layer 各自依源週期刷新。
@@ -186,3 +188,88 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 | 4 | ratdar `reports` 實際欄位/審核狀態命名、cooldown 實作 | 阻塞 0 | Phase 0 讀 repo |
 | 5 | 災時反濫用參數:cooldown 秒數、每帳號每小時上限、無照片回報是否另設較嚴上限 | 1a 上線前 | wildcat(產品決策) |
 | 6 | 「認證志工(在線)」面板:手動數字或砍掉 | 非阻塞 | wildcat |
+
+---
+
+## 11. v0.2 修訂(2026-07-07 PM 會議決議)
+
+原則不變:能用程式就用程式、外部資料走落地、回報寫入路徑零共用依賴。視覺全面調整(候選人感、自製 icon 圖檔)列 **v0.3**,本版不做。
+
+### 11.1 首頁與 dashboard 整合(單頁取代兩頁)
+
+- `/` 保留現有全螢幕互動地圖為底(回報、篩選 chips、圖層開關不變),dashboard 內容改為左右兩欄**浮動可收合卡片**:
+  - 左欄:CWA 即時觀測、24H 雨量趨勢、NCDR 燈號。
+  - 右欄:統計卡片、交通與清運資訊彙整(§11.5,取代物資看板)。
+  - 每張卡右上角 ﹀ 收合/展開,狀態記 localStorage;行動版預設收合。
+- 頂部警戒跑馬燈、footer 健康指標照舊掛在首頁。
+- `/dashboard` 302 轉向 `/`(EOC 大屏同用此頁);既有 eoc-dashboard 拆成卡片子元件重用,`wire:poll` 週期不變。
+
+### 11.2 雷達回波對位校正
+
+- **根因(已確認)**:CV1_3600.png 為等經緯(equirectangular)投影,Leaflet(EPSG:3857) `ImageOverlay` 線性拉伸 → 台灣緯度像素北偏約 20km,與回報症狀吻合。
+- 修法:`FetchRadarEcho` 落地圖檔時以 GD 逐列重採樣(等經緯 → Mercator),bounds 與前端完全不動。
+- 驗收:以行政區邊界基準點對照,目測偏移 < 2km。
+
+### 11.3 免責聲明彈窗
+
+文案(全文照用):「使用前請注意:本地圖彙整網友回報與氣象局雨量回報所得之災情資訊,僅供大眾參考,不代表市府公告,緊急事故請直接撥打119/1999,切勿僅依賴本平台等待救援。希望市民朋友保護自身安全,如非必要請勿出門。」
+
+- 進站:每 browser session 跳一次(sessionStorage)。
+- 回報:每次開啟回報表單再跳一次,按同意才能繼續。
+- 開關:`HAZDAR_DISCLAIMER_REPORT_MODE=every|session|off`(config/hazdar.php,預設 `every`),未來調整免改碼。
+
+### 11.4 最新消息頁 + 上稿系統
+
+- 不另建 model,擴充 `announcements`:`category` enum(`school_closure` 停班停課/`home_safety` 居家災防/`gov_press` 市府與氣象署/`incident` 災情通報)、`body`(富文本)、`link_url`、`is_pinned`、`published_at`。
+- `/news` 公開頁:置頂優先、`published_at` 倒序、分類徽章;cache ≤ 60s。
+- 既有 Filament Announcements resource 擴充為上稿系統;跑馬燈沿用 `is_active`——一套後台餵兩處。
+
+### 11.5 交通與清運資訊彙整看板(取代物資看板)
+
+- 新表 `info_links`:`section` enum(`transit`/`water_gate`/`sanitation`/`shelter`)、`label`、`url`、`status_text`、`sort_order`、`is_active` + Filament resource。
+- 卡片四區塊:大眾交通/水門與抽水站/清運與環保局/避難收容所;收容所區塊直接顯示既有 `shelters` 開設數。
+- 物資看板:卡片自 UI 移除;`dashboard_resources` 表與後台保留、隱藏導覽(Phase 2 視需求回歸)。
+- 水門/抽水站**即時資料**(gis.gov.taipei、data.taipei dataset `2bbfb30e`)列 P2,本版只放連結 + 後台手動狀態文字。
+
+### 11.6 圖卡專區
+
+- 新表 `promo_cards`:`title`、`image`、`group` enum(`shen` 沈伯洋/`councilor` 議員候選人)、`sort_order`、`is_active` + Filament 上傳。
+- `/cards` 頁:兩區格狀、lightbox 看大圖、可下載分享;首頁地圖懸浮社群 icon 連入。
+
+### 11.7 回報分類後台化(含新增 2 類)
+
+- 新表 `report_categories`:`slug`(unique,**建立後唯讀**,程式與 reports.category 以 slug 為鍵)、`name`、`color`(hex)、`sort_order`、`is_active`、`extra_field` jsonb nullable `{label, unit, min, max}`(**單一選填數值欄位**)。
+- Seed 6 類:既有 4 類 + `water_outage`(停水/紫)、`falling_object`(大型物品含樹木掉落/棕);`flood` 帶 `extra_field {積水深度, cm, 0, 500}`。
+- `reports.water_depth_cm` 更名 `extra_value`(integer,資料保留);表單依所選分類的 `extra_field` 動態顯示數值欄,驗證規則由設定推導。
+- 前端分類鈕/篩選 chips/圖例/統計卡與點位 API 分類白名單改讀 DB(cache 60s,後台變更時 bust)。
+- 刪除規則:**已有回報之分類禁止刪除,只能停用**;停用=關閉新回報入口,既有點位與統計照常顯示(災情資料不得憑空消失)。
+- Claude Vision「照片是否吻合分類」prompt 的分類名改讀 DB。
+- **明確不做(v0.2)**:多欄位 form-builder、select/text 型自訂欄位——目前僅淹水一個數值欄位需求,出現第二種型態再擴。
+
+### 11.8 地圖 icon 三態(回報/已通報/已排除)
+
+- `reports` 加 `notified_at` timestamp;Filament 動作手動標記「已通報」,「已排除」沿用 `resolved_at`。
+- 推導(單向優先序):`resolved_at` → 已排除(灰化+勾)> `notified_at` → 已通報(原色+徽章)> 否則 → 回報(原色)。
+- CSS/SVG divIcon 組合三態,**不出 6×3 張圖檔**(自製 icon 圖檔列 v0.3)。
+- 變更 §7.1:resolved 從「預設隱藏」改為「顯示第三態,篩選可關」。`verification_level` 半透明/實心分層保留,與處理狀態正交。
+
+### 11.9 驗收標準(v0.2 追加)
+
+1. `/dashboard` 302 → `/`;首頁卡片可收合且狀態跨 reload 保留。
+2. 雷達回波對位目測誤差 < 2km。
+3. 免責彈窗行為符合 §11.3;切換 env 模式即生效。
+4. 後台停用分類 → 回報表單 ≤ 60s 內不再出現該鈕,既有點位照常顯示。
+5. 後台新增分類(含數值欄位)→ **不改碼**即可回報並上圖。
+6. news 上稿/下架 ≤ 60s 反映於 `/news` 與跑馬燈。
+7. 已通報/已排除標記即時反映地圖 icon 與圖例。
+
+### 11.10 v0.2 Phase 切分
+
+| Phase | 內容 | 備註 |
+|---|---|---|
+| 2a | §11.2 雷達校正 + §11.3 免責彈窗 | 小而獨立,先出貨 |
+| 2b | §11.7 分類後台化 + §11.8 三態 | schema 先行,地圖/表單/統計跟進 |
+| 2c | §11.4 news + §11.5 資訊彙整 + §11.6 圖卡 | 內容系統,互相獨立可並行 |
+| 2d | §11.1 首頁整合 | 動最大,吃 2b/2c 產出的卡片 |
+
+每個 Phase 結束做檢查點:做了什麼/驗證了什麼/剩什麼。
