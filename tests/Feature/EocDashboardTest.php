@@ -6,24 +6,36 @@ use App\Models\ExternalAlert;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\WeatherObservation;
-use App\Services\DataSourceHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * EOC dashboard（spec §7.3 / 驗收 §1-1、§1-5）：
- * 公開唯讀、統計對 spec §6.3 定義、外部源中斷顯示明確狀態而非壞版面、
- * footer 為真實健康指標。
+ * EOC dashboard（spec §7.3 / 驗收 §1-1、§11.1）：浮動可收合卡片層，公開唯讀、
+ * 統計對 spec §6.3 定義、外部源中斷顯示明確狀態而非壞版面。
+ *
+ * health footer 已移至後台 DataSourceHealthWidget（見 DataSourceHealthWidgetTest）。
+ * /dashboard 路由整合（含首頁疊圖）由 Task 3 收斂，本檔一律走
+ * Livewire::test('eoc-dashboard')，不斷言 HTTP 路由。
  */
 class EocDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dashboard_is_publicly_readable(): void
+    public function test_dashboard_component_is_publicly_readable(): void
     {
-        $this->get('/dashboard')->assertOk()->assertSee('HAZDAR');
+        Livewire::test('eoc-dashboard')->assertOk();
+    }
+
+    public function test_dashboard_component_renders_stats(): void
+    {
+        $user = User::factory()->create();
+        Report::factory()->create(['user_id' => $user->id, 'category' => Report::CATEGORY_FLOOD]);
+
+        Livewire::test('eoc-dashboard')
+            ->assertSee('事件統計')
+            ->assertSee('CWA 即時觀測');
     }
 
     public function test_category_stats_count_last_24h_excluding_rejected_only(): void
@@ -57,8 +69,7 @@ class EocDashboardTest extends TestCase
     public function test_cwa_outage_shows_degraded_panel_only_when_no_data_at_all(): void
     {
         // 驗收 §1-1：真的一筆觀測都沒有時才顯示「資料更新中斷」
-        $this->get('/dashboard')
-            ->assertOk()
+        Livewire::test('eoc-dashboard')
             ->assertSee('CWA 資料更新中斷')
             ->assertSee('尚無成功紀錄');
     }
@@ -78,37 +89,29 @@ class EocDashboardTest extends TestCase
         // 確保沒有 Redis 快取（測試環境 cache=array，本就空）
         Cache::forget('hazdar:cwa:latest');
 
-        $weather = Livewire::test('eoc-dashboard')->get('weather');
+        $component = Livewire::test('eoc-dashboard');
+        $weather = $component->get('weather');
         $this->assertNotNull($weather);
         $this->assertSame(27.6, $weather['temp']);
 
-        $this->get('/dashboard')
-            ->assertOk()
-            ->assertDontSee('CWA 資料更新中斷');
+        $component->assertDontSee('CWA 資料更新中斷');
     }
 
-    public function test_footer_shows_real_health_lights_for_all_sources(): void
+    public function test_typhoon_badge_when_typhoon_alert_active(): void
     {
-        app(DataSourceHealth::class)->recordSuccess('ncdr_alerts');
-
-        $health = Livewire::test('eoc-dashboard')->get('health');
-
-        $this->assertSame(DataSourceHealth::STATUS_OK, $health['ncdr_alerts']['status']);
-        $this->assertSame(DataSourceHealth::STATUS_DOWN, $health['cwa_observations']['status']);
-        // 四個外部源全都要有狀態燈（禁止默默跳過）
-        $this->assertCount(4, $health);
-    }
-
-    public function test_typhoon_alert_switches_header_badge(): void
-    {
-        $this->get('/dashboard')->assertSee('MONITORING')->assertDontSee('TYPHOON-EMERGENCY');
-
         ExternalAlert::create([
             'source' => 'CWA', 'cap_id' => 'TY1', 'alert_type' => '颱風',
             'headline' => '海上陸上颱風警報', 'covers_taipei' => true,
             'effective_at' => now(), 'expires_at' => now()->addDay(),
         ]);
 
-        $this->get('/dashboard')->assertSee('TYPHOON-EMERGENCY');
+        Livewire::test('eoc-dashboard')->assertSee('TYPHOON-EMERGENCY');
+    }
+
+    public function test_monitoring_badge_without_typhoon(): void
+    {
+        Livewire::test('eoc-dashboard')
+            ->assertSee('MONITORING')
+            ->assertDontSee('TYPHOON-EMERGENCY');
     }
 }

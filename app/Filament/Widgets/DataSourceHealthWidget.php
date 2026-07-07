@@ -19,14 +19,6 @@ class DataSourceHealthWidget extends Widget
 
     protected static ?int $sort = -3;
 
-    /** @var array<string, string> 資料源代碼 → 顯示標籤（沿用 eoc-dashboard 既有對照） */
-    private const SOURCE_LABELS = [
-        'cwa_observations' => 'CWA API',
-        'ncdr_alerts' => 'NCDR API',
-        'radar_echo' => '雷達回波',
-        'shelters' => 'DATA.TPE',
-    ];
-
     /**
      * @return array{sources: array<string, array{status: string, label: string, last_success_at: ?string, last_error: ?array}>, today_reports: int, official: int, queue_depth: int}
      */
@@ -36,7 +28,7 @@ class DataSourceHealthWidget extends Widget
             'sources' => collect(app(DataSourceHealth::class)->all())
                 ->map(fn (array $status, string $source) => [
                     ...$status,
-                    'label' => self::SOURCE_LABELS[$source] ?? $source,
+                    'label' => DataSourceHealth::SOURCE_LABELS[$source] ?? $source,
                 ])->all(),
             'today_reports' => Report::whereDate('created_at', today())->count(),
             'official' => Report::where('verification_level', Report::VERIFICATION_OFFICIAL)->count(),

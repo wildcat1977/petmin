@@ -22,6 +22,14 @@ class DataSourceHealth
 
     public const STATUS_DOWN = 'red';
 
+    /** @var array<string, string> 資料源代碼 → 顯示標籤（後台 widget 與各處共用） */
+    public const SOURCE_LABELS = [
+        'cwa_observations' => 'CWA API',
+        'ncdr_alerts' => 'NCDR API',
+        'radar_echo' => '雷達回波',
+        'shelters' => 'DATA.TPE',
+    ];
+
     public function recordSuccess(string $source): void
     {
         Cache::forever($this->key($source, 'last_success_at'), now()->toIso8601String());

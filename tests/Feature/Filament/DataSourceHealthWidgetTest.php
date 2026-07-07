@@ -44,4 +44,21 @@ class DataSourceHealthWidgetTest extends TestCase
         Livewire::test(DataSourceHealthWidget::class)
             ->assertSee(DataSourceHealth::STATUS_DOWN);
     }
+
+    /**
+     * 承接自舊 eoc-dashboard footer 的斷言（已移除，spec §11.1）：四個外部源
+     * 全都要有狀態燈，禁止默默跳過任一個。
+     */
+    public function test_all_four_external_sources_have_status_lights(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+        app(DataSourceHealth::class)->recordSuccess('ncdr_alerts');
+
+        $html = Livewire::test(DataSourceHealthWidget::class)->html();
+
+        foreach (array_keys(config('hazdar.sources')) as $source) {
+            $this->assertStringContainsString('title="'.$source, $html);
+        }
+        $this->assertSame(4, substr_count($html, 'data-status='));
+    }
 }

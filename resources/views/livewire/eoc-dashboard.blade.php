@@ -8,18 +8,10 @@ use App\Models\Shelter;
 use App\Models\WeatherObservation;
 use App\Services\DataSourceHealth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Queue;
 use Livewire\Component;
 
 new class extends Component
 {
-    public const SOURCE_LABELS = [
-        'cwa_observations' => 'CWA API',
-        'ncdr_alerts' => 'NCDR API',
-        'radar_echo' => '雷達回波',
-        'shelters' => 'DATA.TPE',
-    ];
-
     /**
      * CWA 最新觀測。Redis 快取為快路徑；快取冷啟（部署/cache:clear/Redis 驅逐）
      * 時退回 DB 最新觀測，避免只因快取空就誤顯示「資料更新中斷」。
@@ -138,213 +130,66 @@ new class extends Component
         return Shelter::query()->where('is_open', true)->count();
     }
 
-    /** footer 真實健康指標（spec §2 設計修正：不做假數據） */
-    public function getHealthProperty(): array
+    /**
+     * CWA 資料源最近一次成功時間，僅供資料中斷警告框顯示用（驗收 §1-1）。
+     * 完整健康對照表已移至後台 DataSourceHealthWidget（spec §11.1）。
+     */
+    public function getCwaLastSuccessAtProperty(): ?string
     {
-        return collect(app(DataSourceHealth::class)->all())
-            ->map(fn ($status, $source) => [
-                ...$status,
-                'label' => self::SOURCE_LABELS[$source] ?? $source,
-            ])->all();
-    }
-
-    public function getFooterStatsProperty(): array
-    {
-        return [
-            'today_reports' => Report::whereDate('created_at', today())->count(),
-            'official' => Report::where('verification_level', Report::VERIFICATION_OFFICIAL)->count(),
-            'queue_depth' => $this->queueDepth(),
-        ];
-    }
-
-    private function queueDepth(): int
-    {
-        try {
-            return (int) Queue::size();
-        } catch (\Throwable) {
-            return 0; // 測試環境（sync driver）或 Redis 不可用時
-        }
+        return app(DataSourceHealth::class)->status('cwa_observations')['last_success_at'];
     }
 }; ?>
 
-<div wire:poll.10s class="flex min-h-dvh flex-col gap-2 p-2 text-slate-100">
-    {{-- ── 頂部列 ─────────────────────────────────────────── --}}
-    <header class="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0f1522]/90 px-4 py-2">
-        <div class="flex items-center gap-2">
-            <span class="text-lg">⚠️</span>
-            <div>
-                <p class="text-sm font-black tracking-[0.25em] text-cyan-300">HAZDAR</p>
-                <p class="text-[10px] text-slate-500">全民韌性災害回報系統</p>
-            </div>
-        </div>
-
-        @if (collect($this->alerts)->contains(fn ($a) => str_contains($a['type'], '颱風')))
-            <span class="rounded-md border border-rose-500/70 px-3 py-1 text-xs font-bold tracking-widest text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.35)]">TYPHOON-EMERGENCY</span>
-        @else
-            <span class="rounded-md border border-cyan-500/40 px-3 py-1 text-xs font-bold tracking-widest text-cyan-400">MONITORING</span>
-        @endif
-
-        {{-- NCDR 跑馬燈 --}}
-        <div class="min-w-0 flex-1 overflow-hidden">
-            <p id="radar-ticker-text" class="radar-ticker truncate text-xs font-medium text-slate-200">
-                @if (count($this->alerts))
-                    <span class="font-bold text-rose-400">NCDR</span> {{ $this->alerts[0]['headline'] }}
-                @else
-                    <span class="font-bold text-emerald-400">NCDR</span> 目前無涵蓋台北市之有效警戒
-                @endif
-            </p>
-        </div>
-
-        <div class="text-right" x-data x-init="setInterval(() => { $refs.clock.textContent = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Taipei' }); }, 1000)">
-            <p x-ref="clock" class="font-mono text-xl font-bold tabular-nums text-slate-100">--:--:--</p>
-            <p class="font-mono text-[10px] text-slate-500">{{ now()->timezone('Asia/Taipei')->format('Y / m / d') }} TPE</p>
-        </div>
-    </header>
-
-    {{-- ── 三欄主區 ───────────────────────────────────────── --}}
-    <div class="grid flex-1 gap-2 lg:grid-cols-[280px_minmax(0,1fr)_300px]">
-        {{-- 左欄：CWA 即時 + 24H 趨勢 + NCDR 燈號 --}}
-        <aside class="flex flex-col gap-2">
-            <section class="rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
-                <p class="text-[10px] font-semibold tracking-widest text-slate-500">CWA 氣象即時數據</p>
-                @if ($this->weather)
-                    <div class="mt-2 flex items-end gap-2">
-                        <span class="text-5xl font-black">{{ $this->weather['temp'] !== null ? round($this->weather['temp']) : '--' }}<span class="text-2xl align-top">°C</span></span>
-                        <div class="pb-1 text-xs text-slate-400">
-                            <p>臺北測站</p>
-                            <p class="text-[10px] text-slate-600">{{ \Illuminate\Support\Carbon::parse($this->weather['observed_at'])->timezone('Asia/Taipei')->format('H:i') }} 觀測</p>
-                        </div>
-                    </div>
-                    <div class="mt-3 grid grid-cols-2 gap-2">
-                        @foreach ([
-                            ['label' => '時雨量', 'value' => $this->weather['rain_1h'], 'unit' => 'mm', 'class' => 'text-cyan-300'],
-                            ['label' => '風速', 'value' => $this->weather['wind_speed'], 'unit' => 'm/s', 'class' => 'text-emerald-300'],
-                            ['label' => '累積雨量 24H', 'value' => $this->rainAccumulated, 'unit' => 'mm', 'class' => 'text-sky-300'],
-                            ['label' => '能見度', 'value' => $this->weather['visibility'], 'unit' => 'km', 'class' => 'text-indigo-300'],
-                        ] as $stat)
-                            <div class="rounded-lg border border-white/10 bg-black/30 p-2">
-                                <p class="text-[10px] text-slate-500">{{ $stat['label'] }}</p>
-                                <p class="text-xl font-bold {{ $stat['class'] }}">{{ $stat['value'] !== null ? $stat['value'] : '--' }}<span class="ml-0.5 text-[10px] text-slate-500">{{ $stat['unit'] }}</span></p>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    {{-- 驗收 §1-1：外部源中斷顯示明確狀態，而非壞版面 --}}
-                    <div class="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-200">
-                        ⚠ CWA 資料更新中斷<br>
-                        <span class="text-[10px] text-yellow-200/60">
-                            最後更新：{{ data_get($this->health, 'cwa_observations.last_success_at') ? \Illuminate\Support\Carbon::parse(data_get($this->health, 'cwa_observations.last_success_at'))->timezone('Asia/Taipei')->format('m/d H:i') : '尚無成功紀錄' }}
-                        </span>
-                    </div>
-                @endif
-            </section>
-
-            <section class="rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
-                <p class="text-[10px] font-semibold tracking-widest text-slate-500">24H 降雨趨勢</p>
-                <div wire:ignore class="mt-2 h-28">
-                    <canvas id="rain-trend-chart" data-trend='@json($this->rainTrend)'></canvas>
-                </div>
-            </section>
-
-            <section class="flex-1 rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
-                <p class="text-[10px] font-semibold tracking-widest text-slate-500">NCDR 示警燈號</p>
-                <div class="mt-2 space-y-1.5">
-                    @forelse ($this->alerts as $alert)
-                        <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-1.5">
-                            <span class="h-2 w-2 shrink-0 rounded-full {{ match ($alert['severity']) {
-                                'Extreme', 'Severe' => 'bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.8)]',
-                                'Moderate' => 'bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.8)]',
-                                default => 'bg-sky-400',
-                            } }}"></span>
-                            <span class="text-xs font-semibold">{{ $alert['type'] }}</span>
-                            <span class="truncate text-[10px] text-slate-500">{{ $alert['headline'] }}</span>
-                        </div>
-                    @empty
-                        <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
-                            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                            <span class="text-xs text-slate-400">目前無涵蓋台北市之有效警戒</span>
-                        </div>
-                    @endforelse
-                </div>
-            </section>
-        </aside>
-
-        {{-- 中央：情勢地圖（同民眾地圖 bbox API） --}}
-        <section class="relative min-h-[420px] overflow-hidden rounded-xl border border-white/10 bg-[#0f1522]/90">
-            <livewire:radar-map :show-districts="true" />
-            {{-- 圖例 --}}
-            <div class="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg bg-black/70 px-3 py-2 text-[11px] backdrop-blur">
-                <p class="mb-1 font-semibold text-slate-400">圖例</p>
-                @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
-                    <p class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: {{ $cat->color }}"></span>{{ $cat->name }}</p>
-                @endforeach
-                <p class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #4ade80"></span>收容所</p>
-            </div>
-        </section>
-
-        {{-- 右欄：事件統計 + 交通與清運資訊彙整 --}}
-        <aside class="flex flex-col gap-2">
-            <section class="rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
-                <p class="text-[10px] font-semibold tracking-widest text-slate-500">事件統計 / 即時（近 24H）</p>
-                <div class="mt-2 grid grid-cols-2 gap-2">
-                    @foreach ($this->stats as $stat)
-                        <div class="rounded-lg border-l-2 border border-white/10 bg-black/30 p-3" style="border-color: {{ $stat['color'] }}">
-                            <p class="text-3xl font-black" style="color: {{ $stat['color'] }}">{{ $stat['count'] }}</p>
-                            <p class="mt-0.5 text-[11px] text-slate-400">{{ $stat['label'] }}</p>
-                            @if ($stat['delta'] > 0)
-                                <p class="text-[10px] font-semibold text-rose-400">+{{ $stat['delta'] }} 過去1H</p>
-                            @else
-                                <p class="text-[10px] text-slate-600">過去1H 無新增</p>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </section>
-
-            <section class="flex-1 overflow-y-auto rounded-xl border border-white/10 bg-[#0f1522]/90 p-4">
-                <p class="text-[10px] font-semibold tracking-widest text-slate-500">交通與清運資訊彙整</p>
-                <div class="mt-2 space-y-3">
-                    @foreach ($this->infoLinks as $section => $links)
-                        <div>
-                            <p class="text-[11px] font-semibold text-slate-400">{{ \App\Models\InfoLink::SECTION_LABELS[$section] ?? $section }}
-                                @if ($section === 'shelter')
-                                    <span class="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300">開設中 {{ $this->openShelterCount }}</span>
-                                @endif
-                            </p>
-                            @if (count($links))
-                                <ul class="mt-1 space-y-0.5">
-                                    @foreach ($links as $link)
-                                        <li class="flex items-baseline justify-between gap-2 text-xs">
-                                            <a href="{{ $link['url'] }}" target="_blank" rel="noopener" class="text-cyan-400 hover:text-cyan-300">{{ $link['label'] }} ↗</a>
-                                            @if ($link['status_text'])<span class="text-[10px] text-slate-500">{{ $link['status_text'] }}</span>@endif
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </section>
-        </aside>
+<div wire:poll.10s>
+    {{-- 颱風/監測狀態 pill（保留自舊 header；其餘 header/ticker/health footer 已移除，
+         首頁已有自己的品牌 header 與跑馬燈——spec §11.1） --}}
+    @php $typhoon = collect($this->alerts)->contains(fn ($a) => str_contains($a['type'], '颱風')); @endphp
+    <div class="pointer-events-none fixed left-1/2 top-16 z-[400] -translate-x-1/2">
+        <span class="pointer-events-auto rounded-full px-3 py-1 text-[11px] font-bold {{ $typhoon ? 'bg-rose-600/80 text-white animate-pulse' : 'bg-black/60 text-emerald-300' }}">
+            {{ $typhoon ? 'TYPHOON-EMERGENCY' : 'MONITORING' }}
+        </span>
     </div>
 
-    {{-- ── Footer：真實系統健康指標（spec §2 設計修正） ───────── --}}
-    <footer class="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl border border-white/10 bg-[#0f1522]/90 px-4 py-2 text-[11px]">
-        @foreach ($this->health as $source)
-            <span class="flex items-center gap-1.5">
-                <span class="h-2 w-2 rounded-full {{ match ($source['status']) {
-                    'green' => 'bg-emerald-400',
-                    'yellow' => 'bg-yellow-400 animate-pulse',
-                    default => 'bg-rose-500 animate-pulse',
-                } }}"></span>
-                <span class="text-slate-400">{{ $source['label'] }}</span>
-                <span class="font-mono text-slate-600">{{ $source['last_success_at'] ? \Illuminate\Support\Carbon::parse($source['last_success_at'])->timezone('Asia/Taipei')->format('H:i') : '—' }}</span>
-            </span>
-        @endforeach
-        <span class="ml-auto flex items-center gap-4 font-mono text-slate-400">
-            <span>今日回報 <b class="text-slate-200">{{ $this->footerStats['today_reports'] }}</b></span>
-            <span>官方核實 <b class="text-emerald-300">{{ $this->footerStats['official'] }}</b></span>
-            <span>Queue <b class="{{ $this->footerStats['queue_depth'] > 100 ? 'text-yellow-300' : 'text-slate-200' }}">{{ $this->footerStats['queue_depth'] }}</b></span>
-        </span>
-    </footer>
+    {{-- 左欄浮動卡片（桌機）：CWA 即時 / 24H 雨量 / NCDR 警戒 --}}
+    <div class="pointer-events-none fixed left-2 top-28 z-[400] hidden w-[280px] flex-col gap-2 lg:flex">
+        <x-dashboard-card card-key="weather" :title="__('CWA 即時觀測')">
+            @include('livewire.partials.card-weather')
+        </x-dashboard-card>
+        <x-dashboard-card card-key="rain" :title="__('24H 累積雨量')">
+            @include('livewire.partials.card-rain', ['withChart' => true])
+        </x-dashboard-card>
+        <x-dashboard-card card-key="alerts" :title="__('NCDR 警戒')">
+            @include('livewire.partials.card-alerts')
+        </x-dashboard-card>
+    </div>
+
+    {{-- 右欄浮動卡片（桌機）：事件統計 / 交通與清運資訊彙整 --}}
+    <div class="pointer-events-none fixed right-2 top-28 z-[400] hidden w-[300px] flex-col gap-2 lg:flex">
+        <x-dashboard-card card-key="stats" :title="__('事件統計')">
+            @include('livewire.partials.card-stats')
+        </x-dashboard-card>
+        <x-dashboard-card card-key="info" :title="__('交通與清運資訊彙整')">
+            @include('livewire.partials.card-info')
+        </x-dashboard-card>
+    </div>
+
+    {{-- 行動版：底部單欄可捲動卡片抽屜（lg 以下顯示；同五張卡片內容，rain 卡不畫圖避免
+         #rain-trend-chart 這個 DOM id 重複——該 id 只在桌機欄渲染一次） --}}
+    <div class="pointer-events-none fixed inset-x-0 bottom-24 z-[400] flex max-h-[45vh] flex-col gap-2 overflow-y-auto px-2 lg:hidden">
+        <x-dashboard-card card-key="weather" :title="__('CWA 即時觀測')">
+            @include('livewire.partials.card-weather')
+        </x-dashboard-card>
+        <x-dashboard-card card-key="rain" :title="__('24H 累積雨量')">
+            @include('livewire.partials.card-rain', ['withChart' => false])
+        </x-dashboard-card>
+        <x-dashboard-card card-key="alerts" :title="__('NCDR 警戒')">
+            @include('livewire.partials.card-alerts')
+        </x-dashboard-card>
+        <x-dashboard-card card-key="stats" :title="__('事件統計')">
+            @include('livewire.partials.card-stats')
+        </x-dashboard-card>
+        <x-dashboard-card card-key="info" :title="__('交通與清運資訊彙整')">
+            @include('livewire.partials.card-info')
+        </x-dashboard-card>
+    </div>
 </div>
