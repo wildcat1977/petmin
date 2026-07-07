@@ -81,13 +81,12 @@
     margin-top: 6px !important;
 }
 @media (max-width: 640px) {
-    /* 手機：header + 兩排 chips 約 130px，下推至 156px 完全避開 */
+    /* v0.3：手機頂部 chips 已移入右側面板，控制項只需避開 ~56px 頂帶 */
     .radar-page #radar-map .leaflet-top.leaflet-left {
-        margin-top: 156px;
+        margin-top: 72px;
     }
-    /* 右上縮放同步下移，避免與右側使用者/登入 pill 重疊 */
     .radar-page #radar-map .leaflet-top.leaflet-right .leaflet-control-zoom {
-        margin-top: 120px;
+        margin-top: 72px;
     }
 }
 
