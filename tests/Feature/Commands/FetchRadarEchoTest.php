@@ -17,19 +17,32 @@ class FetchRadarEchoTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** 60×60 透明底 + 20 列紅線的合成雷達圖 */
+    /** 100×100 透明底 + 37 列紅線的合成雷達圖 */
     private function fakeRadarPng(): string
     {
-        $img = imagecreatetruecolor(60, 60);
+        $img = imagecreatetruecolor(100, 100);
         imagealphablending($img, false);
         imagesavealpha($img, true);
         imagefill($img, 0, 0, imagecolorallocatealpha($img, 0, 0, 0, 127));
-        imageline($img, 0, 20, 59, 20, imagecolorallocatealpha($img, 255, 0, 0, 0));
+        imageline($img, 0, 37, 99, 37, imagecolorallocatealpha($img, 255, 0, 0, 0));
 
         ob_start();
         imagepng($img);
 
         return ob_get_clean();
+    }
+
+    /** 找出第一條不透明紅線所在列，找不到回 -1 */
+    private function findStripeRow(\GdImage $img): int
+    {
+        for ($y = 0; $y < imagesy($img); $y++) {
+            $rgba = imagecolorsforindex($img, imagecolorat($img, 50, $y));
+            if ($rgba['alpha'] < 64 && $rgba['red'] > 128) {
+                return $y;
+            }
+        }
+
+        return -1;
     }
 
     public function test_image_is_reprojected_and_cached(): void
@@ -43,8 +56,12 @@ class FetchRadarEchoTest extends TestCase
 
         // 重採樣後仍為同尺寸有效 PNG（bounds 不變、前端不用改）
         $stored = imagecreatefromstring(Storage::disk('public')->get('radar/latest.png'));
-        $this->assertSame(60, imagesx($stored));
-        $this->assertSame(60, imagesy($stored));
+        $this->assertSame(100, imagesx($stored));
+        $this->assertSame(100, imagesy($stored));
+
+        // 驗證重採樣確實執行：紅線應向南（圖面下方）移動至 > 37
+        $stripeRow = $this->findStripeRow($stored);
+        $this->assertGreaterThan(37, $stripeRow, '重採樣應使紅線南移（未重採樣會停在原列 37）');
 
         $this->assertNotNull(Cache::get('hazdar:radar:meta'));
         $this->assertSame(DataSourceHealth::STATUS_OK, app(DataSourceHealth::class)->status('radar_echo')['status']);
