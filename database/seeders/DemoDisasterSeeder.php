@@ -40,6 +40,8 @@ class DemoDisasterSeeder extends Seeder
             Report::CATEGORY_ROAD_BLOCKED => 45,
             Report::CATEGORY_POWER_OUTAGE => 30,
             Report::CATEGORY_STRUCTURAL_DAMAGE => 20,
+            'water_outage' => 15,
+            'falling_object' => 25,
         ];
 
         foreach ($categories as $category => $count) {
