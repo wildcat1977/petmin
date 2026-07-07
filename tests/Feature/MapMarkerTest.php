@@ -26,4 +26,13 @@ class MapMarkerTest extends TestCase
             ->assertSee('"emoji"', false)   // categoryMeta payload 供 pinIcon 使用
             ->assertSee('🧪', false);
     }
+
+    public function test_three_status_filter_chips_render(): void
+    {
+        $this->withHeader('Accept-Language', 'zh-TW')->get('/')
+            ->assertOk()
+            ->assertSee('data-map-chip="reported"', false)
+            ->assertSee('data-map-chip="notified"', false)
+            ->assertSee('data-map-chip="resolved"', false);
+    }
 }

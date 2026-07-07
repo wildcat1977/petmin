@@ -401,11 +401,14 @@ function toggleFloodPotential(on) {
 
 // ── 分類篩選 chips（radar 頁 header 渲染，data-map-chip 綁定）──
 function initChips() {
+    const setStatus = (key, on) => { on ? activeStatuses.add(key) : activeStatuses.delete(key); };
     const layerToggles = {
         shelters: (on) => { sheltersVisible = on; renderShelters(); },
         radar_echo: toggleRadarEcho,
         flood_potential: toggleFloodPotential,
-        resolved: (on) => { showResolved = on; scheduleFetch(); },
+        reported: (on) => { setStatus('reported', on); scheduleFetch(); },
+        notified: (on) => { setStatus('notified', on); scheduleFetch(); },
+        resolved: (on) => { showResolved = on; setStatus('resolved', on); scheduleFetch(); },
     };
 
     document.querySelectorAll('[data-map-chip]').forEach((btn) => {
