@@ -61,6 +61,8 @@
     {{ $slot ?? '' }}
     @yield('content')
 
+    @include('partials.disclaimer-modal')
+
     @livewireScripts
 </body>
 </html>

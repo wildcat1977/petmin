@@ -14,6 +14,12 @@ return [
     'report_cooldown_seconds' => (int) env('HAZDAR_REPORT_COOLDOWN', 60),
     'report_hourly_limit' => (int) env('HAZDAR_REPORT_HOURLY_LIMIT', 10),
 
+    // 免責聲明（spec §11.3）：進站彈窗固定每 session 一次；
+    // 回報彈窗模式 every=每次回報跳|session=每 session 一次|off=關閉
+    'disclaimer' => [
+        'report_mode' => env('HAZDAR_DISCLAIMER_REPORT_MODE', 'every'),
+    ],
+
     // 佐證規則（spec §4.3）：同 geohash7 + 同分類，滑動窗內不同帳號數達標 → corroborated
     'corroboration' => [
         'window_hours' => (int) env('HAZDAR_CORROBORATION_WINDOW_HOURS', 6),

@@ -134,5 +134,9 @@
     "搜尋地標或路名…(暫不支援門牌號碼)": "Search landmark or road name…",
     "📍 我的位置": "📍 My Location",
     "取得目前 GPS 位置": "Get current GPS location",
-    "定位中…": "Locating…"
+    "定位中…": "Locating…",
+
+    "使用前請注意": "Before You Use This Map",
+    "本地圖彙整網友回報與氣象局雨量回報所得之災情資訊，僅供大眾參考，不代表市府公告，緊急事故請直接撥打119/1999，切勿僅依賴本平台等待救援。希望市民朋友保護自身安全，如非必要請勿出門。": "This map aggregates crowd-sourced reports and CWA rainfall data for public reference only and does not represent official city announcements. In an emergency, call 119/1999 immediately — do not rely on this platform to wait for rescue. Please stay safe and avoid going out unless necessary.",
+    "我知道了": "Got It"
 }
