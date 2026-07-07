@@ -183,7 +183,7 @@ function createPopupEl(p) {
     head.appendChild(dot);
     const title = document.createElement('span');
     let text = meta ? meta.label() : p.cat;
-    if (p.cat === 'flood' && p.depth) text += `（${window.i18n?.waterDepth ?? '水深'} ~${p.depth}cm）`;
+    if (p.cat === 'flood' && p.extra) text += `（${window.i18n?.waterDepth ?? '水深'} ~${p.extra}cm）`;
     title.textContent = text;
     head.appendChild(title);
     const vl = document.createElement('span');

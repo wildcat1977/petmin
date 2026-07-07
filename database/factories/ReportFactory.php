@@ -20,7 +20,7 @@ class ReportFactory extends Factory
         return [
             'user_id' => User::factory(),
             'category' => $category,
-            'water_depth_cm' => $category === Report::CATEGORY_FLOOD
+            'extra_value' => $category === Report::CATEGORY_FLOOD
                 ? $this->faker->optional()->randomElement([10, 30, 50, 100, 150])
                 : null,
             // 台北市範圍內隨機座標；geohash7 由 model creating hook 推導

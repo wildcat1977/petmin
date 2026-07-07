@@ -94,7 +94,7 @@ class Report extends Model
     protected $fillable = [
         'user_id',
         'category',
-        'water_depth_cm',
+        'extra_value',
         'latitude',
         'longitude',
         'geohash7',
@@ -104,6 +104,7 @@ class Report extends Model
         'status',
         'verification_level',
         'resolved_at',
+        'notified_at',
         'rejection_reason',
         'reviewed_at',
         'first_reviewed_at',
@@ -114,8 +115,9 @@ class Report extends Model
         return [
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
-            'water_depth_cm' => 'integer',
+            'extra_value' => 'integer',
             'resolved_at' => 'datetime',
+            'notified_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'first_reviewed_at' => 'datetime',
         ];

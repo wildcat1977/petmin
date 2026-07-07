@@ -30,8 +30,8 @@ class ReportForm
                     ->live()
                     ->required(),
 
-                TextInput::make('water_depth_cm')
-                    ->label('淹水深度 (cm)')
+                TextInput::make('extra_value')
+                    ->label('補充數值')
                     ->numeric()
                     ->nullable()
                     ->visible(fn (Get $get) => $get('category') === Report::CATEGORY_FLOOD),

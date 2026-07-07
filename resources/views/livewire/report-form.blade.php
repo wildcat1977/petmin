@@ -21,7 +21,7 @@ new class extends Component
 
     public string $category = Report::CATEGORY_FLOOD;
 
-    public ?int $waterDepthCm = null;
+    public ?int $extraValue = null;
 
     public $photo = null;
 
@@ -39,7 +39,7 @@ new class extends Component
     {
         return [
             'category'     => ['required', 'in:'.implode(',', Report::CATEGORIES)],
-            'waterDepthCm' => ['nullable', 'integer', 'between:0,500'],
+            'extraValue' => ['nullable', 'integer', 'between:0,500'],
             'photo'        => ['nullable', 'image', 'max:20480'],
             'latitude'     => ['required', 'numeric', 'between:-90,90'],
             'longitude'    => ['required', 'numeric', 'between:-180,180'],
@@ -65,7 +65,7 @@ new class extends Component
             $this->dispatch('open-auth-onboarding');
             return;
         }
-        $this->reset(['photo', 'description', 'submitted', 'waterDepthCm']);
+        $this->reset(['photo', 'description', 'submitted', 'extraValue']);
         $this->category = Report::CATEGORY_FLOOD;
         $this->open = true;
     }
@@ -79,7 +79,7 @@ new class extends Component
     public function updatedCategory(): void
     {
         if ($this->category !== Report::CATEGORY_FLOOD) {
-            $this->waterDepthCm = null;
+            $this->extraValue = null;
         }
     }
 
@@ -133,7 +133,7 @@ new class extends Component
         $report = Report::create([
             'user_id'        => Auth::id(),
             'category'       => $this->category,
-            'water_depth_cm' => $this->category === Report::CATEGORY_FLOOD ? $this->waterDepthCm : null,
+            'extra_value'    => $this->category === Report::CATEGORY_FLOOD ? $this->extraValue : null,
             'latitude'       => $this->latitude,
             'longitude'      => $this->longitude,
             'address'        => $this->address ?: null,
@@ -246,16 +246,16 @@ new class extends Component
                                 <div class="mt-2 grid grid-cols-5 gap-1.5">
                                     @foreach ([10 => __('腳踝'), 30 => __('小腿'), 50 => __('及膝'), 100 => __('及腰'), 150 => __('一層樓')] as $cm => $label)
                                         <button type="button"
-                                                wire:click="$set('waterDepthCm', {{ $waterDepthCm === $cm ? 'null' : $cm }})"
+                                                wire:click="$set('extraValue', {{ $extraValue === $cm ? 'null' : $cm }})"
                                                 class="rounded-lg border px-1 py-2 text-[11px] font-medium transition
-                                                       {{ $waterDepthCm === $cm
+                                                       {{ $extraValue === $cm
                                                            ? 'border-sky-400/70 bg-sky-500/20 text-sky-100'
                                                            : 'border-white/10 bg-black/30 text-slate-400 hover:border-white/20' }}">
                                             {{ $label }}<br><span class="opacity-60">{{ $cm }}cm</span>
                                         </button>
                                     @endforeach
                                 </div>
-                                @error('waterDepthCm') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
+                                @error('extraValue') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
                             </div>
                         @endif
 

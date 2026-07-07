@@ -81,7 +81,7 @@ class MapPointsController extends Controller
         $reports = $query
             ->latest()
             ->limit($limit + 1)
-            ->get(['id', 'category', 'water_depth_cm', 'latitude', 'longitude',
+            ->get(['id', 'category', 'extra_value', 'latitude', 'longitude',
                 'image_path', 'description', 'status', 'verification_level', 'created_at']);
 
         $truncated = $reports->count() > $limit;
@@ -95,7 +95,7 @@ class MapPointsController extends Controller
                 'lng' => (float) $r->longitude,
                 'cat' => $r->category,
                 'vl' => $r->verification_level,
-                'depth' => $r->water_depth_cm,
+                'extra' => $r->extra_value,
                 'img' => $r->publicImageUrl(),
                 'desc' => $r->description ? Str::limit($r->description, 60) : null,
                 'at' => $r->created_at->diffForHumans(),

@@ -118,7 +118,7 @@ class ReportsTable
                     })
                     ->formatStateUsing(fn (string $state) => Report::VERIFICATION_LABELS[$state] ?? $state),
 
-                TextColumn::make('water_depth_cm')
+                TextColumn::make('extra_value')
                     ->label('水深cm')
                     ->toggleable(isToggledHiddenByDefault: true),
 

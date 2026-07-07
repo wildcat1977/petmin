@@ -42,14 +42,14 @@ class ReportSubmissionTest extends TestCase
         $user = User::factory()->create();
 
         // 災時最低摩擦：不用照片、不用描述也能回報
-        $this->submitReport($user, ['waterDepthCm' => 50])
+        $this->submitReport($user, ['extraValue' => 50])
             ->assertHasNoErrors()
             ->assertSet('submitted', true)
             ->assertDispatched('report-submitted');
 
         $report = Report::sole();
         $this->assertSame(Report::CATEGORY_FLOOD, $report->category);
-        $this->assertSame(50, $report->water_depth_cm);
+        $this->assertSame(50, $report->extra_value);
         $this->assertSame(Report::VERIFICATION_UNVERIFIED, $report->verification_level);
         // geohash7 由寫入時自動推導（佐證與聚合依賴它）
         $this->assertSame(7, strlen($report->geohash7));
@@ -120,9 +120,9 @@ class ReportSubmissionTest extends TestCase
 
         $this->submitReport($user, [
             'category' => Report::CATEGORY_POWER_OUTAGE,
-            'waterDepthCm' => 50,
+            'extraValue' => 50,
         ])->assertHasNoErrors();
 
-        $this->assertNull(Report::sole()->water_depth_cm);
+        $this->assertNull(Report::sole()->extra_value);
     }
 }
