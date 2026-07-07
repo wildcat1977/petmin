@@ -48,7 +48,7 @@
         </header>
 
         {{-- 分類篩選 chips（對應圖例配色；收容所為獨立圖層開關） --}}
-        <div class="pointer-events-auto flex flex-wrap gap-1.5 px-4">
+        <div class="pointer-events-auto hidden gap-1.5 px-4 lg:flex lg:flex-wrap">
             @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
                 <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
                         class="map-chip chip-on">{{ $cat->emoji }} {{ __($cat->name) }}</button>

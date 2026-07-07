@@ -411,21 +411,26 @@ function initChips() {
         resolved: (on) => { showResolved = on; setStatus('resolved', on); scheduleFetch(); },
     };
 
+    // 同 data-map-chip 的所有元素（桌機 chip + 面板 checkbox）狀態同步（spec §12.7）
+    const syncChip = (cat, on) => {
+        document.querySelectorAll(`[data-map-chip="${cat}"]`).forEach((el) => el.classList.toggle('chip-on', on));
+    };
+
     document.querySelectorAll('[data-map-chip]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const cat = btn.dataset.mapChip;
+            const on = ! btn.classList.contains('chip-on');
             if (layerToggles[cat]) {
-                const on = ! btn.classList.contains('chip-on');
-                btn.classList.toggle('chip-on', on);
+                syncChip(cat, on);
                 layerToggles[cat](on);
                 return;
             }
-            if (activeCategories.has(cat)) {
-                activeCategories.delete(cat);
-            } else {
+            if (on) {
                 activeCategories.add(cat);
+            } else {
+                activeCategories.delete(cat);
             }
-            btn.classList.toggle('chip-on', activeCategories.has(cat));
+            syncChip(cat, on);
             scheduleFetch();
         });
     });
