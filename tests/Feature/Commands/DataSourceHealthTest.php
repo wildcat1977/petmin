@@ -50,12 +50,31 @@ class DataSourceHealthTest extends TestCase
     public function test_radar_echo_fetch_stores_image_and_reports_health(): void
     {
         Storage::fake('public');
-        Http::fake(['www.cwa.gov.tw/*' => Http::response('png-bytes', 200, ['Content-Type' => 'image/png'])]);
+
+        // Generate real PNG bytes via GD
+        $img = imagecreatetruecolor(10, 10);
+        ob_start();
+        imagepng($img);
+        $png = ob_get_clean();
+
+        Http::fake(['www.cwa.gov.tw/*' => Http::response($png, 200, ['Content-Type' => 'image/png'])]);
 
         $this->artisan('hazdar:fetch-radar-echo')->assertSuccessful();
 
         Storage::disk('public')->assertExists('radar/latest.png');
         $this->assertSame(Health::STATUS_OK, app(Health::class)->status('radar_echo')['status']);
+    }
+
+    public function test_radar_echo_rejects_undecodable_image_bytes(): void
+    {
+        Storage::fake('public');
+        Http::fake(['www.cwa.gov.tw/*' => Http::response('not-a-real-png', 200, ['Content-Type' => 'image/png'])]);
+
+        $this->artisan('hazdar:fetch-radar-echo')->assertFailed();
+
+        // 宣稱是圖片但解不開：不能快取垃圾、必須亮紅燈
+        Storage::disk('public')->assertMissing('radar/latest.png');
+        $this->assertSame(Health::STATUS_DOWN, app(Health::class)->status('radar_echo')['status']);
     }
 
     public function test_radar_echo_rejects_non_image_response(): void
