@@ -38,8 +38,24 @@ new class extends Component
         ];
     }
 
+    /**
+     * 匿名訪客共用、每 10s 一次的看板資料（避免公開首頁 wire:poll 對每訪客各打一輪 DB）。
+     * 快取只存純陣列/純量——絕不存 Eloquent 物件或 Collection，避免寫入端/讀取端
+     * autoload 狀態不一致時反序列化成 __PHP_Incomplete_Class（見 ReportCategory 註解）。
+     */
+    private function sharedCardData(): array
+    {
+        return Cache::remember('hazdar:eoc:cards', 10, fn () => [
+            'stats' => $this->computeStats(),
+            'alerts' => $this->computeAlerts(),
+            'infoLinks' => $this->computeInfoLinks(),
+            'openShelterCount' => $this->computeOpenShelterCount(),
+            'rainTrend' => $this->computeRainTrend(),
+        ]);
+    }
+
     /** 24H 每小時雨量（該小時觀測的 rain_1h 最大值） */
-    public function getRainTrendProperty(): array
+    private function computeRainTrend(): array
     {
         $byHour = WeatherObservation::query()
             ->where('observed_at', '>=', now()->subDay())
@@ -56,6 +72,11 @@ new class extends Component
         return $trend;
     }
 
+    public function getRainTrendProperty(): array
+    {
+        return $this->sharedCardData()['rainTrend'];
+    }
+
     /** 24H 累積雨量（每小時雨量加總的近似值） */
     public function getRainAccumulatedProperty(): float
     {
@@ -67,7 +88,7 @@ new class extends Component
      * 排除 rejected（內容審核退件），不排除 unverified——災時
      * 「可能有事」的資訊價值大於等核實。
      */
-    public function getStatsProperty(): array
+    private function computeStats(): array
     {
         $rows = Report::query()
             ->visible()
@@ -86,8 +107,13 @@ new class extends Component
         ])->all();
     }
 
+    public function getStatsProperty(): array
+    {
+        return $this->sharedCardData()['stats'];
+    }
+
     /** NCDR 未過期 + 涵蓋台北市警戒（燈號區 + 跑馬燈） */
-    public function getAlertsProperty(): array
+    private function computeAlerts(): array
     {
         return ExternalAlert::query()
             ->active()
@@ -103,13 +129,18 @@ new class extends Component
             ->all();
     }
 
+    public function getAlertsProperty(): array
+    {
+        return $this->sharedCardData()['alerts'];
+    }
+
     /**
      * 區塊順序依 SECTION_LABELS 鍵序結構性固定（sort_order 只排區內連結；
      * 後台 reorderable 跨區拖曳會全域改號，不能因此打亂區塊排列）。
      *
      * @return array<string, list<array{label: string, url: string, status_text: ?string}>>
      */
-    public function getInfoLinksProperty(): array
+    private function computeInfoLinks(): array
     {
         $grouped = InfoLink::query()
             ->where('is_active', true)
@@ -125,9 +156,19 @@ new class extends Component
             ->all();
     }
 
-    public function getOpenShelterCountProperty(): int
+    public function getInfoLinksProperty(): array
+    {
+        return $this->sharedCardData()['infoLinks'];
+    }
+
+    private function computeOpenShelterCount(): int
     {
         return Shelter::query()->where('is_open', true)->count();
+    }
+
+    public function getOpenShelterCountProperty(): int
+    {
+        return $this->sharedCardData()['openShelterCount'];
     }
 
     /**

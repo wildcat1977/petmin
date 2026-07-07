@@ -128,4 +128,30 @@ class EocDashboardTest extends TestCase
             ->assertSee('交通與清運資訊彙整')
             ->assertSee('data-trend', false);   // rain canvas 在首頁
     }
+
+    /**
+     * 公開首頁 wire:poll 對每位匿名訪客各打一輪 DB 是規模風險（2d final review）：
+     * 共用看板資料需在 10s TTL 內對所有訪客收斂成同一份快取，
+     * 而非每次渲染各自重算。用 forget 前後對照證明「快取」才是資料新鮮度的閘門。
+     */
+    public function test_card_data_is_cached_for_anonymous_visitors(): void
+    {
+        Report::factory()->create(['category' => Report::CATEGORY_FLOOD, 'created_at' => now()]);
+
+        $first = Livewire::test('eoc-dashboard')->get('stats');
+        $this->assertSame(1, collect($first)->firstWhere('slug', Report::CATEGORY_FLOOD)['count']);
+        $this->assertTrue(Cache::has('hazdar:eoc:cards'));
+
+        // 快取未過期期間新增的回報不應反映在下一次渲染（同一份快取被重用）。
+        Report::factory()->count(5)->create(['category' => Report::CATEGORY_FLOOD, 'created_at' => now()]);
+
+        $stillCached = Livewire::test('eoc-dashboard')->get('stats');
+        $this->assertSame(1, collect($stillCached)->firstWhere('slug', Report::CATEGORY_FLOOD)['count']);
+
+        // 手動使快取失效（模擬 TTL 到期）後，重新渲染才看到新資料。
+        Cache::forget('hazdar:eoc:cards');
+
+        $afterExpiry = Livewire::test('eoc-dashboard')->get('stats');
+        $this->assertSame(6, collect($afterExpiry)->firstWhere('slug', Report::CATEGORY_FLOOD)['count']);
+    }
 }
