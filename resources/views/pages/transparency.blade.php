@@ -36,7 +36,7 @@
     ];
 @endphp
 
-<div class="min-h-dvh bg-[#0d1117] text-slate-200">
+<div class="min-h-dvh bg-[#002923] text-slate-200">
 
     @include('partials.nav')
 

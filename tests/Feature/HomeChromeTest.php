@@ -40,6 +40,12 @@ class HomeChromeTest extends TestCase
             ->assertSee('聯絡管理員');
     }
 
+    public function test_secondary_pages_use_new_background(): void
+    {
+        $this->get('/news')->assertOk()->assertDontSee('bg-[#0d1117]', false);
+        $this->get('/contact')->assertOk()->assertDontSee('bg-[#0d1117]', false);
+    }
+
     public function test_footer_shows_published_news_counts_and_hides_removed_links(): void
     {
         // 注意：announcements.content 為 NOT NULL，create 必帶 content（見 NewsPageTest）

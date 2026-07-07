@@ -65,7 +65,7 @@
          x-transition:leave="transition ease-in duration-100"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 -translate-y-1"
-         class="border-b border-white/10 bg-[#0d1117] px-4 py-3 md:hidden">
+         class="border-b border-white/10 bg-[#002923] px-4 py-3 md:hidden">
 
         <nav class="flex flex-col gap-1">
             <a href="{{ route('news') }}"
