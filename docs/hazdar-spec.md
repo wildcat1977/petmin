@@ -1,4 +1,4 @@
-# Hazdar 全民風災回報系統 — 技術規格 v0.2
+# Hazdar 全民風災回報系統 — 技術規格 v0.3
 
 > v0.2（2026-07-07）：依 PM 會議決議追加 §11 修訂。§1–§10 為 v0.1 基線，與 §11 牴觸處以 §11 為準（牴觸點已於原文標注）。
 
@@ -276,3 +276,81 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 每個 Phase 結束做檢查點:做了什麼/驗證了什麼/剩什麼。
 
 **v0.2 全數完成（2026-07-07）。** 全套 153 測試綠。後續 v0.3（視覺調整）待辦已彙整於 `.superpowers/sdd/progress.md` 的 backlog 區。
+
+---
+
+## 12. v0.3 修訂(2026-07-08 視覺/UX 調整)
+
+純視覺與 UX 調整:配色、地圖 pin、手機版重整、圖卡改 banner。**不動**回報寫入路徑、外部資料落地、後台資料模型(report_categories/announcements/info_links/promo_cards 全部沿用)。JS(Leaflet)與 CSS 變更以瀏覽器截圖/操作驗證;可 PHP 單測者(payload/路由/footer/nav)照測。
+
+### 12.1 全站配色 → `#002923`
+
+- `resources/css/app.css`:`--color-radar-bg`、body 底、地圖 tile 後方底 `#0d1117 → #002923`;`layouts/app.blade.php` body class 與 `<meta name="theme-color">` 同步。
+- 浮動卡片 `components/dashboard-card.blade.php`:surface `#0f1522/95 → #003a30`(微提亮,與 `#002923` 底做出層次分離)。
+
+### 12.2 上下實色帶 + 放大跑馬燈
+
+- **頂帶**:目前左上半透明浮動 pill → 橫跨頂部的 `#002923` 實色帶;左放 banner(§12.4),右放地圖控制項 + 移入的 nav 連結(§12.6)。
+- **底帶**:`#002923` 實色帶,內含(由上而下):管理員公告 → 我的回報狀態(登入) → 跑馬燈 → 立即回報按鈕 → footer(§12.6)。
+- 跑馬燈字級 `text-[11px] → text-[13px]`(≥13px);資料源不變(NCDR 警戒 + 24h 統計 + 最近回報,見 `radar-map` `getTickerMessagesProperty`)。
+
+### 12.3 地圖三態 pin(水滴 pin + emoji)
+
+- `resources/js/app.js` `buildPointsLayer`:`L.circleMarker` → `L.marker` + `L.divIcon`。divIcon 為分類色水滴 pin(SVG/CSS),中央放該分類 emoji(停水=水、停電=電…),pin 尖端 `iconAnchor` 對座標。
+- 三態由 `status`(`p.st`)決定:回報(`null`)=實色 `opacity 1`;已通報(`notified`)=整枚 `opacity 0.2`;已排除(`resolved`)=`filter: grayscale(1)`。
+- `verification_level`(未核實/多方佐證/官方核實)**退出地圖視覺**,只留在點擊 popup(popup 已顯示,不動);`VERIFICATION_STYLE` 於 marker 渲染移除。
+- `categoryMeta` payload(`radar-map.blade.php` `categoryMeta`、`app.js` `CATEGORY_META`)補 `emoji` 欄位。聚合圓 `buildClustersLayer` 維持數字徽章不變。
+- **變更 §11.8**:「`verification_level` 半透明/實心分層保留」→ 改為「地圖上移除、只留 popup」。
+
+### 12.4 Banner
+
+- 頂帶左側 HAZDAR 文字 pill → `<img src="{{ asset('Hazdar-Banner.png') }}">`(既有檔 300×100 RGBA,顯示高 ~40px、寬自動)。
+
+### 12.5 圖卡輪播 banner(取代 `/cards` 獨立頁)
+
+- 新 `promo-banner` 元件:放在「交通與清運資訊」卡下方,Alpine 自動輪播(~5s)啟用中 `PromoCard`,點擊開 lightbox 看大圖;**無啟用圖卡則不渲染**。
+- 資料併入 `eoc-dashboard` `sharedCardData()` 快取(純陣列 `{title, image_url}`,遵守禁存 Eloquent 物件規則)。
+- **移除獨立頁**:`/cards` 頁 + gallery 元件刪除,route 改 `Route::redirect('/cards', '/', 302)`;頂部 🖼️ 圖卡連結、footer 圖卡連結一併移除。**Filament `PromoCard` 後台管理保留**。
+- **變更 §11.6**:`/cards` 獨立頁退場,改首頁 banner;首頁地圖社群 icon 連入取消。
+
+### 12.6 Footer 重整 + nav 移動
+
+- footer 併入底帶 `#002923`。
+- **左下**:各分類最新消息篇數 — 用 `Announcement::published()` 依 `category` 分組計數,**只列有已發佈的分類**(`停班停課 N`/`居家災防 N`/`市府與氣象署 N`/`災情通報 N`),整組連到 `/news`。
+- **隱藏**:回報清單(`reports`)、透明度報告(`transparency`)、統計地圖(`stats`)三連結(route 保留,footer 不連)。**移除**:圖卡專區連結。
+- **移到頂帶 nav**:我的回報(`profile`,登入才顯示)、聯絡管理員(`open-contact-form` 事件鈕)。
+
+### 12.7 手機右側 IITC 圖層面板 + 卡片 modal
+
+- 新 mobile-only 元件(`lg:hidden`):右緣收合 tab(⟩),點擊滑出面板。
+- **面板上半**:圖層 checkbox 清單 — 各啟用分類 + 收容所 + 雷達回波 + 淹水潛勢(有設定才列) + 三態篩選(§12.8);每個 checkbox 驅動與桌機 chips 相同的 `mapController` 圖層開關(`data-map-chip` 對應動作),狀態與地圖圖層單一同步。
+- **面板下半**:各資訊卡按鈕 → 點開全螢幕 bottom-sheet modal(CWA 即時/24H 雨量/NCDR 警戒/事件統計/交通清運)+ 圖卡 banner(§12.5)。
+- **手機不再顯示頂部 chips**(桌機 chips 保留);取代現有會互疊的手機底部卡片抽屜(`eoc-dashboard.blade.php` `lg:hidden` 區塊)。
+- 地圖搜尋/明暗切換/縮放留 Leaflet 原位;右側 tab 置於右中緣,避開上述控制項。
+
+### 12.8 回報三態篩選(併入圖層選擇)
+
+- 桌機:單一「已排除」chip → 三態 chip:回報 / 已通報 / 已排除(皆預設開,對應現行 `resolved` 預設開)。
+- **已排除**沿用 `show_resolved` 伺服端參數(效能:隱藏時不下發已排除點,不變);**回報 / 已通報**於 `app.js` 以 `activeStatuses` set 客戶端過濾已下發的 active 點(`p.st` `null → reported`)。
+- 手機於 §12.7 面板以同一組 checkbox 呈現。
+
+### 12.9 驗收標準(v0.3)
+
+1. 全站底 `#002923`、卡片 `#003a30`;頂/底為實色帶非透明浮動 pill。
+2. 地圖 pin 為分類色水滴 + emoji,三態(實色/20%/灰階)視覺正確;查核等級只在 popup。
+3. 頂帶顯示 banner 圖(非文字);跑馬燈於底帶且字級 ≥13px。
+4. 有啟用圖卡 → 交通清運卡下方單一輪播 banner;無則不顯示;`/cards` 302 → `/`。
+5. footer 顯示有發佈之分類篇數並連 `/news`;無回報清單/透明度/統計/圖卡連結;頂帶 nav 有我的回報(登入)/聯絡管理員。
+6. 手機右側面板可勾選開關圖層(含回報/已通報/已排除三態)並開啟卡片 modal;地圖控制項不被蓋、頂部 chips 不出現於手機。
+7. `categoryMeta` payload 含 `emoji`;`buildPointsLayer` 無 `circleMarker`。
+
+### 12.10 v0.3 Phase 切分
+
+| Phase | 內容 | 狀態 |
+|---|---|---|
+| 3a | §12.1 配色 + §12.2 上下實色帶/跑馬燈 + §12.4 banner + §12.6 footer/nav | ⬜ |
+| 3b | §12.3 三態 pin + §12.8 三態篩選 | ⬜ |
+| 3c | §12.5 圖卡輪播 banner + 移除 `/cards` | ⬜ |
+| 3d | §12.7 手機右側 IITC 面板 + 卡片 modal | ⬜ |
+
+每個 Phase 結束做檢查點:做了什麼/驗證了什麼/剩什麼。視覺項(pin/配色/手機面板)以 chrome-devtools 截圖與實機操作為驗收證據,PHP 可測項照 §12.9 對應斷言。
