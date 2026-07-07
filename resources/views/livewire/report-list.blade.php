@@ -89,7 +89,7 @@ $verificationConfig = [
     'corroborated' => ['label' => __('多方佐證'), 'class' => 'bg-sky-500/20 text-sky-400'],
     'official'     => ['label' => __('官方核實'), 'class' => 'bg-green-500/20 text-green-400'],
 ];
-{{-- 分類徽章：由 report_categories 驅動（含停用，舊通報仍需標籤/配色），色票改 inline style --}}
+// 分類徽章：由 report_categories 驅動（含停用，舊通報仍需標籤/配色），色票改 inline style
 $categoryConfig = \App\Models\ReportCategory::allOrdered()->mapWithKeys(fn ($cat) => [$cat->slug => [
     'label' => __($cat->name),
     'style' => "background: {$cat->color}26; color: {$cat->color}; box-shadow: inset 0 0 0 1px {$cat->color}4d",
