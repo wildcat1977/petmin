@@ -348,9 +348,13 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 
 | Phase | 內容 | 狀態 |
 |---|---|---|
-| 3a | §12.1 配色 + §12.2 上下實色帶/跑馬燈 + §12.4 banner + §12.6 footer/nav | ⬜ |
-| 3b | §12.3 三態 pin + §12.8 三態篩選 | ⬜ |
-| 3c | §12.5 圖卡輪播 banner + 移除 `/cards` | ⬜ |
-| 3d | §12.7 手機右側 IITC 面板 + 卡片 modal | ⬜ |
+| 3a | §12.1 配色 + §12.2 上下實色帶/跑馬燈 + §12.4 banner + §12.6 footer/nav | ✅ 已出貨（配色 #002923/卡片 #003a30 擴及全站頁面、頂/底實色帶、banner、跑馬燈 13px、footer 分類新聞篇數+隱藏連結、nav 移入我的回報/聯絡管理員） |
+| 3b | §12.3 三態 pin + §12.8 三態篩選 | ✅ 已出貨（circleMarker→水滴 divIcon+emoji 三態、查核只留 popup、三態篩選 chip） |
+| 3c | §12.5 圖卡輪播 banner + 移除 `/cards` | ✅ 已出貨（card-promo 輪播 banner、/cards 302→/、cards 頁刪除、Filament 後台保留） |
+| 3d | §12.7 手機右側 IITC 面板 + 卡片 modal | ✅ 已出貨（桌機 chips 手機隱藏、右側 IITC 圖層/狀態 checkbox 面板、卡片 bottom-sheet modal、面板 checkbox wire:ignore 免 poll morph 還原） |
 
 每個 Phase 結束做檢查點:做了什麼/驗證了什麼/剩什麼。視覺項(pin/配色/手機面板)以 chrome-devtools 截圖與實機操作為驗收證據,PHP 可測項照 §12.9 對應斷言。
+
+**v0.3 全數完成（2026-07-08）。** 全套 163 測試綠;線上 hazdar.myurl.tw 桌機/手機實機驗收通過（含手機面板圖層切換跨 wire:poll 存活）。最終 whole-branch review：Ready to merge，無 Critical/Important。
+- **重要 pattern**：手機面板的圖層 checkbox 由 vanilla JS（`initChips`）管理 `chip-on` class，卻位於 `wire:poll.10s` scope 內 → 每次 poll 的 morph 會蓋回 blade 預設，故該區塊需 `wire:ignore`（比照 `radar-map.blade.php` 地圖容器）。凡「JS 直接改的 DOM」落在 Livewire poll 元件內都要 `wire:ignore`。
+- **v0.3 backlog（非本版 regression，未修）**：`report-list.blade.php:552` 圓餅圖 `borderColor:'#0d1117'` 為 JS 內嵌 hex（配色 grep 掃不到），該圖位於未變動的 `#161b22` 面板上、非本版重染的頁底，屬既有微視覺、非 v0.3 造成；`--color-radar-panel:#161b22` 為死 token；promo/news-counts 快取僅 TTL 不主動 bust（沿用既有可接受模式）。
