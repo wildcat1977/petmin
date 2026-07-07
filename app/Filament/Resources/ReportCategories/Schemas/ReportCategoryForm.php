@@ -35,7 +35,8 @@ class ReportCategoryForm
 
                 ColorPicker::make('color')
                     ->label('顏色')
-                    ->required(),
+                    ->required()
+                    ->regex('/^#[0-9a-fA-F]{6}$/'),
 
                 TextInput::make('sort_order')
                     ->label('排序')
@@ -73,7 +74,7 @@ class ReportCategoryForm
                         TextInput::make('value')
                             ->label('數值')
                             ->numeric()
-                            ->nullable(),
+                            ->required(),
 
                         TextInput::make('hint')
                             ->label('提示文字')

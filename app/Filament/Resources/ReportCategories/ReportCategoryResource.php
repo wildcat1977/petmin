@@ -60,7 +60,26 @@ class ReportCategoryResource extends Resource
     {
         if (blank($data['extra_field']['label'] ?? null)) {
             $data['extra_field'] = null;
+
+            return $data;
         }
+
+        if (isset($data['extra_field']['min'])) {
+            $data['extra_field']['min'] = (int) $data['extra_field']['min'];
+        }
+
+        if (isset($data['extra_field']['max'])) {
+            $data['extra_field']['max'] = (int) $data['extra_field']['max'];
+        }
+
+        $data['extra_field']['presets'] = collect($data['extra_field']['presets'] ?? [])
+            ->filter(fn (array $preset) => is_numeric($preset['value'] ?? null))
+            ->map(fn (array $preset) => [
+                'value' => (int) $preset['value'],
+                'hint' => (string) ($preset['hint'] ?? ''),
+            ])
+            ->values()
+            ->all();
 
         return $data;
     }

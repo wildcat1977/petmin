@@ -136,7 +136,8 @@ let radarEchoLayer = null;     // 雷達回波 ImageOverlay
 let radarEchoTimer = null;
 let floodLayer = null;         // 淹水潛勢 WMTS
 let currentTileLayer = null;   // 底圖圖層（隨主題切換）
-let activeCategories = new Set(Object.entries(CATEGORY_META).filter(([, m]) => m.active).map(([slug]) => slug));
+// 含停用分類：停用只關新回報入口，既有點位不得消失（spec §11.7）
+let activeCategories = new Set(Object.keys(CATEGORY_META));
 let showResolved = true;
 let sheltersVisible = false;
 let sheltersCache = null;      // 收容所清單快取（每次頁面生命週期抓一次）

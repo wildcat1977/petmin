@@ -158,6 +158,17 @@ class ReportSubmissionTest extends TestCase
             ->assertHasErrors(['extraValue']);
     }
 
+    public function test_extra_value_boundary_follows_category_db_config_not_hardcoded_range(): void
+    {
+        ReportCategory::where('slug', 'flood')->first()->update([
+            'extra_field' => ['label' => '積水深度', 'unit' => 'cm', 'min' => 0, 'max' => 300],
+        ]);
+        $user = User::factory()->create();
+
+        $this->submitReport($user, ['category' => Report::CATEGORY_FLOOD, 'extraValue' => 400])
+            ->assertHasErrors(['extraValue']);
+    }
+
     public function test_extra_value_is_nulled_for_category_without_extra_field(): void
     {
         $user = User::factory()->create();

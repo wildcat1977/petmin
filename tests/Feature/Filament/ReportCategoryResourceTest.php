@@ -64,6 +64,42 @@ class ReportCategoryResourceTest extends TestCase
         $this->assertNull(ReportCategory::bySlug('water_outage'));
     }
 
+    public function test_extra_field_numeric_values_are_stored_as_int_even_when_submitted_as_strings(): void
+    {
+        $this->actingAs($this->admin());
+
+        // 瀏覽器往返會把 min/max/presets.*.value 變成字串；後端必須強制轉型（避免嚴格比對失效）
+        Livewire::test(CreateReportCategory::class)
+            ->fillForm([
+                'slug' => 'landslide', 'name' => '土石流', 'emoji' => '⛰️',
+                'color' => '#22c55e', 'sort_order' => 70, 'is_active' => true,
+                'extra_field' => [
+                    'label' => '掩埋深度', 'unit' => 'cm', 'min' => '0', 'max' => '300',
+                    'presets' => [['value' => '25', 'hint' => '測試']],
+                ],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $extra = ReportCategory::bySlug('landslide')->extra_field;
+        $this->assertSame(0, $extra['min']);
+        $this->assertSame(300, $extra['max']);
+        $this->assertSame(25, $extra['presets'][0]['value']);
+    }
+
+    public function test_invalid_color_is_rejected(): void
+    {
+        $this->actingAs($this->admin());
+
+        Livewire::test(CreateReportCategory::class)
+            ->fillForm([
+                'slug' => 'landslide', 'name' => '土石流', 'emoji' => '⛰️',
+                'color' => 'sky blue', 'sort_order' => 70, 'is_active' => true,
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['color']);
+    }
+
     public function test_bulk_delete_skips_categories_with_reports_and_reports_partial_failure(): void
     {
         $this->actingAs($this->admin());
