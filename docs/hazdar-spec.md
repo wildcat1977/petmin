@@ -374,3 +374,15 @@ Nominatim 反查降級:災時地址非關鍵欄位,queue 塞車不得阻塞回�
 **驗收**:全套 170 測試綠(新增 `AdminLinkTest`/`LoggedInPagesSmokeTest`);線上 hazdar.myurl.tw 實機驗證跑馬燈位置、footer 燈號、pill 移除、桌機重疊消除(JS 量測 overlap_px=0)、雨量圖表(桌機卡片收合→展開、手機 modal 開啟)實際畫出長條圖、admin/非 admin 使用者看到/看不到後台連結。
 
 **已知非本輪處理項**:首頁公開曝光 4 個「test」標題的公告(災情通報/市府與氣象署/居家防災/停班停課,均含 "test" 字樣)目前線上真實存在於 `announcements` 資料表並會被一般訪客看到——這是驗收時發現的**既有生產資料**,非本輪程式改動造成,未經使用者確認不逕行刪除,留待使用者決定是否清除。
+
+### 12.12 v0.3 三次回饋(2026-07-08 PM 三輪視覺調整)
+
+PM 實機測試(含手機截圖)發現 §12.11 交付後仍有 3 處問題,修正如下:
+
+1. **公告/立即回報鈕不應共用實色底帶**:`announcement-banner`/`my-report-status` 元件本來就各自帶半透明卡片樣式(`bg-[#111827]/90`、`backdrop-blur`);§12.11 把它們與立即回報鈕一起包進單一 `bg-[#002923]` 實色帶,等於疊了一層不透明底,不必要地擴大遮蔽地圖的面積。改為:三者各自浮在地圖上(沿用既有半透明樣式);底帶收斂到只剩 footer 一行小字連結+燈號(padding `p-4`→`px-4 py-2`,800px 高視窗下底帶僅 55px)。
+2. **手機頂帶 nav 溢出**:登入後 我的回報/頭像/登出 與其餘項目一起擠進手機寬度會橫向溢出(PM 截圖確認)。改為:桌機(`lg` 以上)維持橫排;手機改漢堡按鈕+展開面板,面板含完整選單(含 §12.11 新增卻被 `hidden lg:flex` 誤擋在手機看不到的 4 個頁面連結)。
+3. **次要頁面未共用首頁 head nav**:profile/reports/news/stats/transparency/contact 先前是獨立一份「◎ Hazdar」文字版 header,與首頁 banner+跑馬燈版本不一致。抽出 `partials/site-header.blade.php`(banner+跑馬燈+選單+手機漢堡)單一來源,首頁與六個次要頁面全部共用;`nav.blade.php` 收斂為薄包裝。
+4. **跑馬燈長訊息改左滾動**:原本用 `truncate` 把超出容器寬度的長訊息(常見於 NCDR 高溫/豪雨警戒長文案)直接裁掉看不到後半段。改為 JS 量測 `scrollWidth` 是否超出容器,超出才加 `.radar-ticker-marquee` 向左捲動播完整句;短訊息維持原本置中靜態顯示。
+5. **附帶修復**:跑馬燈邏輯抽成獨立 `livewire/site-ticker.blade.php` 元件(30s 快取),不再綁在整個地圖元件(`radar-map`)上——次要頁面沒有地圖,原本永遠拿不到跑馬燈資料。同時發現 `initTicker()` 原本巢狀在 `initRadar()` 內,只有 `#radar-map` 存在(首頁)才會執行,已改為獨立於地圖呼叫。
+
+**驗收**:全套 172 測試綠(新增 `test_mobile_has_hamburger_menu_with_full_link_set`/`test_secondary_pages_share_home_header_with_banner_and_ticker`);線上桌機/手機實機驗證:公告/回報鈕浮動不遮地圖、手機漢堡選單展開正確、`/reports` 等次要頁面顯示 banner+跑馬燈與首頁一致、長 NCDR 警戒訊息正確向左捲動播出完整文字且被 `overflow:hidden` 正確裁切在跑馬燈膠囊範圍內(以強制動畫暫停截圖驗證,排除截到 400ms opacity 過場瞬間的偽陽性)。
