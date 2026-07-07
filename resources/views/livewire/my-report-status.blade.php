@@ -48,7 +48,7 @@ new class extends Component
         $ts = $report->reviewed_at?->timestamp ?? 0;
         $isApproved = $report->status === Report::STATUS_APPROVED;
         $isRejected = $report->status === Report::STATUS_REJECTED;
-        $typeLabel  = Report::CATEGORY_LABELS[$report->category] ?? $report->category;
+        $typeLabel  = \App\Models\ReportCategory::labels()[$report->category] ?? $report->category;
         $reasonText = $report->rejection_reason
             ? (Report::REJECTION_REASONS[$report->rejection_reason] ?? $report->rejection_reason)
             : null;

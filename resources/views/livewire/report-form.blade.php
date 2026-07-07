@@ -2,6 +2,7 @@
 
 use App\Jobs\ModerateReportImage;
 use App\Models\Report;
+use App\Models\ReportCategory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -19,7 +20,7 @@ new class extends Component
     public bool $open = false;
     public bool $exifLocation = false;
 
-    public string $category = Report::CATEGORY_FLOOD;
+    public string $category = '';
 
     public ?int $extraValue = null;
 
@@ -35,15 +36,24 @@ new class extends Component
 
     public bool $submitted = false;
 
+    public function mount(): void
+    {
+        $this->category = ReportCategory::defaultSlug();
+    }
+
     public function rules(): array
     {
+        $extra = ReportCategory::bySlug($this->category)?->extra_field;
+
         return [
-            'category'     => ['required', 'in:'.implode(',', Report::CATEGORIES)],
-            'extraValue' => ['nullable', 'integer', 'between:0,500'],
-            'photo'        => ['nullable', 'image', 'max:20480'],
-            'latitude'     => ['required', 'numeric', 'between:-90,90'],
-            'longitude'    => ['required', 'numeric', 'between:-180,180'],
-            'description'  => ['nullable', 'string', 'max:500'],
+            'category'    => ['required', 'in:'.implode(',', ReportCategory::activeSlugs())],
+            'extraValue'  => $extra
+                ? ['nullable', 'integer', 'between:'.($extra['min'] ?? 0).','.($extra['max'] ?? 9999)]
+                : ['nullable', 'integer'],
+            'photo'       => ['nullable', 'image', 'max:20480'],
+            'latitude'    => ['required', 'numeric', 'between:-90,90'],
+            'longitude'   => ['required', 'numeric', 'between:-180,180'],
+            'description' => ['nullable', 'string', 'max:500'],
         ];
     }
 
@@ -66,7 +76,7 @@ new class extends Component
             return;
         }
         $this->reset(['photo', 'description', 'submitted', 'extraValue']);
-        $this->category = Report::CATEGORY_FLOOD;
+        $this->category = ReportCategory::defaultSlug();
         $this->open = true;
     }
 
@@ -78,7 +88,7 @@ new class extends Component
 
     public function updatedCategory(): void
     {
-        if ($this->category !== Report::CATEGORY_FLOOD) {
+        if (! ReportCategory::bySlug($this->category)?->extra_field) {
             $this->extraValue = null;
         }
     }
@@ -133,7 +143,7 @@ new class extends Component
         $report = Report::create([
             'user_id'        => Auth::id(),
             'category'       => $this->category,
-            'extra_value'    => $this->category === Report::CATEGORY_FLOOD ? $this->extraValue : null,
+            'extra_value'    => ReportCategory::bySlug($this->category)?->extra_field ? $this->extraValue : null,
             'latitude'       => $this->latitude,
             'longitude'      => $this->longitude,
             'address'        => $this->address ?: null,

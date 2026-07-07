@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\ModerateReportImage;
 use App\Models\Report;
+use App\Models\ReportCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -124,5 +125,45 @@ class ReportSubmissionTest extends TestCase
         ])->assertHasNoErrors();
 
         $this->assertNull(Report::sole()->extra_value);
+    }
+
+    public function test_admin_created_category_is_immediately_reportable(): void
+    {
+        ReportCategory::create([
+            'slug' => 'landslide', 'name' => '土石流', 'emoji' => '⛰️',
+            'color' => '#22c55e', 'sort_order' => 99, 'is_active' => true,
+        ]);
+
+        $user = User::factory()->create();
+        $this->submitReport($user, ['category' => 'landslide']);
+
+        $this->assertDatabaseHas('reports', ['category' => 'landslide']);
+    }
+
+    public function test_deactivated_category_is_rejected_for_new_reports(): void
+    {
+        ReportCategory::where('slug', 'power_outage')->first()->update(['is_active' => false]);
+
+        $user = User::factory()->create();
+
+        $this->submitReport($user, ['category' => Report::CATEGORY_POWER_OUTAGE])
+            ->assertHasErrors(['category']);
+    }
+
+    public function test_extra_value_outside_category_config_range_is_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        $this->submitReport($user, ['category' => Report::CATEGORY_FLOOD, 'extraValue' => 501])
+            ->assertHasErrors(['extraValue']);
+    }
+
+    public function test_extra_value_is_nulled_for_category_without_extra_field(): void
+    {
+        $user = User::factory()->create();
+
+        $this->submitReport($user, ['category' => Report::CATEGORY_ROAD_BLOCKED, 'extraValue' => 50]);
+
+        $this->assertNull(Report::latest('id')->first()->extra_value);
     }
 }

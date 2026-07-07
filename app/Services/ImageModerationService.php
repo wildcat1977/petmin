@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Report;
+use App\Models\ReportCategory;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
@@ -158,7 +158,7 @@ class ImageModerationService
 
     private function prompt(string $category): string
     {
-        $label = Report::CATEGORY_LABELS[$category] ?? $category;
+        $label = ReportCategory::labels()[$category] ?? $category;
 
         return <<<PROMPT
 <task>

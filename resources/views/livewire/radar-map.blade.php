@@ -35,7 +35,7 @@ new class extends Component
             ->groupBy('category')
             ->pluck('n', 'category')
             ->each(function ($n, $category) use (&$messages) {
-                $label = Report::CATEGORY_LABELS[$category] ?? $category;
+                $label = \App\Models\ReportCategory::labels()[$category] ?? $category;
                 $messages[] = "📊 近 24 小時已收 {$n} 筆{$label}回報";
             });
 
@@ -48,7 +48,7 @@ new class extends Component
             ->limit(6)
             ->get(['category', 'description', 'created_at'])
             ->each(function ($r) use (&$messages) {
-                $label = Report::CATEGORY_LABELS[$r->category] ?? $r->category;
+                $label = \App\Models\ReportCategory::labels()[$r->category] ?? $r->category;
                 $messages[] = '📡 '.$r->created_at->diffForHumans()
                     ."，市民回報{$label}：".Str::limit($r->description, 25);
             });

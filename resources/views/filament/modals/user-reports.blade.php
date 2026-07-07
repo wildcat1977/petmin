@@ -59,7 +59,7 @@ $reasonsJson = json_encode(\App\Models\Report::REJECTION_REASONS, JSON_UNESCAPED
                         @if($report->id === $currentId)
                             <span class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 dark:bg-primary-900 dark:text-primary-300">當前</span>
                         @endif
-                        <span>{{ \App\Models\Report::CATEGORY_LABELS[$report->category] ?? $report->category }}</span>
+                        <span>{{ \App\Models\ReportCategory::labels()[$report->category] ?? $report->category }}</span>
                         <span class="ml-auto text-gray-400 flex-none">{{ $report->created_at->format('m/d H:i') }}</span>
                     </div>
 

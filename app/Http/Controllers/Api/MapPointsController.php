@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Report;
+use App\Models\ReportCategory;
 use App\Support\Geohash;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,10 +37,10 @@ class MapPointsController extends Controller
 
         $zoom = (int) $validated['zoom'];
         $categories = collect(explode(',', $validated['categories'] ?? ''))
-            ->intersect(Report::CATEGORIES)
+            ->intersect(ReportCategory::slugs())
             ->values();
         if ($categories->isEmpty()) {
-            $categories = collect(Report::CATEGORIES);
+            $categories = collect(ReportCategory::slugs());
         }
         $showResolved = (bool) ($validated['show_resolved'] ?? false);
 

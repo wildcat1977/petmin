@@ -71,7 +71,7 @@ Route::get('/reports/export', function () {
         foreach ($reports as $report) {
             fputcsv($handle, [
                 $report->created_at->format('Y-m-d H:i'),
-                Report::CATEGORY_LABELS[$report->category] ?? $report->category,
+                $report->categoryLabel(),
                 $report->extra_value !== null ? (string) $report->extra_value : '',
                 $report->address ?: '',
                 $statusLabels[$report->status] ?? $report->status,

@@ -157,7 +157,7 @@ new class extends Component
                         <div>
                             <div class="flex items-center gap-2">
                                 <span class="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-slate-300">
-                                    {{ Report::CATEGORY_LABELS[$report->category] ?? $report->category }}
+                                    {{ \App\Models\ReportCategory::labels()[$report->category] ?? $report->category }}
                                 </span>
                                 <span class="rounded-full px-2 py-0.5 text-[11px] font-medium {{ $badge['class'] }}">
                                     {{ $badge['text'] }}

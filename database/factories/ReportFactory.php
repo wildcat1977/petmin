@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Report;
+use App\Models\ReportCategory;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -15,7 +16,7 @@ class ReportFactory extends Factory
 
     public function definition(): array
     {
-        $category = $this->faker->randomElement(Report::CATEGORIES);
+        $category = $this->faker->randomElement(ReportCategory::activeSlugs());
 
         return [
             'user_id' => User::factory(),

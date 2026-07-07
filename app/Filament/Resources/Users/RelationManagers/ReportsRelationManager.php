@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\RelationManagers;
 
 use App\Models\Report;
+use App\Models\ReportCategory;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -38,7 +39,7 @@ class ReportsRelationManager extends RelationManager
                         Report::CATEGORY_STRUCTURAL_DAMAGE => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state) => Report::CATEGORY_LABELS[$state] ?? $state),
+                    ->formatStateUsing(fn (string $state) => ReportCategory::labels()[$state] ?? $state),
 
                 TextColumn::make('description')
                     ->label('描述')
@@ -84,7 +85,7 @@ class ReportsRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('category')
                     ->label('災情分類')
-                    ->options(Report::CATEGORY_LABELS),
+                    ->options(fn () => ReportCategory::labels()),
                 SelectFilter::make('status')
                     ->label('狀態')
                     ->options([

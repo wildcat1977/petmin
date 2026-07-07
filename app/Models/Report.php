@@ -44,20 +44,6 @@ class Report extends Model
 
     public const DEFAULT_LONGITUDE = 121.5654000;
 
-    public const CATEGORIES = [
-        self::CATEGORY_FLOOD,
-        self::CATEGORY_ROAD_BLOCKED,
-        self::CATEGORY_POWER_OUTAGE,
-        self::CATEGORY_STRUCTURAL_DAMAGE,
-    ];
-
-    public const CATEGORY_LABELS = [
-        self::CATEGORY_FLOOD => '淹水',
-        self::CATEGORY_ROAD_BLOCKED => '道路中斷',
-        self::CATEGORY_POWER_OUTAGE => '停電',
-        self::CATEGORY_STRUCTURAL_DAMAGE => '結構受損',
-    ];
-
     public const VERIFICATION_LEVELS = [
         self::VERIFICATION_UNVERIFIED,
         self::VERIFICATION_CORROBORATED,
@@ -126,6 +112,16 @@ class Report extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function categoryModel(): BelongsTo
+    {
+        return $this->belongsTo(ReportCategory::class, 'category', 'slug');
+    }
+
+    public function categoryLabel(): string
+    {
+        return ReportCategory::labels()[$this->category] ?? $this->category;
     }
 
     /** 同一使用者的所有回報（自我關聯，供 withCount 使用） */

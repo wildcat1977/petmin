@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Reports\Tables;
 
 use App\Filament\Resources\Users\UserResource;
 use App\Models\Report;
+use App\Models\ReportCategory;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -72,7 +73,7 @@ class ReportsTable
                         Report::CATEGORY_STRUCTURAL_DAMAGE => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state) => Report::CATEGORY_LABELS[$state] ?? $state),
+                    ->formatStateUsing(fn (string $state) => ReportCategory::labels()[$state] ?? $state),
 
                 ImageColumn::make('image_path')
                     ->label('照片')
@@ -138,7 +139,7 @@ class ReportsTable
             ->filters([
                 SelectFilter::make('category')
                     ->label('災情分類篩選')
-                    ->options(Report::CATEGORY_LABELS),
+                    ->options(fn () => ReportCategory::labels()),
                 SelectFilter::make('status')
                     ->label('狀態篩選')
                     ->options([

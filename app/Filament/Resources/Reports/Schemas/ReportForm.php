@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Reports\Schemas;
 
 use App\Models\Report;
+use App\Models\ReportCategory;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -26,7 +27,7 @@ class ReportForm
 
                 Select::make('category')
                     ->label('災情分類')
-                    ->options(Report::CATEGORY_LABELS)
+                    ->options(fn () => ReportCategory::labels())
                     ->live()
                     ->required(),
 

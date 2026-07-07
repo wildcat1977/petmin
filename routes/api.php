@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Report;
+use App\Models\ReportCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 
 /*
  * Public read-only API
@@ -19,7 +21,7 @@ use Illuminate\Support\Facades\Route;
  * Query parameters:
  *   from  – ISO 8601 date/datetime, e.g. 2026-01-01 or 2026-01-01T00:00:00  (inclusive)
  *   to    – ISO 8601 date/datetime                                            (inclusive, defaults to now)
- *   category – "flood" | "road_blocked" | "power_outage" | "structural_damage" (optional)
+ *   category – slug 清單見 /api/map 分類設定，後台可增減 (optional)
  *   per_page – integer 1-500, default 200
  *   page  – integer, default 1
  *
@@ -45,7 +47,7 @@ Route::get('/v1/reports', function (Request $request) {
     $validated = $request->validate([
         'from' => ['nullable', 'date'],
         'to' => ['nullable', 'date'],
-        'category' => ['nullable', 'string', 'in:'.implode(',', Report::CATEGORIES)],
+        'category' => ['nullable', 'string', Rule::in(ReportCategory::slugs())],
         'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         'page' => ['nullable', 'integer', 'min:1'],
     ]);

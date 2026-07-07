@@ -3,6 +3,7 @@
 use App\Models\DashboardResource;
 use App\Models\ExternalAlert;
 use App\Models\Report;
+use App\Models\ReportCategory;
 use App\Models\WeatherObservation;
 use App\Services\DataSourceHealth;
 use Illuminate\Support\Facades\Cache;
@@ -11,14 +12,6 @@ use Livewire\Component;
 
 new class extends Component
 {
-    /** 統計卡片顏色/圖示對應（mockup 右欄） */
-    public const CATEGORY_CARDS = [
-        Report::CATEGORY_FLOOD => ['label' => '積水回報', 'class' => 'text-cyan-300', 'bar' => 'border-cyan-400'],
-        Report::CATEGORY_ROAD_BLOCKED => ['label' => '道路中斷', 'class' => 'text-orange-300', 'bar' => 'border-orange-400'],
-        Report::CATEGORY_POWER_OUTAGE => ['label' => '停電回報', 'class' => 'text-yellow-300', 'bar' => 'border-yellow-400'],
-        Report::CATEGORY_STRUCTURAL_DAMAGE => ['label' => '結構受損', 'class' => 'text-rose-300', 'bar' => 'border-rose-400'],
-    ];
-
     public const SOURCE_LABELS = [
         'cwa_observations' => 'CWA API',
         'ncdr_alerts' => 'NCDR API',
@@ -86,15 +79,17 @@ new class extends Component
         $rows = Report::query()
             ->visible()
             ->where('created_at', '>=', now()->subDay())
-            ->selectRaw("category, count(*) as day_count, count(case when created_at > ? then 1 end) as hour_count", [now()->subHour()])
+            ->selectRaw('category, count(*) as day_count, count(case when created_at > ? then 1 end) as hour_count', [now()->subHour()])
             ->groupBy('category')
             ->get()
             ->keyBy('category');
 
-        return collect(self::CATEGORY_CARDS)->map(fn ($card, $category) => [
-            ...$card,
-            'count' => (int) ($rows[$category]->day_count ?? 0),
-            'delta' => (int) ($rows[$category]->hour_count ?? 0),
+        return ReportCategory::activeOrdered()->map(fn ($cat) => [
+            'slug' => $cat->slug,
+            'label' => $cat->name,
+            'color' => $cat->color,
+            'count' => (int) ($rows[$cat->slug]->day_count ?? 0),
+            'delta' => (int) ($rows[$cat->slug]->hour_count ?? 0),
         ])->all();
     }
 
@@ -278,8 +273,8 @@ new class extends Component
                 <p class="text-[10px] font-semibold tracking-widest text-slate-500">事件統計 / 即時（近 24H）</p>
                 <div class="mt-2 grid grid-cols-2 gap-2">
                     @foreach ($this->stats as $stat)
-                        <div class="rounded-lg border-l-2 {{ $stat['bar'] }} border border-white/10 bg-black/30 p-3">
-                            <p class="text-3xl font-black {{ $stat['class'] }}">{{ $stat['count'] }}</p>
+                        <div class="rounded-lg border-l-2 border border-white/10 bg-black/30 p-3" style="border-color: {{ $stat['color'] }}">
+                            <p class="text-3xl font-black" style="color: {{ $stat['color'] }}">{{ $stat['count'] }}</p>
                             <p class="mt-0.5 text-[11px] text-slate-400">{{ $stat['label'] }}</p>
                             @if ($stat['delta'] > 0)
                                 <p class="text-[10px] font-semibold text-rose-400">+{{ $stat['delta'] }} 過去1H</p>

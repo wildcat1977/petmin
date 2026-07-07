@@ -39,8 +39,8 @@ class EocDashboardTest extends TestCase
 
         $stats = Livewire::test('eoc-dashboard')->get('stats');
 
-        $this->assertSame(2, $stats[Report::CATEGORY_FLOOD]['count']);
-        $this->assertSame(2, $stats[Report::CATEGORY_FLOOD]['delta']);
+        $this->assertSame(2, collect($stats)->firstWhere('slug', Report::CATEGORY_FLOOD)['count']);
+        $this->assertSame(2, collect($stats)->firstWhere('slug', Report::CATEGORY_FLOOD)['delta']);
     }
 
     public function test_hourly_delta_only_counts_last_hour(): void
@@ -51,8 +51,8 @@ class EocDashboardTest extends TestCase
 
         $stats = Livewire::test('eoc-dashboard')->get('stats');
 
-        $this->assertSame(2, $stats[Report::CATEGORY_POWER_OUTAGE]['count']);
-        $this->assertSame(1, $stats[Report::CATEGORY_POWER_OUTAGE]['delta']);
+        $this->assertSame(2, collect($stats)->firstWhere('slug', Report::CATEGORY_POWER_OUTAGE)['count']);
+        $this->assertSame(1, collect($stats)->firstWhere('slug', Report::CATEGORY_POWER_OUTAGE)['delta']);
     }
 
     public function test_cwa_outage_shows_degraded_panel_only_when_no_data_at_all(): void

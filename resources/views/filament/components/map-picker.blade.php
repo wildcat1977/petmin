@@ -115,7 +115,7 @@ function mapPickerInit_{{ $record?->id ?? 0 }}() {
                         approved: '已核准',
                         rejected: '已拒絕',
                     };
-                    const categoryLabel = @js(\App\Models\Report::CATEGORY_LABELS);
+                    const categoryLabel = @js(\App\Models\ReportCategory::labels());
 
                     nearby.forEach(r => {
                         let html = '';
