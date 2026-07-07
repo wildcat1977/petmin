@@ -27,10 +27,11 @@ class PromoCardsPageTest extends TestCase
             ->assertDontSee('下架卡');
     }
 
-    public function test_home_page_links_to_cards(): void
+    public function test_home_no_longer_links_to_cards_page(): void
     {
+        // v0.3：圖卡連結自首頁移除（改首頁 banner，見 Phase 3c）
         $this->withHeader('Accept-Language', 'zh-TW')->get('/')
-            ->assertSee(route('cards'), false)
-            ->assertSee('圖卡專區');
+            ->assertOk()
+            ->assertDontSee(route('cards'), false);
     }
 }

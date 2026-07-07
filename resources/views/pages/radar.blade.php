@@ -67,8 +67,8 @@
 
         <div class="flex-1"></div>
 
-        {{-- 底部：立即回報 + Footer --}}
-        <div class="pointer-events-auto flex flex-col gap-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {{-- 底帶：#002923 實色帶（spec §12.2/12.6）--}}
+        <div class="pointer-events-auto flex flex-col gap-3 bg-[#002923] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.35)]">
             {{-- 管理員公告 --}}
             <livewire:announcement-banner />
 
@@ -77,10 +77,10 @@
             <livewire:my-report-status />
             @endauth
 
-            {{-- 跑馬燈廣播 --}}
-            <div class="mx-auto w-full max-w-md overflow-hidden rounded-full bg-black/50 px-4 py-1.5 backdrop-blur">
+            {{-- 跑馬燈廣播（放大到 13px，spec §12.2）--}}
+            <div class="mx-auto w-full max-w-md overflow-hidden rounded-full bg-black/30 px-4 py-2">
                 <p id="radar-ticker-text"
-                   class="radar-ticker truncate text-center text-[11px] font-medium text-slate-200">
+                   class="radar-ticker truncate text-center text-[13px] font-medium text-slate-100">
                 </p>
             </div>
 
@@ -91,20 +91,19 @@
                 <span>{{ __('立即回報災情') }}</span>
             </button>
 
-            <footer class="mx-auto flex w-full max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
-                <a href="{{ route('news') }}" class="hover:text-slate-300">{{ __('最新消息') }}</a>
-                <a href="{{ route('reports') }}" class="hover:text-slate-300">{{ __('回報清單') }}</a>
-                <a href="{{ route('transparency') }}" class="hover:text-slate-300">{{ __('透明度報告') }}</a>
-                <a href="{{ route('stats') }}" class="hover:text-slate-300">{{ __('統計地圖') }}</a>
-                <a href="{{ route('cards') }}" class="hover:text-slate-300">{{ __('圖卡專區') }}</a>
-                @auth
-                    <a href="{{ route('profile') }}" class="hover:text-slate-300">{{ __('我的回報') }}</a>
+            <footer class="mx-auto flex w-full max-w-md flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                {{-- 左下：各分類最新消息篇數（只列有已發佈者，整組連 /news，spec §12.6）--}}
+                @if (! empty($newsCounts))
+                    <a href="{{ route('news') }}" class="flex flex-wrap items-center gap-x-2 gap-y-0.5 hover:text-slate-200">
+                        @foreach ($newsCounts as $cat => $n)
+                            <span>{{ __(\App\Models\Announcement::CATEGORY_LABELS[$cat] ?? $cat) }} {{ $n }}</span>
+                        @endforeach
+                    </a>
                 @else
-                    <span class="text-slate-700">© {{ date('Y') }} Hazdar</span>
-                @endauth
-                <button type="button"
-                        onclick="window.dispatchEvent(new CustomEvent('open-contact-form'))"
-                        class="hover:text-slate-300">{{ __('聯絡管理員') }}</button>
+                    <a href="{{ route('news') }}" class="hover:text-slate-200">{{ __('最新消息') }}</a>
+                @endif
+
+                <span class="text-slate-600">© {{ date('Y') }} Hazdar</span>
             </footer>
         </div>
     </div>
