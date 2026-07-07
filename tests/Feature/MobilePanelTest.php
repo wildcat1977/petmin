@@ -20,4 +20,14 @@ class MobilePanelTest extends TestCase
             ->assertOk()
             ->assertSee('lg:flex-wrap', false); // chips 容器改為 hidden lg:flex lg:flex-wrap
     }
+
+    public function test_mobile_panel_renders_layer_toggles_and_card_buttons(): void
+    {
+        Livewire::test('eoc-dashboard')
+            ->assertSee('圖層')                                  // 面板圖層區標題（面板專有）
+            ->assertSee('狀態')                                  // 面板三態區標題（面板專有）
+            ->assertSee('data-map-chip="notified"', false)       // 面板三態 checkbox（本元件僅面板有）
+            ->assertSee('data-map-chip="shelters"', false)       // 面板收容所 checkbox
+            ->assertSee('card-open-btn', false);                 // 面板卡片按鈕
+    }
 }

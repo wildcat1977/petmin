@@ -241,24 +241,78 @@ new class extends Component
         @include('livewire.partials.card-promo')
     </div>
 
-    {{-- 行動版：底部單欄可捲動卡片抽屜（lg 以下顯示；同五張卡片內容，rain 卡不畫圖避免
-         #rain-trend-chart 這個 DOM id 重複——該 id 只在桌機欄渲染一次） --}}
-    <div class="pointer-events-none fixed inset-x-0 bottom-24 z-[400] flex max-h-[45vh] flex-col gap-2 overflow-y-auto px-2 lg:hidden">
-        <x-dashboard-card card-key="weather" :title="__('CWA 即時觀測')">
-            @include('livewire.partials.card-weather')
-        </x-dashboard-card>
-        <x-dashboard-card card-key="rain" :title="__('24H 累積雨量')">
-            @include('livewire.partials.card-rain', ['withChart' => false])
-        </x-dashboard-card>
-        <x-dashboard-card card-key="alerts" :title="__('NCDR 警戒')">
-            @include('livewire.partials.card-alerts')
-        </x-dashboard-card>
-        <x-dashboard-card card-key="stats" :title="__('事件統計')">
-            @include('livewire.partials.card-stats')
-        </x-dashboard-card>
-        <x-dashboard-card card-key="info" :title="__('交通與清運資訊彙整')">
-            @include('livewire.partials.card-info')
-        </x-dashboard-card>
-        @include('livewire.partials.card-promo')
+    {{-- 行動版右側 IITC 圖層/資訊面板（spec §12.7）：取代舊底部抽屜 --}}
+    <div class="lg:hidden" x-data="{ panelOpen: false, activeCard: null }">
+        {{-- 右緣收合 tab --}}
+        <button type="button" @click="panelOpen = ! panelOpen"
+                class="pointer-events-auto fixed right-0 top-1/2 z-[510] -translate-y-1/2 rounded-l-lg bg-[#002923] px-1.5 py-5 text-lg text-slate-200 shadow-lg shadow-black/40"
+                :aria-expanded="panelOpen">
+            <span x-text="panelOpen ? '›' : '‹'"></span>
+        </button>
+
+        {{-- 面板 --}}
+        <div x-show="panelOpen" x-cloak x-transition.origin.right
+             class="pointer-events-auto fixed bottom-24 right-0 top-16 z-[505] flex w-64 flex-col gap-3 overflow-y-auto rounded-l-xl border-l border-white/10 bg-[#002923]/98 p-3 backdrop-blur">
+            {{-- 圖層 --}}
+            <div>
+                <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('圖層') }}</p>
+                <div class="flex flex-col gap-1">
+                    @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
+                        <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
+                                class="layer-check chip-on">{{ $cat->emoji }} {{ __($cat->name) }}</button>
+                    @endforeach
+                    <button type="button" data-map-chip="shelters" style="--chip-color:#4ade80" class="layer-check">🏠 {{ __('收容所') }}</button>
+                    <button type="button" data-map-chip="radar_echo" style="--chip-color:#22d3ee" class="layer-check">🌀 {{ __('雷達回波') }}</button>
+                    @if (config('hazdar.flood_potential.xyz') || config('hazdar.flood_potential.wms_url'))
+                        <button type="button" data-map-chip="flood_potential" style="--chip-color:#818cf8" class="layer-check">🗺️ {{ __('淹水潛勢') }}</button>
+                    @endif
+                </div>
+            </div>
+            {{-- 狀態三態 --}}
+            <div>
+                <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('狀態') }}</p>
+                <div class="flex flex-col gap-1">
+                    <button type="button" data-map-chip="reported" style="--chip-color:#22d3ee" class="layer-check chip-on">📍 {{ __('回報') }}</button>
+                    <button type="button" data-map-chip="notified" style="--chip-color:#818cf8" class="layer-check chip-on">📣 {{ __('已通報') }}</button>
+                    <button type="button" data-map-chip="resolved" style="--chip-color:#94a3b8" class="layer-check chip-on">✅ {{ __('已排除') }}</button>
+                </div>
+            </div>
+            {{-- 資訊卡按鈕 --}}
+            <div>
+                <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('資訊') }}</p>
+                <div class="flex flex-col gap-1">
+                    <button type="button" @click="activeCard = 'weather'" class="card-open-btn">{{ __('CWA 即時觀測') }}</button>
+                    <button type="button" @click="activeCard = 'rain'" class="card-open-btn">{{ __('24H 累積雨量') }}</button>
+                    <button type="button" @click="activeCard = 'alerts'" class="card-open-btn">{{ __('NCDR 警戒') }}</button>
+                    <button type="button" @click="activeCard = 'stats'" class="card-open-btn">{{ __('事件統計') }}</button>
+                    <button type="button" @click="activeCard = 'info'" class="card-open-btn">{{ __('交通與清運資訊彙整') }}</button>
+                </div>
+            </div>
+            {{-- 圖卡 banner（spec §12.5，行動版改置於面板內）--}}
+            @include('livewire.partials.card-promo')
+        </div>
+
+        {{-- 卡片 bottom-sheet modals --}}
+        @php
+            $mobileCards = [
+                'weather' => ['CWA 即時觀測', 'livewire.partials.card-weather', []],
+                'rain' => ['24H 累積雨量', 'livewire.partials.card-rain', ['withChart' => false]],
+                'alerts' => ['NCDR 警戒', 'livewire.partials.card-alerts', []],
+                'stats' => ['事件統計', 'livewire.partials.card-stats', []],
+                'info' => ['交通與清運資訊彙整', 'livewire.partials.card-info', []],
+            ];
+        @endphp
+        @foreach ($mobileCards as $key => [$cardTitle, $partial, $partialData])
+            <div x-show="activeCard === '{{ $key }}'" x-cloak @click.self="activeCard = null"
+                 class="pointer-events-auto fixed inset-0 z-[550] flex items-end bg-black/50">
+                <div class="max-h-[75dvh] w-full overflow-y-auto rounded-t-2xl bg-[#003a30] p-4">
+                    <div class="mb-2 flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-200">{{ __($cardTitle) }}</h3>
+                        <button type="button" @click="activeCard = null" class="text-lg text-slate-400 hover:text-slate-200">✕</button>
+                    </div>
+                    @include($partial, $partialData)
+                </div>
+            </div>
+        @endforeach
     </div>
 </div>
