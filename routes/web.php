@@ -259,8 +259,8 @@ Route::get('/stats', function () {
 
 Route::get('/contact', fn () => view('pages.contact'))->name('contact');
 
-// EOC dashboard（公開唯讀大屏，spec §7.3）
-Route::view('/dashboard', 'pages.dashboard')->name('dashboard');
+// EOC dashboard 已整合進首頁（spec §11.1）；舊網址 302 轉向
+Route::redirect('/dashboard', '/', 302)->name('dashboard');
 
 // 雷達回波 proxy（scheduled fetch 落地的圖檔；前端 ImageOverlay 讀本站，spec §5）
 Route::get('/api/radar-echo', function () {

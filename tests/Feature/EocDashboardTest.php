@@ -114,4 +114,18 @@ class EocDashboardTest extends TestCase
             ->assertSee('MONITORING')
             ->assertDontSee('TYPHOON-EMERGENCY');
     }
+
+    public function test_dashboard_url_redirects_to_home(): void
+    {
+        $this->get('/dashboard')->assertRedirect('/');
+    }
+
+    public function test_home_page_embeds_dashboard_cards(): void
+    {
+        $this->withHeader('Accept-Language', 'zh-TW')->get('/')
+            ->assertOk()
+            ->assertSee('CWA 即時觀測')
+            ->assertSee('交通與清運資訊彙整')
+            ->assertSee('data-trend', false);   // rain canvas 在首頁
+    }
 }

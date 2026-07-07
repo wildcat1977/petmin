@@ -5,6 +5,9 @@
     {{-- 全螢幕地圖 --}}
     <livewire:radar-map />
 
+    {{-- EOC 戰情室浮動卡片層（自身已 fixed 定位，spec §11.1）--}}
+    <livewire:eoc-dashboard />
+
     {{-- 戰術網格疊層（純 CSS，不干擾地圖互動）--}}
     <div class="pointer-events-none fixed inset-0 z-[1] radar-tactical-grid"></div>
 
@@ -85,7 +88,6 @@
             </button>
 
             <footer class="mx-auto flex w-full max-w-md flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
-                <a href="{{ route('dashboard') }}" class="hover:text-slate-300">{{ __('EOC 戰情室') }}</a>
                 <a href="{{ route('news') }}" class="hover:text-slate-300">{{ __('最新消息') }}</a>
                 <a href="{{ route('reports') }}" class="hover:text-slate-300">{{ __('回報清單') }}</a>
                 <a href="{{ route('transparency') }}" class="hover:text-slate-300">{{ __('透明度報告') }}</a>
@@ -116,4 +118,33 @@
         });
     </script>
 @endif
+
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        const canvas = document.getElementById('rain-trend-chart');
+        if (! canvas || ! window.Chart) return;
+
+        const trend = JSON.parse(canvas.dataset.trend || '[]');
+        new window.Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: trend.map((t) => t.h),
+                datasets: [{
+                    data: trend.map((t) => t.v),
+                    backgroundColor: trend.map((t) => t.v >= 40 ? '#f87171' : t.v >= 15 ? '#fb923c' : '#38bdf8'),
+                    borderRadius: 2,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.parsed.y} mm` } } },
+                scales: {
+                    x: { ticks: { color: '#475569', font: { size: 8 }, maxTicksLimit: 12 }, grid: { display: false } },
+                    y: { ticks: { color: '#475569', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                },
+            },
+        });
+    });
+</script>
 @endsection
