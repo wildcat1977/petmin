@@ -55,4 +55,18 @@ class NewsPageTest extends TestCase
             ->assertOk()
             ->assertSee('https://www.gov.taipei/example', false);
     }
+
+    public function test_body_html_is_sanitized_against_script_injection(): void
+    {
+        Announcement::create([
+            'title' => '注入測試', 'content' => 'x', 'is_active' => false, 'category' => 'incident',
+            'body' => '<p>安全內容</p><script>alert(1)</script>',
+            'published_at' => now(),
+        ]);
+
+        $html = $this->withHeader('Accept-Language', 'zh-TW')->get('/news')->assertOk()->getContent();
+
+        $this->assertStringContainsString('安全內容', $html);
+        $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
+    }
 }

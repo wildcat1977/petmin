@@ -34,7 +34,7 @@ Route::get('/news', function () {
         ->map(fn (Announcement $a) => [
             'title' => $a->title,
             'category' => $a->category,
-            'body' => $a->body,
+            'body' => $a->body ? str($a->body)->sanitizeHtml()->toString() : null,
             'content' => $a->content,
             'link_url' => $a->link_url,
             'is_pinned' => $a->is_pinned,

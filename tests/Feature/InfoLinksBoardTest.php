@@ -47,4 +47,17 @@ class InfoLinksBoardTest extends TestCase
 
         $this->assertTrue(strpos($html, '大眾交通') < strpos($html, '避難收容所'));
     }
+
+    public function test_shelter_count_badge_survives_all_shelter_links_deactivated(): void
+    {
+        // shelter 區塊即使沒有任何啟用連結，開設中 N 徽章仍須常駐（spec §11.5）。
+        InfoLink::where('section', 'shelter')->update(['is_active' => false]);
+        Shelter::create(['name' => '收容所A', 'is_open' => true]);
+        Shelter::create(['name' => '收容所B', 'is_open' => true]);
+        Shelter::create(['name' => '收容所C', 'is_open' => true]);
+
+        Livewire::test('eoc-dashboard')
+            ->assertSee('避難收容所')
+            ->assertSee('開設中 3');
+    }
 }

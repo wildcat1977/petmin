@@ -125,9 +125,11 @@ new class extends Component
             ->get(['section', 'label', 'url', 'status_text'])
             ->groupBy('section');
 
+        // shelter 區塊例外：即使沒有啟用連結也要保留（空陣列），因為
+        // 開設中 N 徽章渲染在該區塊標題內——過濾整區會連徽章一起消失（spec §11.5）。
         return collect(array_keys(InfoLink::SECTION_LABELS))
-            ->filter(fn ($s) => $grouped->has($s))
-            ->mapWithKeys(fn ($s) => [$s => $grouped[$s]->map(fn ($l) => ['label' => $l->label, 'url' => $l->url, 'status_text' => $l->status_text])->all()])
+            ->filter(fn ($s) => $s === InfoLink::SECTION_SHELTER || $grouped->has($s))
+            ->mapWithKeys(fn ($s) => [$s => $grouped->has($s) ? $grouped[$s]->map(fn ($l) => ['label' => $l->label, 'url' => $l->url, 'status_text' => $l->status_text])->all() : []])
             ->all();
     }
 
@@ -309,14 +311,16 @@ new class extends Component
                                     <span class="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300">開設中 {{ $this->openShelterCount }}</span>
                                 @endif
                             </p>
-                            <ul class="mt-1 space-y-0.5">
-                                @foreach ($links as $link)
-                                    <li class="flex items-baseline justify-between gap-2 text-xs">
-                                        <a href="{{ $link['url'] }}" target="_blank" rel="noopener" class="text-cyan-400 hover:text-cyan-300">{{ $link['label'] }} ↗</a>
-                                        @if ($link['status_text'])<span class="text-[10px] text-slate-500">{{ $link['status_text'] }}</span>@endif
-                                    </li>
-                                @endforeach
-                            </ul>
+                            @if (count($links))
+                                <ul class="mt-1 space-y-0.5">
+                                    @foreach ($links as $link)
+                                        <li class="flex items-baseline justify-between gap-2 text-xs">
+                                            <a href="{{ $link['url'] }}" target="_blank" rel="noopener" class="text-cyan-400 hover:text-cyan-300">{{ $link['label'] }} ↗</a>
+                                            @if ($link['status_text'])<span class="text-[10px] text-slate-500">{{ $link['status_text'] }}</span>@endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                     @endforeach
                 </div>
