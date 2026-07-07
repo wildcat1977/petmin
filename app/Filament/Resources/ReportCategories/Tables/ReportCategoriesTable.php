@@ -34,6 +34,7 @@ class ReportCategoriesTable
                     ->color('gray')
                     ->searchable(),
 
+                // ColorColumn 直接以 hex 渲染色塊；badge 的 ->color() 只吃 palette 名稱、不吃 hex
                 ColorColumn::make('color')
                     ->label('顏色'),
 
@@ -50,14 +51,25 @@ class ReportCategoriesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->action(function (Collection $records): void {
+                        // Bulk 選取無法像 row action 逐筆 hidden，改為略過受保護分類並以
+                        // reportBulkProcessingFailure() 走 Filament 的部分失敗通知（避免通知宣稱全數刪除）
+                        ->action(function (DeleteBulkAction $action, Collection $records): void {
                             $protectedSlugs = Report::whereIn('category', $records->pluck('slug'))
                                 ->distinct()
                                 ->pluck('category');
 
-                            $records
-                                ->reject(fn (ReportCategory $record) => $protectedSlugs->contains($record->slug))
-                                ->each->delete();
+                            $records->each(function (ReportCategory $record) use ($action, $protectedSlugs): void {
+                                if ($protectedSlugs->contains($record->slug)) {
+                                    $action->reportBulkProcessingFailure(
+                                        'hasReports',
+                                        fn (int $count): string => "{$count} 個分類已有回報資料，僅能停用，未刪除。",
+                                    );
+
+                                    return;
+                                }
+
+                                $record->delete();
+                            });
                         }),
                 ]),
             ]);
