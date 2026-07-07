@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,5 +20,22 @@ class HomeChromeTest extends TestCase
             ->assertOk()
             ->assertSee('#002923', false)
             ->assertDontSee('bg-[#0d1117]', false);
+    }
+
+    public function test_home_shows_banner_image(): void
+    {
+        $this->get('/')->assertOk()->assertSee('Hazdar-Banner.png', false);
+    }
+
+    public function test_top_nav_has_profile_and_contact_for_auth_user(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->withHeader('Accept-Language', 'zh-TW')
+            ->get('/')
+            ->assertOk()
+            ->assertSee('我的回報')
+            ->assertSee('聯絡管理員');
     }
 }

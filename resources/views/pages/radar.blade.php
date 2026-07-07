@@ -13,34 +13,38 @@
 
     {{-- 懸浮 UI --}}
     <div class="pointer-events-none fixed inset-0 z-[500] flex flex-col">
-        {{-- 頂部：品牌 + 使用者 --}}
-        <header class="pointer-events-auto flex items-center justify-between p-4">
-            <div class="flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 backdrop-blur">
+        {{-- 頂帶：#002923 實色帶（spec §12.2/12.4）—— banner + nav --}}
+        <header class="pointer-events-auto flex items-center justify-between gap-2 bg-[#002923] px-4 py-2 shadow-lg shadow-black/30">
+            <a href="{{ route('home') }}" class="flex items-center gap-2">
                 <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-cyan-400"></span>
-                <span class="text-xs font-bold tracking-widest text-cyan-300">HAZDAR</span>
-                <span class="text-xs text-slate-300">{{ __('全民災情回報地圖') }}</span>
-            </div>
+                <img src="{{ asset('Hazdar-Banner.png') }}" alt="Hazdar 全民災情回報地圖"
+                     class="h-10 w-auto" width="300" height="100">
+            </a>
 
-            <div class="flex items-center gap-2">
+            <nav class="flex items-center gap-2 text-xs">
                 @include('partials.locale-switcher')
-                <a href="{{ route('cards') }}"
-                   class="flex items-center gap-1 rounded-full bg-black/60 px-3 py-2 text-xs text-slate-200 backdrop-blur hover:bg-black/80">
-                    🖼️ <span class="hidden sm:inline">{{ __('圖卡專區') }}</span>
-                </a>
+                <button type="button"
+                        onclick="window.dispatchEvent(new CustomEvent('open-contact-form'))"
+                        class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">
+                    {{ __('聯絡管理員') }}
+                </button>
                 @auth
                     <a href="{{ route('profile') }}"
-                       class="flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 backdrop-blur hover:bg-black/80">
+                       class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">
+                        {{ __('我的回報') }}
+                    </a>
+                    <a href="{{ route('profile') }}" class="flex items-center gap-2 rounded-full bg-white/10 px-2 py-1.5 hover:bg-white/20">
                         @if (auth()->user()->avatar)
                             <img src="{{ auth()->user()->avatar }}" alt="" class="h-5 w-5 rounded-full object-cover">
                         @endif
-                        <span class="text-xs text-slate-200">{{ auth()->user()->name }}</span>
+                        <span class="hidden text-slate-200 sm:inline">{{ auth()->user()->name }}</span>
                     </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button class="rounded-full bg-black/60 px-2 py-2 text-xs text-slate-400 backdrop-blur hover:text-slate-200">{{ __('登出') }}</button>
+                        <button class="rounded-full bg-white/10 px-2 py-2 text-slate-400 hover:text-slate-200">{{ __('登出') }}</button>
                     </form>
                 @endauth
-            </div>
+            </nav>
         </header>
 
         {{-- 分類篩選 chips（對應圖例配色；收容所為獨立圖層開關） --}}
