@@ -143,22 +143,42 @@ let fetchTimer = null;
 let currentTheme = (() => { try { return localStorage.getItem(MAP_THEME_KEY) || 'dark'; } catch (_) { return 'dark'; } })();
 
 // ── 跑馬燈廣播（從 #radar-map data-ticker 讀取真實資料）───────
+// 跑馬燈（v0.3 三次回饋）：短訊息置中靜態顯示；量測到訊息寬度超出容器時，
+// 改左滾動跑馬燈完整播出全文，而非用 truncate 把後半段文字直接裁掉看不到。
 function initTicker() {
-    const mapEl = document.getElementById('radar-map');
-    const messages = mapEl ? JSON.parse(mapEl.dataset.ticker || '[]') : [];
+    const tickerSrc = document.getElementById('site-ticker');
+    const messages = tickerSrc ? JSON.parse(tickerSrc.dataset.ticker || '[]') : [];
     const tickerEl = document.getElementById('radar-ticker-text');
-    if (!tickerEl || !messages.length) return;
+    const wrapEl = tickerEl ? tickerEl.parentElement : null;
+    if (!tickerEl || !wrapEl || !messages.length) return;
 
     let idx = 0;
-    tickerEl.textContent = messages[0];
-    setInterval(() => {
+
+    function showNext() {
+        tickerEl.classList.remove('radar-ticker-marquee');
+        tickerEl.style.removeProperty('--marquee-duration');
         tickerEl.style.opacity = '0';
+
         setTimeout(() => {
-            idx = (idx + 1) % messages.length;
             tickerEl.textContent = messages[idx];
             tickerEl.style.opacity = '1';
+
+            requestAnimationFrame(() => {
+                const overflowPx = tickerEl.scrollWidth - wrapEl.clientWidth;
+                let holdMs = 7000;
+                if (overflowPx > 4) {
+                    const duration = Math.max(8, tickerEl.scrollWidth / 60); // 概估捲動速度，秒數隨文字長度增加
+                    tickerEl.style.setProperty('--marquee-duration', duration + 's');
+                    tickerEl.classList.add('radar-ticker-marquee');
+                    holdMs = duration * 1000 + 600; // 跑完整輪再停留片刻才換下一則
+                }
+                idx = (idx + 1) % messages.length;
+                setTimeout(showNext, holdMs);
+            });
         }, 400);
-    }, 7000);
+    }
+
+    showNext();
 }
 
 function createPopupEl(p) {
@@ -530,7 +550,6 @@ function initRadar() {
     }
 
     initChips();
-    initTicker();
 }
 
 // ── 回報表單小地圖（由 Alpine x-init 呼叫）──────────────────
@@ -690,6 +709,9 @@ async function initLiff() {
 document.addEventListener('livewire:initialized', () => {
     initLiff();
     initRadar();
+    // v0.3 三次回饋：跑馬燈現在是全站共用 head nav 的一部分（partials/site-header.blade.php），
+    // 獨立於地圖之外呼叫，次要頁面（沒有 #radar-map、initRadar() 提早 return）才會跑得到。
+    initTicker();
 
     window.addEventListener('hazdar:report-clicked', () => {
         window.Livewire.dispatch('open-report-form');

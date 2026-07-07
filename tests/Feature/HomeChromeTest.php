@@ -96,4 +96,20 @@ class HomeChromeTest extends TestCase
         $this->assertSame(2, substr_count($html, '聯絡管理員'));
         $this->assertSame(2, substr_count($html, '我的回報'));
     }
+
+    /**
+     * v0.3 三次回饋：次要頁面（profile/reports/news/...）先前是獨立一份「◎ Hazdar」
+     * 文字版 header，與首頁不一致；改用 partials.site-header 單一來源，兩邊都應顯示
+     * banner 圖與跑馬燈容器（#site-ticker 由獨立 site-ticker 元件供應，不必掛整個地圖）。
+     */
+    public function test_secondary_pages_share_home_header_with_banner_and_ticker(): void
+    {
+        foreach (['/news', '/contact'] as $path) {
+            $this->withHeader('Accept-Language', 'zh-TW')->get($path)
+                ->assertOk()
+                ->assertSee('Hazdar-Banner.png', false)
+                ->assertSee('id="site-ticker"', false)
+                ->assertDontSee('◎</span> Hazdar', false);
+        }
+    }
 }

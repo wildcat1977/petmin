@@ -124,9 +124,23 @@ path.radar-scan-circle {
     animation: radar-ring-pulse 3s ease-in-out infinite;
 }
 
-/* 跑馬燈：JS 控制 opacity transition */
+/* 跑馬燈：短訊息維持原本 block+text-center 靜態置中；訊息寬度超出容器時
+   JS 加 .radar-ticker-marquee，改絕對定位靠 wrapper 的 relative 為基準向左捲動
+   （wrapper 的 relative 見 radar.blade.php 跑馬燈容器 class，v0.3 三次回饋）。 */
 .radar-ticker {
+    white-space: nowrap;
     transition: opacity 0.4s ease;
+}
+.radar-ticker-marquee {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translate(100%, -50%);
+    animation: radar-ticker-scroll var(--marquee-duration, 10s) linear;
+}
+@keyframes radar-ticker-scroll {
+    from { transform: translate(100%, -50%); }
+    to   { transform: translate(-100%, -50%); }
 }
 
 /* ── 分類篩選 chips（--chip-color 由 blade 依分類注入）──────── */

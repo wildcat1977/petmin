@@ -5,6 +5,7 @@ namespace Tests\Feature\Commands;
 use App\Models\ExternalAlert;
 use App\Services\DataSourceHealth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -140,7 +141,10 @@ XML;
             'effective_at' => now()->subDays(2), 'expires_at' => now()->subDay(),
         ]);
 
-        $ticker = Livewire::test('radar-map')->get('tickerMessages');
+        // v0.3 三次回饋：跑馬燈邏輯自 radar-map 抽到獨立 site-ticker 元件（30s 快取），
+        // 需先 forget 避免吃到別的測試留下的快取（同既有 hazdar:eoc:cards 作法）。
+        Cache::forget('hazdar:site-ticker');
+        $ticker = Livewire::test('site-ticker')->get('messages');
 
         // 驗收 §1-2：新警戒（未過期 + 涵蓋台北市）進跑馬燈；過期不播
         $this->assertTrue(collect($ticker)->contains(fn ($m) => str_contains($m, '大台北地區土石流黃色警戒')));
