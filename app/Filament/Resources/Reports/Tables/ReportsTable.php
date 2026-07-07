@@ -71,7 +71,7 @@ class ReportsTable
                         Report::CATEGORY_ROAD_BLOCKED => 'warning',
                         Report::CATEGORY_POWER_OUTAGE => 'warning',
                         Report::CATEGORY_STRUCTURAL_DAMAGE => 'danger',
-                        default => 'gray',
+                        default => 'info',
                     })
                     ->formatStateUsing(fn (string $state) => ReportCategory::labels()[$state] ?? $state),
 
@@ -120,7 +120,7 @@ class ReportsTable
                     ->formatStateUsing(fn (string $state) => Report::VERIFICATION_LABELS[$state] ?? $state),
 
                 TextColumn::make('extra_value')
-                    ->label('水深cm')
+                    ->label('補充數值')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('rejection_reason')

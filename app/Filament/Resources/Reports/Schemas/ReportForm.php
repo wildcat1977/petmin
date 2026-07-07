@@ -35,7 +35,7 @@ class ReportForm
                     ->label('補充數值')
                     ->numeric()
                     ->nullable()
-                    ->visible(fn (Get $get) => $get('category') === Report::CATEGORY_FLOOD),
+                    ->visible(fn (Get $get) => (bool) (ReportCategory::bySlug($get('category') ?? '')?->extra_field)),
 
                 TextInput::make('latitude')
                     ->label('緯度')

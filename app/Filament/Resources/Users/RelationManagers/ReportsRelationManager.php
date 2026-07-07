@@ -37,7 +37,7 @@ class ReportsRelationManager extends RelationManager
                         Report::CATEGORY_ROAD_BLOCKED => 'warning',
                         Report::CATEGORY_POWER_OUTAGE => 'warning',
                         Report::CATEGORY_STRUCTURAL_DAMAGE => 'danger',
-                        default => 'gray',
+                        default => 'info',
                     })
                     ->formatStateUsing(fn (string $state) => ReportCategory::labels()[$state] ?? $state),
 
