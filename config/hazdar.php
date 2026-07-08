@@ -90,6 +90,19 @@ return [
             'resource_id' => env('TAIPEI_FLOODGATE_RESOURCE_ID', '47cffd30-3527-45af-b709-6f76772e3cfb'),
             'interval_minutes' => 1440,
         ],
+        'transit' => [
+            // TDX 運輸資料流通服務 OAuth2 client_credentials；未設定憑證時 command 直接跳過（不記為 down）
+            'tdx_client_id' => env('TDX_CLIENT_ID'),
+            'tdx_client_secret' => env('TDX_CLIENT_SECRET'),
+            'token_url' => env('TDX_TOKEN_URL', 'https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token'),
+            'base_url' => env('TDX_BASE_URL', 'https://tdx.transportdata.tw/api/basic'),
+            'endpoints' => [
+                'metro' => '/v2/Rail/Metro/Alert/TRTC',
+                'gondola' => '/v2/Rail/Metro/Alert/TRTCMG',
+                'bus' => '/v2/Bus/Alert/City/Taipei',
+            ],
+            'interval_minutes' => 5,
+        ],
     ],
 
     /*
