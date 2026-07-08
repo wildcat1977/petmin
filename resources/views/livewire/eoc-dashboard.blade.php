@@ -1,13 +1,12 @@
 <?php
 
 use App\Models\ExternalAlert;
-use App\Models\InfoLink;
 use App\Models\PromoCard;
 use App\Models\Report;
 use App\Models\ReportCategory;
-use App\Models\Shelter;
 use App\Models\WeatherObservation;
 use App\Services\DataSourceHealth;
+use App\Support\CityInfo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -50,8 +49,7 @@ new class extends Component
         return Cache::remember('hazdar:eoc:cards', 10, fn () => [
             'stats' => $this->computeStats(),
             'alerts' => $this->computeAlerts(),
-            'infoLinks' => $this->computeInfoLinks(),
-            'openShelterCount' => $this->computeOpenShelterCount(),
+            'cityInfoSummary' => $this->computeCityInfoSummary(),
             'rainTrend' => $this->computeRainTrend(),
             'promoCards' => $this->computePromoCards(),
         ]);
@@ -138,40 +136,23 @@ new class extends Component
     }
 
     /**
-     * 區塊順序依 SECTION_LABELS 鍵序結構性固定（sort_order 只排區內連結；
-     * 後台 reorderable 跨區拖曳會全域改號，不能因此打亂區塊排列）。
+     * 首頁卡「交通與清運資訊彙整」parsed 摘要（Task 6 起取代逐區塊連結清單，
+     * 完整內容改置於 /info；共用 App\Support\CityInfo 作為單一資料源）。
      *
-     * @return array<string, list<array{label: string, url: string, status_text: ?string}>>
+     * @return array{runningPumps: int, closureActive: bool, openShelters: int}
      */
-    private function computeInfoLinks(): array
+    private function computeCityInfoSummary(): array
     {
-        $grouped = InfoLink::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get(['section', 'label', 'url', 'status_text'])
-            ->groupBy('section');
-
-        // shelter 區塊例外：即使沒有啟用連結也要保留（空陣列），因為
-        // 開設中 N 徽章渲染在該區塊標題內——過濾整區會連徽章一起消失（spec §11.5）。
-        return collect(array_keys(InfoLink::SECTION_LABELS))
-            ->filter(fn ($s) => $s === InfoLink::SECTION_SHELTER || $grouped->has($s))
-            ->mapWithKeys(fn ($s) => [$s => $grouped->has($s) ? $grouped[$s]->map(fn ($l) => ['label' => $l->label, 'url' => $l->url, 'status_text' => $l->status_text])->all() : []])
-            ->all();
+        return [
+            'runningPumps' => CityInfo::runningPumpCount(),
+            'closureActive' => CityInfo::closure() !== null,
+            'openShelters' => CityInfo::openShelterCount(),
+        ];
     }
 
-    public function getInfoLinksProperty(): array
+    public function getCityInfoSummaryProperty(): array
     {
-        return $this->sharedCardData()['infoLinks'];
-    }
-
-    private function computeOpenShelterCount(): int
-    {
-        return Shelter::query()->where('is_open', true)->count();
-    }
-
-    public function getOpenShelterCountProperty(): int
-    {
-        return $this->sharedCardData()['openShelterCount'];
+        return $this->sharedCardData()['cityInfoSummary'];
     }
 
     /**
