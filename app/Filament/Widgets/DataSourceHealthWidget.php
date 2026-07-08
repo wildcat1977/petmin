@@ -25,10 +25,10 @@ class DataSourceHealthWidget extends Widget
     protected function getViewData(): array
     {
         return [
-            'sources' => collect(app(DataSourceHealth::class)->all())
-                ->map(fn (array $status, string $source) => [
-                    ...$status,
-                    'label' => DataSourceHealth::SOURCE_LABELS[$source] ?? $source,
+            'sources' => collect(DataSourceHealth::SOURCE_LABELS)
+                ->map(fn (string $label, string $source) => [
+                    ...app(DataSourceHealth::class)->status($source),
+                    'label' => $label,
                 ])->all(),
             'today_reports' => Report::whereDate('created_at', today())->count(),
             'official' => Report::where('verification_level', Report::VERIFICATION_OFFICIAL)->count(),

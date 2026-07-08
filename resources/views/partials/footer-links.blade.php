@@ -5,8 +5,8 @@
 --}}
 @php
     $footerNewsCounts = \App\Models\Announcement::publishedCountsByCategory();
-    $footerHealth = collect(app(\App\Services\DataSourceHealth::class)->all())
-        ->map(fn ($status, $source) => [...$status, 'label' => \App\Services\DataSourceHealth::SOURCE_LABELS[$source] ?? $source])
+    $footerHealth = collect(\App\Services\DataSourceHealth::SOURCE_LABELS)
+        ->map(fn ($label, $source) => [...app(\App\Services\DataSourceHealth::class)->status($source), 'label' => $label])
         ->values();
 @endphp
 

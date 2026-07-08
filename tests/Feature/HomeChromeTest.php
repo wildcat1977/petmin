@@ -87,8 +87,9 @@ class HomeChromeTest extends TestCase
         $this->withHeader('Accept-Language', 'zh-TW')->get('/')
             ->assertOk()
             ->assertSee(route('reports'), false)
-            ->assertSee(route('transparency'), false)
-            ->assertSee(route('stats'), false);
+            ->assertDontSee(route('transparency'), false)
+            ->assertDontSee(route('stats'), false)
+            ->assertSee(route('city-info'), false);
     }
 
     /**
@@ -107,8 +108,10 @@ class HomeChromeTest extends TestCase
             ->assertSee('mobileNavOpen', false)
             ->getContent();
 
-        // route('news') 另在 footer-links 出現一次（3 次），改用 footer 不會用到的 route('stats') 驗證桌機+手機各一份
-        $this->assertSame(2, substr_count($html, route('stats')), '桌機 nav-page-links + 手機漢堡面板應各出現一次');
+        // route('news') 另在 footer-links 出現一次（3 次）；route('city-info') 另在首頁
+        // card-info 卡片（桌機+手機各一份）出現，也不是乾淨的 2 次錨點。改用只存在於
+        // nav-page-links + 手機漢堡面板兩處、別處都不會用到的 route('reports') 驗證。
+        $this->assertSame(2, substr_count($html, route('reports')), '桌機 nav-page-links + 手機漢堡面板應各出現一次');
         $this->assertSame(2, substr_count($html, '聯絡管理員'));
         $this->assertSame(2, substr_count($html, '我的回報'));
     }

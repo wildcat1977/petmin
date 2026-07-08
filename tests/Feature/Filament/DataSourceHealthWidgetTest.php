@@ -48,6 +48,10 @@ class DataSourceHealthWidgetTest extends TestCase
     /**
      * 承接自舊 eoc-dashboard footer 的斷言（已移除，spec §11.1）：四個外部源
      * 全都要有狀態燈，禁止默默跳過任一個。
+     *
+     * 注意：config('hazdar.sources') 之後新增了 pump/floodgates 等來源（其健康狀態改在
+     * /info 頁呈現），故此處改以 DataSourceHealth::SOURCE_LABELS（widget 白名單）為準，
+     * 而非整份 config，避免此測試隨 config 新增來源而膨脹。
      */
     public function test_all_four_external_sources_have_status_lights(): void
     {
@@ -56,7 +60,7 @@ class DataSourceHealthWidgetTest extends TestCase
 
         $html = Livewire::test(DataSourceHealthWidget::class)->html();
 
-        foreach (array_keys(config('hazdar.sources')) as $source) {
+        foreach (array_keys(DataSourceHealth::SOURCE_LABELS) as $source) {
             $this->assertStringContainsString('title="'.$source, $html);
         }
         $this->assertSame(4, substr_count($html, 'data-status='));

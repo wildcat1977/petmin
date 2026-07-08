@@ -82,8 +82,7 @@
         <nav class="flex flex-col gap-1 text-sm">
             <a href="{{ route('news') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('最新消息') }}</a>
             <a href="{{ route('reports') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('通報清單') }}</a>
-            <a href="{{ route('transparency') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('透明度報告') }}</a>
-            <a href="{{ route('stats') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('統計地圖') }}</a>
+            <a href="{{ route('city-info') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('交通與清運資訊') }}</a>
             <button type="button"
                     @click="mobileNavOpen = false; window.dispatchEvent(new CustomEvent('open-contact-form'))"
                     class="rounded-lg px-3 py-2 text-left text-slate-300 hover:bg-white/10">{{ __('聯絡管理員') }}</button>
