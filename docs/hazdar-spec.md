@@ -405,3 +405,20 @@ PM 實機測試(含手機截圖)再回報 4 項:
 4. **底色/卡片色抽成 config**(item 4):PM 覺得 `#002923` 太綠。底色與卡片色(`#003a30`,比底色亮一級)抽成 `config('hazdar.theme')`→`env(HAZDAR_COLOR_BG / HAZDAR_COLOR_CARD)`,由 layout `<head>` 以 CSS 變數(`--color-radar-bg` / `--color-radar-card`)注入覆蓋 `app.css @theme` 預設。全站 `bg-[#002923]`/`bg-[#003a30]` 改用 `bg-radar-bg` / `bg-radar-card` token(Tailwind 4 opacity 修飾如 `/98`、`/95` 經 `color-mix` 仍吃 CSS 變數)。改 env 即可全站換色不必動各處 blade 重編;預設值不變外觀無回歸。**注意**:若之後啟用 `config:cache`,改 env 後需 `config:cache` 重建才生效。
 
 **驗收**:174 測試綠(新增 `test_theme_colors_are_config_driven`、`test_open_report_modal_panel_is_scrollable`,+2)。線上(PostgreSQL)實機:`stats`/`transparency` 時間軸地圖恢復正常渲染無 JS 洩漏、跑馬燈實測 60px/s、注入 style 帶 config 色值生效、手機底色/卡片色無回歸。item 1 因瀏覽器工作階段未登入無法開表單實點,以 PHPUnit(面板含 `overflow-y-auto`+`max-h-[90dvh]`)+ 已編譯 CSS 佐證(`stats`/`transparency` 沿用 §12「PostgreSQL 專屬 SQL 無法於 SQLite render」慣例,item 2 於線上驗證)。commit `b071302`。
+
+### 12.15 §11.5 P2 實現：交通與清運資訊即時化 + `/info` 獨立頁面（2026-07-08）
+
+把原本手動維護的「交通與清運資訊」卡升級為**真實抓取解析的即時資料**,並新增 `/info` 獨立頁面;head nav 移除「透明度報告/統計地圖」連結(改與沈伯洋辦公室合作,路由保留僅去連結)、換成「交通與清運資訊」。設計/計畫見 `docs/superpowers/specs/2026-07-08-city-info-realtime-design.md` 與 `docs/superpowers/plans/2026-07-08-city-info-realtime.md`。
+
+**資料來源(皆先於生產機實測)**
+- **抽水站即時**:臺北市水利處 HEO `heopublic.gov.taipei/.../pumb/latest`(免認證),`hazdar:fetch-pump-status` 每 10 分鐘 upsert `pump_stations`(97 站:運轉中/停止、閘門開關、內外水位)。
+- **疏散門位置**:data.taipei rid `47cffd30…`(靜態 36 座,已 WGS84)`hazdar:sync-floodgates` 日更 `floodgates`。**即時狀態端點 `wic.heo.taipei` 從生產機也連不到(HTTP 000 timeout)→ 只做位置不做狀態**。
+- **停班停課**:NCDR CAP `RssAtomFeed.ashx?AlertType=33`,擴充既有 `hazdar:fetch-ncdr-alerts`(抽出 `ingestFeed`)落地 `external_alerts`(`alert_type='停班停課'`,`covers_taipei` 濾台北)。
+- **大眾交通**:TDX(OAuth2,PM 註冊憑證填 `TDX_CLIENT_ID/SECRET`)`hazdar:fetch-transit-alerts` 每 5 分鐘抓捷運(`Alert/TRTC`)/貓空纜車(`Alert/TRTCMG`)/公車(`Bus/Alert/City/Taipei`)→ `transit_alerts`。**credential-gated**:無憑證乾淨略過不報錯。**關鍵解析**:正常是單一 sentinel `AlertID "0"/Status 1`(非空陣列);公車 feed 很吵,只收 `Cause=6(氣候)` 或 `Effect∈{4,7}(停駛/重大延遲)`;`Status` 缺值 fail-safe 判異常;metro 整體狀態優先序 **停駛(0) > 調整(2) > 正常(1)**(非 `min()`)。
+- **收容所**:沿用既有 `shelters`(開設數)。**清運(垃圾車停收/災後集中點)無公開結構化 API → 維持手動 `InfoLink`。**
+
+**呈現/架構**
+- `App\Support\CityInfo`(只讀落地資料)供 `/info` 頁與首頁卡共用;`/info`(route `city-info`)由上而下:停班停課→大眾交通→水門與抽水站→清運與環保局(手動)→避難收容所。首頁 eoc-dashboard「交通與清運資訊」卡改 parsed 摘要(捷運/抽水站運轉中/停班停課/收容所)+ 連 `/info`。
+- 新來源皆接 `DataSourceHealth`,但**刻意不進公開 footer 燈與後台 widget**(兩者改跑 `SOURCE_LABELS` 白名單維持原 4 源;新來源新鮮度於 `/info` 呈現)。落地一律純陣列/scalar;transit 快照以 `DB::transaction` 原子替換(避免公開讀取空窗)。
+
+**驗收**:190 測試綠(SDD 逐任務 spec+品質雙複審 + opus 整支複審「Ready to ship as-is」)。線上(hazdar.puma.taipei)Phase 1+2 皆實機驗證:`/info` 顯示 97 抽水站狀態、疏散門 36、停班停課「正常上班上課」、捷運/貓空纜車「正常」(真實 TDX);nav 已換;首頁卡 parsed 摘要。commits `ff8adbb`..`4f50cb8`。
