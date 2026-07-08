@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ExternalAlert;
 use App\Models\PumpStation;
+use App\Models\TransitAlert;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,5 +29,11 @@ class CityInfoPageTest extends TestCase
         $this->get('/info')->assertOk()
             ->assertSee('停止上班')
             ->assertSee('玉成');
+    }
+
+    public function test_page_shows_transit_status(): void
+    {
+        TransitAlert::create(['system' => 'metro', 'scope_name' => '文湖線', 'status' => 0, 'title' => '停駛']);
+        $this->get('/info')->assertOk()->assertSee('捷運')->assertSee('停駛');
     }
 }

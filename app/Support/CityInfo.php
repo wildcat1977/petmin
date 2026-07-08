@@ -7,6 +7,7 @@ use App\Models\Floodgate;
 use App\Models\InfoLink;
 use App\Models\PumpStation;
 use App\Models\Shelter;
+use App\Models\TransitAlert;
 use Illuminate\Support\Collection;
 
 /** /info 頁面與首頁卡共用的資料彙整（只讀落地資料）。 */
@@ -52,9 +53,27 @@ class CityInfo
             ->get();
     }
 
-    /** @return array<string, list<array<string,mixed>>> Phase 2 才有內容 */
+    /** @return array<string, list<array<string,mixed>>> */
     public static function transitBySystem(): array
     {
-        return [];
+        return TransitAlert::orderBy('system')->get()
+            ->groupBy('system')
+            ->map(fn ($rows) => $rows->map(fn ($a) => [
+                'scope' => $a->scope_name,
+                'status' => $a->status,      // 0 停駛 / 1 正常 / 2 調整
+                'title' => $a->title,
+            ])->all())
+            ->all();
+    }
+
+    /** 捷運整體狀態（各路線最差值；有 0 就 0 停駛、有 2 就 2 調整、全 1 才 1 正常；無資料 → null）。 */
+    public static function metroOverallStatus(): ?int
+    {
+        $rows = TransitAlert::where('system', 'metro')->pluck('status');
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        return $rows->min();
     }
 }

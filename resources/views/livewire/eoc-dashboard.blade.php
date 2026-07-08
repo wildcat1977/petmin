@@ -147,6 +147,7 @@ new class extends Component
             'runningPumps' => CityInfo::runningPumpCount(),
             'closureActive' => CityInfo::closure() !== null,
             'openShelters' => CityInfo::openShelterCount(),
+            'metroStatus' => CityInfo::metroOverallStatus(),
         ];
     }
 
