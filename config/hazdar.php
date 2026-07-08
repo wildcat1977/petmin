@@ -83,6 +83,12 @@ return [
             'url' => env('HAZDAR_PUMP_URL', 'https://heopublic.gov.taipei/taipei-heo-api/openapi/pumb/latest'),
             'interval_minutes' => 10,
         ],
+        'floodgates' => [
+            // 臺北市疏散門靜態位置（data.taipei，已 WGS84，36 座；即時狀態端點不可達故只放位置）
+            'url' => env('TAIPEI_FLOODGATE_URL', 'https://data.taipei/api/v1/dataset/%s?scope=resourceAquire&limit=1000'),
+            'resource_id' => env('TAIPEI_FLOODGATE_RESOURCE_ID', '47cffd30-3527-45af-b709-6f76772e3cfb'),
+            'interval_minutes' => 1440,
+        ],
     ],
 
     /*
