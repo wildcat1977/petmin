@@ -75,6 +75,8 @@ class SocialiteController extends Controller
             ]);
         }
 
+        $this->grantAdminIfProtected($user);
+
         // 後台 OAuth 流程
         if (session()->pull('admin_oauth')) {
             if (! $user->is_admin) {
@@ -89,6 +91,23 @@ class SocialiteController extends Controller
         Auth::login($user, remember: true);
 
         return redirect()->route('home')->with('open_report_form', true);
+    }
+
+    /**
+     * PROTECTED_ADMIN_EMAILS 名單內的 email 登入時自動補上 is_admin。
+     *
+     * 這份名單語意上就是「永久管理員」（EditUser 也禁止在後台撤銷其權限）；
+     * 資料庫若被清空/重建，這些人重新登入即自動恢復後台權限，不必再手動進 DB 設定。
+     */
+    private function grantAdminIfProtected(User $user): void
+    {
+        if ($user->is_admin) {
+            return;
+        }
+
+        if ($user->email && in_array($user->email, User::protectedAdminEmails(), true)) {
+            $user->forceFill(['is_admin' => true])->save();
+        }
     }
 
     /**
@@ -159,6 +178,8 @@ class SocialiteController extends Controller
                 'avatar' => $profile['pictureUrl'] ?? null,
             ]);
         }
+
+        $this->grantAdminIfProtected($user);
 
         Auth::login($user, remember: true);
 
