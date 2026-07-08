@@ -72,6 +72,27 @@ class FetchTransitAlertsTest extends TestCase
         $this->assertSame('299', $bus->scope_name);
     }
 
+    public function test_rail_disruption_before_sentinel_is_not_collapsed_to_normal(): void
+    {
+        // 同一批 metro 資料裡先出現真實中斷、後面才跟著「全線正常」sentinel：
+        // 絕不可讓 sentinel 蓋掉已收集到的異常（否則真實中斷會被吃掉，事故時漏報）。
+        $this->fakeTdx(
+            metro: [
+                ['AlertID' => '5', 'Status' => 0, 'Scope' => ['Lines' => [['LineName' => ['Zh_tw' => '文湖線']]]]],
+                ['AlertID' => '0', 'Status' => 1],
+            ],
+            gondola: [],
+            bus: [],
+        );
+
+        $this->artisan('hazdar:fetch-transit-alerts')->assertSuccessful();
+
+        $this->assertTrue(
+            TransitAlert::where('system', 'metro')->where('status', 0)->where('scope_name', '文湖線')->exists()
+        );
+        $this->assertSame(0, TransitAlert::where('system', 'metro')->where('status', 1)->count());
+    }
+
     public function test_skips_cleanly_without_credentials(): void
     {
         config(['hazdar.sources.transit.tdx_client_id' => null,

@@ -45,7 +45,7 @@ class SyncFloodgates extends Command
                     ['external_key' => ($park !== '' ? $park.'_' : '').$name],
                     [
                         'name' => mb_substr($name, 0, 255),
-                        'description' => trim((string) ($row['description'] ?? '')) ?: null,
+                        'description' => mb_substr(trim((string) ($row['description'] ?? '')), 0, 255) ?: null,
                         'latitude' => is_numeric($row['latitude'] ?? null) ? (float) $row['latitude'] : null,
                         'longitude' => is_numeric($row['longitude'] ?? null) ? (float) $row['longitude'] : null,
                     ],

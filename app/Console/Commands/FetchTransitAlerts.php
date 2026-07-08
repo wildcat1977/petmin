@@ -75,24 +75,19 @@ class FetchTransitAlerts extends Command
      */
     private function mapAlerts(string $system, array $alerts): array
     {
+        // 捷運/纜車：正常 sentinel（AlertID "0" 或 Status 1）→ 存一筆 status=1 代表全線正常。
+        // 只有在整批完全沒有異常時才可收斂為 sentinel；任何異常都必須保留，不可被稍後出現的
+        // sentinel 蓋掉（disaster feed 寧可多報，不可漏報真實中斷）。
+        if ($system !== TransitAlert::SYSTEM_BUS) {
+            return $this->mapRailAlerts($system, $alerts);
+        }
+
         $out = [];
         foreach ($alerts as $a) {
             // Status 缺值 fail-safe：災害饋送寧可誤判異常（2），不可漏報為正常（1）
             $status = array_key_exists('Status', $a) ? (int) $a['Status'] : 2;
             $cause = isset($a['Cause']) ? (int) $a['Cause'] : null;
             $effect = isset($a['Effect']) ? (int) $a['Effect'] : null;
-
-            // 捷運/纜車：正常 sentinel（AlertID "0" 或 Status 1）→ 存一筆 status=1 代表全線正常
-            if ($system !== TransitAlert::SYSTEM_BUS) {
-                $isNormal = ((string) ($a['AlertID'] ?? '')) === '0' || $status === TransitAlert::STATUS_NORMAL;
-                $out[] = $this->row($system, $a, $isNormal ? 1 : $status, $cause, $effect, $this->railScope($a));
-                if ($isNormal) {
-                    // 正常時每系統只留一筆代表
-                    return [$out[count($out) - 1]];
-                }
-
-                continue;
-            }
 
             // 公車：只收災害相關（氣候 或 停駛/重大延遲），其餘例行 alert 丟棄
             if ($cause === self::WEATHER_CAUSE || in_array($effect, self::SUSPEND_EFFECTS, true)) {
@@ -101,6 +96,41 @@ class FetchTransitAlerts extends Command
         }
 
         return $out;
+    }
+
+    /**
+     * @param  list<array<string,mixed>>  $alerts
+     * @return list<array<string,mixed>>
+     */
+    private function mapRailAlerts(string $system, array $alerts): array
+    {
+        if ($alerts === []) {
+            return [];
+        }
+
+        $abnormal = [];
+        foreach ($alerts as $a) {
+            $status = array_key_exists('Status', $a) ? (int) $a['Status'] : 2;
+            $cause = isset($a['Cause']) ? (int) $a['Cause'] : null;
+            $effect = isset($a['Effect']) ? (int) $a['Effect'] : null;
+            $isNormal = ((string) ($a['AlertID'] ?? '')) === '0' || $status === TransitAlert::STATUS_NORMAL;
+
+            if (! $isNormal) {
+                $abnormal[] = $this->row($system, $a, $status, $cause, $effect, $this->railScope($a));
+            }
+        }
+
+        if ($abnormal !== []) {
+            // 有任一異常 → 只回報異常，捨棄 sentinel（不可讓正常 sentinel 蓋掉真實中斷）
+            return $abnormal;
+        }
+
+        // 全部正常 → 每系統只留一筆代表
+        $first = $alerts[0];
+        $cause = isset($first['Cause']) ? (int) $first['Cause'] : null;
+        $effect = isset($first['Effect']) ? (int) $first['Effect'] : null;
+
+        return [$this->row($system, $first, 1, $cause, $effect, $this->railScope($first))];
     }
 
     private function railScope(array $a): ?string

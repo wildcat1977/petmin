@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ExternalAlert;
+use App\Models\InfoLink;
 use App\Models\PumpStation;
 use App\Models\TransitAlert;
 use App\Support\CityInfo;
@@ -56,5 +57,27 @@ class CityInfoPageTest extends TestCase
         TransitAlert::create(['system' => 'metro', 'scope_name' => '淡水信義線', 'status' => 0, 'title' => '停駛']);
 
         $this->assertSame(0, CityInfo::metroOverallStatus());
+    }
+
+    public function test_manual_sanitation_filters_inactive_and_orders_by_sort_order(): void
+    {
+        // migration 已預先灌入一筆官方公告（清運與環保局公告），先清空以隔離本測試的固定資料。
+        InfoLink::query()->delete();
+
+        // 停用連結不應出現；啟用連結需依 sort_order 由小到大排序，不能依建立順序。
+        InfoLink::factory()->create([
+            'section' => InfoLink::SECTION_SANITATION, 'label' => '停用連結',
+            'is_active' => false, 'sort_order' => 0,
+        ]);
+        InfoLink::factory()->create([
+            'section' => InfoLink::SECTION_SANITATION, 'label' => '第二筆',
+            'is_active' => true, 'sort_order' => 2,
+        ]);
+        InfoLink::factory()->create([
+            'section' => InfoLink::SECTION_SANITATION, 'label' => '第一筆',
+            'is_active' => true, 'sort_order' => 1,
+        ]);
+
+        $this->assertSame(['第一筆', '第二筆'], CityInfo::manualSanitation()->pluck('label')->all());
     }
 }
