@@ -3,7 +3,7 @@
 @section('title', '最新消息 · Hazdar 災情回報')
 
 @section('content')
-<div class="min-h-dvh bg-[#002923] text-slate-200">
+<div class="min-h-dvh bg-radar-bg text-slate-200">
     @include('partials.nav')
     <div class="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <h1 class="text-xl font-bold text-slate-100">📰 {{ __('最新消息') }}</h1>

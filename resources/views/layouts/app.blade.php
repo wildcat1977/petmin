@@ -8,7 +8,7 @@
 
     {{-- SEO / OG --}}
     <meta name="description" content="颱風豪雨災時，回報淹水、道路中斷、停電、結構受損，即時匯聚成台北市單一災情情勢圖。">
-    <meta name="theme-color" content="#002923">
+    <meta name="theme-color" content="{{ config('hazdar.theme.bg') }}">
     <link rel="canonical" href="{{ url()->current() }}">
 
     <meta property="og:title" content="Hazdar 全民韌性災害回報系統">
@@ -45,6 +45,16 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 
+    {{-- 主題配色覆蓋（v0.3 五次回饋 item 4）：以 config('hazdar.theme') 覆蓋 app.css @theme
+         的 --color-radar-bg / --color-radar-card 預設，改 env 即可全站換色不必重編樣式。
+         需放在 @vite 之後才蓋得過 Tailwind 產出的 :root 變數。 --}}
+    <style>
+        :root {
+            --color-radar-bg: {{ config('hazdar.theme.bg') }};
+            --color-radar-card: {{ config('hazdar.theme.card') }};
+        }
+    </style>
+
     {{-- LIFF SDK（僅在設定了 LIFF_ID 時載入） --}}
     @if(config('services.line.liff_id'))
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -54,7 +64,7 @@
     </script>
     @endif
 </head>
-<body class="bg-[#002923] text-slate-100 antialiased min-h-dvh">
+<body class="bg-radar-bg text-slate-100 antialiased min-h-dvh">
     {{ $slot ?? '' }}
     @yield('content')
 

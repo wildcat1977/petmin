@@ -4,7 +4,7 @@
     首頁外層包在 pointer-events-none 浮層裡，這裡的 pointer-events-auto 才讓按鈕可點；
     次要頁面沒有那層外殼，pointer-events-auto 在一般文件流裡是無害的預設值。
 --}}
-<header class="pointer-events-auto bg-[#002923] shadow-lg shadow-black/30"
+<header class="pointer-events-auto bg-radar-bg shadow-lg shadow-black/30"
         x-data="{ mobileNavOpen: false }" @keydown.escape.window="mobileNavOpen = false">
     <div class="flex items-center gap-3 px-4 py-2">
         <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-2">

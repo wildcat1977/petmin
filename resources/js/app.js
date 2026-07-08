@@ -154,9 +154,14 @@ function initTicker() {
 
     let idx = 0;
 
+    // 手機肉眼可讀的固定捲動速度（px/s）；越小越慢。duration 依實際捲動距離換算，
+    // 讓長短訊息都以同樣速度前進（v0.3 五次回饋 item 3：原本速度過快無法閱讀）。
+    const MARQUEE_SPEED = 60;
+
     function showNext() {
         tickerEl.classList.remove('radar-ticker-marquee');
         tickerEl.style.removeProperty('--marquee-duration');
+        tickerEl.style.removeProperty('--marquee-start');
         tickerEl.style.opacity = '0';
 
         setTimeout(() => {
@@ -167,7 +172,11 @@ function initTicker() {
                 const overflowPx = tickerEl.scrollWidth - wrapEl.clientWidth;
                 let holdMs = 7000;
                 if (overflowPx > 4) {
-                    const duration = Math.max(8, tickerEl.scrollWidth / 60); // 概估捲動速度，秒數隨文字長度增加
+                    // 文字自 wrapper 右緣進、至左緣完全離開的總距離
+                    const wrapW = wrapEl.clientWidth;
+                    const travel = wrapW + tickerEl.scrollWidth;
+                    const duration = Math.max(8, travel / MARQUEE_SPEED);
+                    tickerEl.style.setProperty('--marquee-start', wrapW + 'px');
                     tickerEl.style.setProperty('--marquee-duration', duration + 's');
                     tickerEl.classList.add('radar-ticker-marquee');
                     holdMs = duration * 1000 + 600; // 跑完整輪再停留片刻才換下一則

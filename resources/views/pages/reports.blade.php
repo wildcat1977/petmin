@@ -3,7 +3,7 @@
 @section('title', __('通報列表 · Hazdar 災情回報'))
 
 @section('content')
-<div class="min-h-dvh bg-[#002923]">
+<div class="min-h-dvh bg-radar-bg">
     @include('partials.nav')
 
     <livewire:report-list />

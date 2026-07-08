@@ -36,7 +36,7 @@
     ];
 @endphp
 
-<div class="min-h-dvh bg-[#002923] text-slate-200">
+<div class="min-h-dvh bg-radar-bg text-slate-200">
 
     @include('partials.nav')
 
@@ -282,7 +282,7 @@
                          this.layers = [];
 
                          const range = this.maxTs - this.minTs || 1;
-                         const categoryHex = @json(\App\Models\ReportCategory::allOrdered()->pluck('color', 'slug'));
+                         const categoryHex = {{ Js::from(\App\Models\ReportCategory::allOrdered()->pluck('color', 'slug')) }};
                          const hexToRgb = (h) => h ? `${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)}` : '148,163,184';
                          const categoryRgb = Object.fromEntries(Object.entries(categoryHex).map(([k, v]) => [k, hexToRgb(v)]));
                          this.points.forEach(([lat, lng, category, ts]) => {

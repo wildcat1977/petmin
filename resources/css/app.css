@@ -10,7 +10,10 @@
 
 @theme {
     --font-sans: 'Inter', 'Noto Sans TC', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    /* 底色 / 卡片色預設值；實際值由 layout <head> 依 config('hazdar.theme') 注入覆蓋
+       （v0.3 五次回饋 item 4），改 env 即可調整，不必改各處 blade。 */
     --color-radar-bg: #002923;
+    --color-radar-card: #003a30;
     --color-radar-panel: #161b22;
     --color-radar-accent: #ef4444;
 }
@@ -24,7 +27,7 @@
     background: #f1f5f9;
 }
 #radar-map.map-theme-dark {
-    background: #002923;
+    background: var(--color-radar-bg);
 }
 
 /* Geocoder 搜尋框（亮色預設） */
@@ -126,7 +129,9 @@ path.radar-scan-circle {
 
 /* 跑馬燈：短訊息維持原本 block+text-center 靜態置中；訊息寬度超出容器時
    JS 加 .radar-ticker-marquee，改絕對定位靠 wrapper 的 relative 為基準向左捲動
-   （wrapper 的 relative 見 radar.blade.php 跑馬燈容器 class，v0.3 三次回饋）。 */
+   （wrapper 的 relative 見 radar.blade.php 跑馬燈容器 class，v0.3 三次回饋）。
+   --marquee-start 由 JS 設為 wrapper 寬度(px)：文字自「右緣」進場（而非自身寬度），
+   避免長訊息開頭一大段空白；捲動速度由 JS 依 px/s 換算 duration（v0.3 五次回饋 item 3）。 */
 .radar-ticker {
     white-space: nowrap;
     transition: opacity 0.4s ease;
@@ -135,11 +140,11 @@ path.radar-scan-circle {
     position: absolute;
     left: 0;
     top: 50%;
-    transform: translate(100%, -50%);
-    animation: radar-ticker-scroll var(--marquee-duration, 10s) linear;
+    transform: translate(var(--marquee-start, 100%), -50%);
+    animation: radar-ticker-scroll var(--marquee-duration, 12s) linear;
 }
 @keyframes radar-ticker-scroll {
-    from { transform: translate(100%, -50%); }
+    from { transform: translate(var(--marquee-start, 100%), -50%); }
     to   { transform: translate(-100%, -50%); }
 }
 

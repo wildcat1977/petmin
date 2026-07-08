@@ -238,14 +238,14 @@ new class extends Component
     <div class="lg:hidden" x-data="{ panelOpen: false, activeCard: null }">
         {{-- 右緣收合 tab --}}
         <button type="button" @click="panelOpen = ! panelOpen"
-                class="pointer-events-auto fixed right-0 top-1/2 z-[510] -translate-y-1/2 rounded-l-lg bg-[#002923] px-1.5 py-5 text-lg text-slate-200 shadow-lg shadow-black/40"
+                class="pointer-events-auto fixed right-0 top-1/2 z-[510] -translate-y-1/2 rounded-l-lg bg-radar-bg px-1.5 py-5 text-lg text-slate-200 shadow-lg shadow-black/40"
                 :aria-expanded="panelOpen">
             <span x-text="panelOpen ? '›' : '‹'"></span>
         </button>
 
         {{-- 面板 --}}
         <div x-show="panelOpen" x-cloak x-transition.origin.right
-             class="pointer-events-auto fixed bottom-24 right-0 top-16 z-[505] flex w-64 flex-col gap-3 overflow-y-auto rounded-l-xl border-l border-white/10 bg-[#002923]/98 p-3 backdrop-blur">
+             class="pointer-events-auto fixed bottom-24 right-0 top-16 z-[505] flex w-64 flex-col gap-3 overflow-y-auto rounded-l-xl border-l border-white/10 bg-radar-bg/98 p-3 backdrop-blur">
             {{-- 圖層/狀態 checkbox 群組 wire:ignore（spec §12.7 3d 修正）：
                  勾選狀態由 initChips（app.js）純前端管理，wire:poll.10s 每次 morph
                  會把 DOM 蓋回本檔的預設 class，把使用者剛關閉的 chip 打勾狀態還原。
@@ -305,7 +305,7 @@ new class extends Component
         @foreach ($mobileCards as $key => [$cardTitle, $partial, $partialData])
             <div x-show="activeCard === '{{ $key }}'" x-cloak @click.self="activeCard = null"
                  class="pointer-events-auto fixed inset-0 z-[550] flex items-end bg-black/50">
-                <div class="max-h-[75dvh] w-full overflow-y-auto rounded-t-2xl bg-[#003a30] p-4">
+                <div class="max-h-[75dvh] w-full overflow-y-auto rounded-t-2xl bg-radar-card p-4">
                     <div class="mb-2 flex items-center justify-between">
                         <h3 class="text-sm font-semibold text-slate-200">{{ __($cardTitle) }}</h3>
                         <button type="button" @click="activeCard = null" class="text-lg text-slate-400 hover:text-slate-200">✕</button>

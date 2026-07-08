@@ -3,7 +3,7 @@
 @section('title', '聯絡管理員 · Hazdar 災情回報')
 
 @section('content')
-<div class="min-h-dvh bg-[#002923] text-slate-200">
+<div class="min-h-dvh bg-radar-bg text-slate-200">
 
     @include('partials.nav')
 

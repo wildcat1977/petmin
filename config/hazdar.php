@@ -7,6 +7,18 @@ return [
     'default_zoom' => (int) env('RADAR_DEFAULT_ZOOM', 13),
     'nearby_radius_km' => (float) env('RADAR_NEARBY_RADIUS_KM', 1),
 
+    /*
+     * 主題配色（spec §12 五次回饋 item 4）：底色與卡片色可由 env 微調而不必改版重編。
+     * 值會以 CSS 變數（--color-radar-bg / --color-radar-card）注入 layout <head>，
+     * 覆蓋 app.css @theme 的預設；任何合法 CSS 顏色皆可（#hex / rgb() / oklch() …）。
+     *   bg   = 全站底色（原 #002923，PM 覺得太綠可調整）
+     *   card = 資訊卡片色，比底色亮一級（原 #003a30）
+     */
+    'theme' => [
+        'bg' => env('HAZDAR_COLOR_BG', '#002923'),
+        'card' => env('HAZDAR_COLOR_CARD', '#003a30'),
+    ],
+
     // AI 通過後直接核准（公開照片），不需人工再審
     'auto_approve' => (bool) env('RADAR_AUTO_APPROVE', false),
 

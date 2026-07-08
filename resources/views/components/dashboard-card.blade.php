@@ -2,7 +2,7 @@
      x-collapse 外掛未安裝（無 @alpinejs/collapse 依賴）：改用 x-show + x-transition。 --}}
 @props(['cardKey', 'title'])
 
-<div class="pointer-events-auto overflow-hidden rounded-xl border border-white/10 bg-[#003a30]/95 backdrop-blur"
+<div class="pointer-events-auto overflow-hidden rounded-xl border border-white/10 bg-radar-card/95 backdrop-blur"
      x-data="{
          open: (() => {
              const v = localStorage.getItem('hazdar:card:{{ $cardKey }}');

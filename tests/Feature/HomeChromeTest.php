@@ -28,6 +28,22 @@ class HomeChromeTest extends TestCase
         $this->get('/')->assertOk()->assertSee('Hazdar-Banner.png', false);
     }
 
+    /**
+     * v0.3 五次回饋 item 4：底色 / 卡片色改由 config('hazdar.theme') 注入 CSS 變數
+     * （--color-radar-bg / --color-radar-card），改 env 即可全站換色不必改各處 blade。
+     * 驗證 config 值確實輸出到 layout <head> 的覆蓋 style。
+     */
+    public function test_theme_colors_are_config_driven(): void
+    {
+        config(['hazdar.theme.bg' => '#123456', 'hazdar.theme.card' => '#abcdef']);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('--color-radar-bg: #123456', false)
+            ->assertSee('--color-radar-card: #abcdef', false)
+            ->assertSee('content="#123456"', false); // theme-color meta 亦跟隨 config
+    }
+
     public function test_top_nav_has_profile_and_contact_for_auth_user(): void
     {
         $user = User::factory()->create();

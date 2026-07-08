@@ -209,7 +209,9 @@ new class extends Component
         @endif
         <div class="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
              wire:click.self="close">
-            <div class="w-full max-w-md rounded-t-3xl bg-[#161b22] p-6 text-slate-100 shadow-2xl ring-1 ring-white/10 sm:rounded-3xl">
+            {{-- max-h + overflow-y-auto：矮螢幕（如 iPhone SE）表單比視窗高時可內部捲動，
+                 不會因 items-end 把頂端頂出視窗外而選不到分類（v0.3 五次回饋 item 1）。 --}}
+            <div class="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-[#161b22] p-6 text-slate-100 shadow-2xl ring-1 ring-white/10 sm:rounded-3xl">
                 @if ($submitted)
                     <div class="py-10 text-center">
                         <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-cyan-600/20">

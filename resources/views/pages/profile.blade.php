@@ -3,7 +3,7 @@
 @section('title', __('我的回報 · Hazdar 災情回報'))
 
 @section('content')
-<div class="min-h-dvh bg-[#002923]">
+<div class="min-h-dvh bg-radar-bg">
     @include('partials.nav')
 
     {{-- 管理員後台入口（v0.3 二次回饋 item 4）--}}

@@ -59,7 +59,7 @@
         </div>
 
         {{-- 底帶：只剩 footer 這行小字連結 + 燈號，實色帶壓到最薄，減少覆蓋地圖面積（PM 三次回饋）--}}
-        <div class="pointer-events-auto bg-[#002923] px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_10px_rgba(0,0,0,0.35)]">
+        <div class="pointer-events-auto bg-radar-bg px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_10px_rgba(0,0,0,0.35)]">
             <div class="mx-auto w-full max-w-3xl">
                 @include('partials.footer-links')
             </div>

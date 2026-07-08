@@ -3,7 +3,7 @@
 <div class="pointer-events-auto" data-promo-banner
      x-data="{ idx: 0, lightbox: null, count: {{ count($this->promoCards) }},
                init() { if (this.count > 1) { setInterval(() => { this.idx = (this.idx + 1) % this.count }, 5000) } } }">
-    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-[#003a30]/95">
+    <div class="relative overflow-hidden rounded-xl border border-white/10 bg-radar-card/95">
         @foreach ($this->promoCards as $i => $card)
             <button type="button" x-show="idx === {{ $i }}" x-cloak x-transition.opacity
                     @click="lightbox = @js($card['image_url'])"

@@ -38,6 +38,22 @@ class ReportSubmissionTest extends TestCase
         return $component->call('submit');
     }
 
+    /**
+     * v0.3 五次回饋 item 1：矮螢幕（如 iPhone SE 375×667）表單比視窗高時，因外層
+     * fixed items-end 無法捲動會把頂端（分類選項）頂出視窗外選不到。面板需自帶
+     * max-h + overflow-y-auto 才能內部捲動看到完整表單。
+     */
+    public function test_open_report_modal_panel_is_scrollable(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test('report-form')
+            ->call('show')
+            ->assertSet('open', true)
+            ->assertSeeHtml('overflow-y-auto')
+            ->assertSeeHtml('max-h-[90dvh]');
+    }
+
     public function test_photoless_flood_report_is_created_with_geohash_and_depth(): void
     {
         $user = User::factory()->create();
