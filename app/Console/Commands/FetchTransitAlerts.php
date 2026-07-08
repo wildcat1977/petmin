@@ -7,6 +7,7 @@ use App\Services\DataSourceHealth;
 use App\Services\TdxClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -46,11 +47,14 @@ class FetchTransitAlerts extends Command
                 }
             }
 
-            // 全量快照：清掉舊的再重灌（本源獨立 table）
-            TransitAlert::query()->delete();
-            foreach ($rows as $row) {
-                TransitAlert::create($row);
-            }
+            // 全量快照：清掉舊的再重灌（本源獨立 table）；
+            // 包在單一 transaction 讓讀者在提交前一直看到舊快照，避免災時瞬間讀到空表。
+            DB::transaction(function () use ($rows) {
+                TransitAlert::query()->delete();
+                foreach ($rows as $row) {
+                    TransitAlert::create($row);
+                }
+            });
 
             $health->recordSuccess('transit');
             $this->info('Transit alerts: '.count($rows).' rows');
@@ -73,7 +77,8 @@ class FetchTransitAlerts extends Command
     {
         $out = [];
         foreach ($alerts as $a) {
-            $status = (int) ($a['Status'] ?? 1);
+            // Status 缺值 fail-safe：災害饋送寧可誤判異常（2），不可漏報為正常（1）
+            $status = array_key_exists('Status', $a) ? (int) $a['Status'] : 2;
             $cause = isset($a['Cause']) ? (int) $a['Cause'] : null;
             $effect = isset($a['Effect']) ? (int) $a['Effect'] : null;
 
