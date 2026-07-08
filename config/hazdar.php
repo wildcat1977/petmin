@@ -78,6 +78,11 @@ return [
             'geocode_url' => 'https://nominatim.openstreetmap.org/search',
             'geocode_delay_us' => (int) env('TAIPEI_SHELTER_GEOCODE_DELAY_US', 1_100_000),
         ],
+        'pump' => [
+            // 臺北市水利處抽水站即時運轉狀態（免認證；spec §11.5 P2 實測 2026-07-08）
+            'url' => env('HAZDAR_PUMP_URL', 'https://heopublic.gov.taipei/taipei-heo-api/openapi/pumb/latest'),
+            'interval_minutes' => 10,
+        ],
     ],
 
     /*

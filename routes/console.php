@@ -17,4 +17,5 @@ Schedule::command('hazdar:fetch-cwa-observations')->everyFiveMinutes()->runInBac
 Schedule::command('hazdar:fetch-ncdr-alerts')->everyFiveMinutes()->runInBackground();
 Schedule::command('hazdar:fetch-radar-echo')->everyTenMinutes()->runInBackground();
 Schedule::command('hazdar:sync-shelters')->dailyAt('05:10')->runInBackground();
+Schedule::command('hazdar:fetch-pump-status')->everyTenMinutes()->runInBackground();
 Schedule::command('hazdar:prune-weather')->dailyAt('03:30');
