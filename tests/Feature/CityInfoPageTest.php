@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ExternalAlert;
 use App\Models\InfoLink;
 use App\Models\PumpStation;
+use App\Models\Shelter;
 use App\Models\TransitAlert;
 use App\Support\CityInfo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -57,6 +58,52 @@ class CityInfoPageTest extends TestCase
         TransitAlert::create(['system' => 'metro', 'scope_name' => '淡水信義線', 'status' => 0, 'title' => '停駛']);
 
         $this->assertSame(0, CityInfo::metroOverallStatus());
+    }
+
+    public function test_transit_shows_bus_as_normal_when_no_bus_alert_row_exists(): void
+    {
+        // metro + gondola sentinel 正常列，但 bus 完全無列（常態：僅災害相關才進 table）；
+        // TDX 已啟用（table 非空）時公車仍須顯示為正常，不可因無列而整條消失。
+        TransitAlert::create(['system' => 'metro', 'scope_name' => null, 'status' => 1, 'title' => null]);
+        TransitAlert::create(['system' => 'gondola', 'scope_name' => null, 'status' => 1, 'title' => null]);
+
+        $this->get('/info')->assertOk()->assertSee('公車')->assertSeeInOrder(['公車', '正常']);
+        $this->assertSame(1, CityInfo::busOverallStatus());
+    }
+
+    public function test_transit_section_hidden_when_transit_alerts_empty(): void
+    {
+        $response = $this->get('/info')->assertOk();
+        $response->assertDontSee('大眾交通');
+        $this->assertNull(CityInfo::busOverallStatus());
+        $this->assertSame([], CityInfo::transitBySystem());
+    }
+
+    public function test_pump_stations_by_district_groups_and_unknown_falls_to_other(): void
+    {
+        PumpStation::factory()->create(['name' => '建國', 'district' => '中山區']);
+        PumpStation::factory()->create(['name' => '長安', 'district' => '中山區']);
+        PumpStation::factory()->create(['name' => '無區站', 'district' => null]);
+
+        $grouped = CityInfo::pumpStationsByDistrict();
+
+        $this->assertSame(['中山區', '其他'], array_keys($grouped));
+        $this->assertSame(['建國', '長安'], $grouped['中山區']->pluck('name')->all());
+        $this->assertSame(['無區站'], $grouped['其他']->pluck('name')->all());
+    }
+
+    public function test_shelter_section_shows_mappable_and_total_and_hides_open_when_zero(): void
+    {
+        Shelter::create(['name' => '有座標未開設', 'latitude' => 25.03, 'longitude' => 121.5]);
+        Shelter::create(['name' => '無座標', 'latitude' => null, 'longitude' => null]);
+
+        $response = $this->get('/info')->assertOk();
+        $response->assertSeeTextInOrder(['全市避難收容所', '2', '處', '可定位', '1', '處'])
+            ->assertDontSee('目前開設');
+
+        Shelter::create(['name' => '開設中', 'latitude' => 25.04, 'longitude' => 121.51, 'is_open' => true]);
+
+        $this->get('/info')->assertOk()->assertSeeTextInOrder(['目前開設', '1', '處']);
     }
 
     public function test_manual_sanitation_filters_inactive_and_orders_by_sort_order(): void

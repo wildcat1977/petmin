@@ -83,6 +83,9 @@ return [
             // 臺北市水利處抽水站即時運轉狀態（免認證；spec §11.5 P2 實測 2026-07-08）
             'url' => env('HAZDAR_PUMP_URL', 'https://heopublic.gov.taipei/taipei-heo-api/openapi/pumb/latest'),
             'interval_minutes' => 10,
+            // 抽水站靜態清冊（含 站名/行政區域），僅用於補 district，不是即時狀態源
+            'inventory_resource_id' => env('TAIPEI_PUMP_INVENTORY_RESOURCE_ID', 'd1f9c6e0-5f72-4fc4-ac18-0b75ce0b002e'),
+            'inventory_url' => env('TAIPEI_PUMP_INVENTORY_URL', 'https://data.taipei/api/v1/dataset/%s?scope=resourceAquire&limit=1000'),
         ],
         'floodgates' => [
             // 臺北市疏散門靜態位置（data.taipei，已 WGS84，36 座；即時狀態端點不可達故只放位置）

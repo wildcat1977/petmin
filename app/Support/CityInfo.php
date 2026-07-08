@@ -33,6 +33,37 @@ class CityInfo
         return PumpStation::where('pumb_status', PumpStation::STATUS_RUNNING)->count();
     }
 
+    /** 台北市行政區顯示順序；未知/無 district 者歸入「其他」置於最後。 */
+    private const DISTRICT_ORDER = [
+        '中正區', '大同區', '中山區', '松山區', '大安區', '萬華區',
+        '信義區', '士林區', '北投區', '內湖區', '南港區', '文山區',
+    ];
+
+    /**
+     * 抽水站依行政區分組（/info 頁面用 Alpine 摺疊呈現，避免長列表一次全展開）。
+     *
+     * @return array<string, Collection<int, PumpStation>>
+     */
+    public static function pumpStationsByDistrict(): array
+    {
+        $byDistrict = PumpStation::orderBy('name')->get()->groupBy(fn (PumpStation $p) => $p->district ?: '其他');
+
+        $ordered = [];
+        foreach (self::DISTRICT_ORDER as $district) {
+            if ($byDistrict->has($district)) {
+                $ordered[$district] = $byDistrict->get($district);
+            }
+        }
+        // 未列於既定順序的區（含「其他」）附加於最後
+        foreach ($byDistrict as $district => $rows) {
+            if (! isset($ordered[$district])) {
+                $ordered[$district] = $rows;
+            }
+        }
+
+        return $ordered;
+    }
+
     /** @return Collection<int, Floodgate> */
     public static function floodgates(): Collection
     {
@@ -44,6 +75,17 @@ class CityInfo
         return Shelter::where('is_open', true)->count();
     }
 
+    /** 已取得座標、可上圖的收容所數（is_open 為災時手動旗標，平時多為 0，不足以代表可查詢的收容所量）。 */
+    public static function mappableShelterCount(): int
+    {
+        return Shelter::whereNotNull('latitude')->count();
+    }
+
+    public static function totalShelterCount(): int
+    {
+        return Shelter::count();
+    }
+
     /** @return Collection<int, InfoLink> 清運與環保局手動連結（無 API，維持手動） */
     public static function manualSanitation(): Collection
     {
@@ -53,23 +95,59 @@ class CityInfo
             ->get();
     }
 
-    /** @return array<string, list<array<string,mixed>>> */
+    /**
+     * 三系統（metro/gondola/bus）固定順序回傳；TDX 未啟用（table 全空）時回傳 [] 整段隱藏。
+     * 公車常態無異常列（僅災害相關才進 table），啟用時仍需輸出單一正常列，不可因無資料列而消失。
+     *
+     * @return array<string, list<array<string,mixed>>>
+     */
     public static function transitBySystem(): array
     {
-        return TransitAlert::orderBy('system')->get()
-            ->groupBy('system')
-            ->map(fn ($rows) => $rows->map(fn ($a) => [
-                'scope' => $a->scope_name,
-                'status' => $a->status,      // 0 停駛 / 1 正常 / 2 調整
-                'title' => $a->title,
-            ])->all())
-            ->all();
+        if (! TransitAlert::exists()) {
+            return [];
+        }
+
+        $bySystem = TransitAlert::orderBy('system')->get()->groupBy('system');
+
+        $result = [];
+        foreach ([TransitAlert::SYSTEM_METRO, TransitAlert::SYSTEM_GONDOLA, TransitAlert::SYSTEM_BUS] as $system) {
+            $abnormal = ($bySystem->get($system) ?? collect())
+                ->filter(fn ($a) => $a->status !== TransitAlert::STATUS_NORMAL)
+                ->map(fn ($a) => [
+                    'scope' => $a->scope_name,
+                    'status' => $a->status,      // 0 停駛 / 1 正常 / 2 調整
+                    'title' => $a->title,
+                ])->values()->all();
+
+            $result[$system] = $abnormal !== [] ? $abnormal : [['scope' => null, 'status' => TransitAlert::STATUS_NORMAL, 'title' => null]];
+        }
+
+        return $result;
     }
 
     /** 捷運整體狀態（優先序 停駛(0) > 調整(2) > 正常(1)；無資料 → null）。 */
     public static function metroOverallStatus(): ?int
     {
-        $rows = TransitAlert::where('system', 'metro')->pluck('status');
+        return self::overallStatus(TransitAlert::SYSTEM_METRO);
+    }
+
+    /**
+     * 公車整體狀態。公車常態無列（僅災害相關才進 table），故只要 TDX 啟用（transit_alerts 非空）
+     * 且無異常列即視為正常(1)；TDX 完全未啟用（table 全空）才回 null。
+     */
+    public static function busOverallStatus(): ?int
+    {
+        if (! TransitAlert::exists()) {
+            return null;
+        }
+
+        return self::overallStatus(TransitAlert::SYSTEM_BUS) ?? 1;
+    }
+
+    /** 優先序 停駛(0) > 調整(2) > 正常(1)；該系統無列 → null。 */
+    private static function overallStatus(string $system): ?int
+    {
+        $rows = TransitAlert::where('system', $system)->pluck('status');
         if ($rows->isEmpty()) {
             return null;
         }

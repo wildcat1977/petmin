@@ -14,7 +14,7 @@ class PumpStation extends Model
     public const STATUS_RUNNING = '運轉中';
 
     protected $fillable = [
-        'stn_id', 'name', 'latitude', 'longitude', 'pump_num', 'gate_num',
+        'stn_id', 'name', 'district', 'latitude', 'longitude', 'pump_num', 'gate_num',
         'pumb_status', 'door_status', 'inner_value', 'outer_value', 'max_level', 'observed_at',
     ];
 

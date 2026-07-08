@@ -4,10 +4,12 @@
 @php
     use App\Support\CityInfo;
     $closure = CityInfo::closure();
-    $pumps = CityInfo::pumpStations();
+    $pumpsByDistrict = CityInfo::pumpStationsByDistrict();
     $gates = CityInfo::floodgates();
     $sanitation = CityInfo::manualSanitation();
     $openShelters = CityInfo::openShelterCount();
+    $totalShelters = CityInfo::totalShelterCount();
+    $mappableShelters = CityInfo::mappableShelterCount();
     $transit = CityInfo::transitBySystem();
 @endphp
 <div class="min-h-dvh bg-radar-bg text-slate-200">
@@ -22,7 +24,7 @@
         @include('partials.city-info.transit', ['transit' => $transit])
 
         {{-- 水門與抽水站 --}}
-        @include('partials.city-info.water', ['pumps' => $pumps, 'gates' => $gates])
+        @include('partials.city-info.water', ['pumpsByDistrict' => $pumpsByDistrict, 'gates' => $gates])
 
         {{-- 清運與環保局（手動）--}}
         @include('partials.city-info.sanitation', ['links' => $sanitation])
@@ -30,8 +32,12 @@
         {{-- 避難收容所 --}}
         <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
             <h2 class="mb-2 text-lg font-semibold text-slate-200">🏫 避難收容所</h2>
-            <p class="text-sm text-slate-400">目前開設 <span class="font-bold text-emerald-400">{{ $openShelters }}</span> 處 ·
-                <a href="{{ route('home') }}" class="text-cyan-300 underline underline-offset-2">在地圖查看 →</a></p>
+            <p class="text-sm text-slate-400">全市避難收容所 <span class="font-bold text-emerald-400">{{ $totalShelters }}</span> 處 ·
+                可定位 <span class="font-bold text-emerald-400">{{ $mappableShelters }}</span> 處
+                @if ($openShelters > 0)
+                    · 目前開設 <span class="font-bold text-emerald-400">{{ $openShelters }}</span> 處
+                @endif
+                · <a href="{{ route('home') }}" class="text-cyan-300 underline underline-offset-2">在地圖查看 →</a></p>
         </section>
     </div>
     <div class="border-t border-white/10 px-4 py-6">@include('partials.footer-links')</div>
