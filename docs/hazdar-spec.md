@@ -422,3 +422,5 @@ PM 實機測試(含手機截圖)再回報 4 項:
 - 新來源皆接 `DataSourceHealth`,但**刻意不進公開 footer 燈與後台 widget**(兩者改跑 `SOURCE_LABELS` 白名單維持原 4 源;新來源新鮮度於 `/info` 呈現)。落地一律純陣列/scalar;transit 快照以 `DB::transaction` 原子替換(避免公開讀取空窗)。
 
 **驗收**:190 測試綠(SDD 逐任務 spec+品質雙複審 + opus 整支複審「Ready to ship as-is」)。線上(hazdar.puma.taipei)Phase 1+2 皆實機驗證:`/info` 顯示 97 抽水站狀態、疏散門 36、停班停課「正常上班上課」、捷運/貓空纜車「正常」(真實 TDX);nav 已換;首頁卡 parsed 摘要。commits `ff8adbb`..`4f50cb8`。
+
+**PM 回饋微調(commit `e0be7e5`,196 測試綠)**:(1) 交通系統即使無異常也顯示「正常」——捷運/貓空纜車/公車一律列出(公車先前無異常時 0 筆不顯示,現 `transitBySystem` 於 `TransitAlert::exists()` 時補正常列);首頁卡加公車。(2) 抽水站依 12 行政區 Alpine 收合分組(預設收合),`district` 欄由新 `hazdar:sync-pump-districts`(日更)以靜態清單 rid `d1f9c6e0…` 的 `站名→行政區域` 回填(62/97 對到,HEO 分站如建國擴/社臨系列不在靜態清單→歸「其他」)。(3) 收容所改顯示真實列管量「全市 X 處(可定位 Y)」+ 僅在 `is_open>0` 附「開設 N」(`is_open` 是災時開設旗標,平時多為 demo 的 2 筆,非列管數)。**已知(非本功能造成)**:全站公開載入偏慢(app 內部 render 僅 80ms,但每請求框架 bootstrap ~4s + Cloudflare 疊加 → 公開 9–35s;首頁同樣慢)——疑 php-fpm OPcache 未啟用,待後續 infra 處理(config 仍維持不快取以保留 env 換色)。
