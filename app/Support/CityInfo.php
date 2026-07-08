@@ -66,14 +66,20 @@ class CityInfo
             ->all();
     }
 
-    /** 捷運整體狀態（各路線最差值；有 0 就 0 停駛、有 2 就 2 調整、全 1 才 1 正常；無資料 → null）。 */
+    /** 捷運整體狀態（優先序 停駛(0) > 調整(2) > 正常(1)；無資料 → null）。 */
     public static function metroOverallStatus(): ?int
     {
         $rows = TransitAlert::where('system', 'metro')->pluck('status');
         if ($rows->isEmpty()) {
             return null;
         }
+        if ($rows->contains(0)) {
+            return 0; // 任一線停駛 → 停駛
+        }
+        if ($rows->contains(2)) {
+            return 2; // 任一線調整 → 調整
+        }
 
-        return $rows->min();
+        return 1; // 全部正常
     }
 }

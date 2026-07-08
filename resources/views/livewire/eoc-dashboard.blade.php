@@ -139,7 +139,7 @@ new class extends Component
      * 首頁卡「交通與清運資訊彙整」parsed 摘要（Task 6 起取代逐區塊連結清單，
      * 完整內容改置於 /info；共用 App\Support\CityInfo 作為單一資料源）。
      *
-     * @return array{runningPumps: int, closureActive: bool, openShelters: int}
+     * @return array{runningPumps: int, closureActive: bool, openShelters: int, metroStatus: ?int}
      */
     private function computeCityInfoSummary(): array
     {
