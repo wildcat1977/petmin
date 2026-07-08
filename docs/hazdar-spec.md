@@ -386,3 +386,22 @@ PM 實機測試(含手機截圖)發現 §12.11 交付後仍有 3 處問題,修�
 5. **附帶修復**:跑馬燈邏輯抽成獨立 `livewire/site-ticker.blade.php` 元件(30s 快取),不再綁在整個地圖元件(`radar-map`)上——次要頁面沒有地圖,原本永遠拿不到跑馬燈資料。同時發現 `initTicker()` 原本巢狀在 `initRadar()` 內,只有 `#radar-map` 存在(首頁)才會執行,已改為獨立於地圖呼叫。
 
 **驗收**:全套 172 測試綠(新增 `test_mobile_has_hamburger_menu_with_full_link_set`/`test_secondary_pages_share_home_header_with_banner_and_ticker`);線上桌機/手機實機驗證:公告/回報鈕浮動不遮地圖、手機漢堡選單展開正確、`/reports` 等次要頁面顯示 banner+跑馬燈與首頁一致、長 NCDR 警戒訊息正確向左捲動播出完整文字且被 `overflow:hidden` 正確裁切在跑馬燈膠囊範圍內(以強制動畫暫停截圖驗證,排除截到 400ms opacity 過場瞬間的偽陽性)。
+
+### 12.13 v0.3 四次回饋(2026-07-08 PM:NCDR 警戒卡片長文字)
+
+PM 手機截圖回報:浮動 NCDR 警戒卡片(`card-alerts`,桌機浮動卡與手機底部彈窗共用)的警戒標題原本用 `truncate` 單行裁切,超出螢幕寬度的後半段看不到。PM 提出三案(點開 lightbox / 自動捲動 / 換行)。
+
+**採「換行」**:此卡是「靜態多列清單」而非「單一輪播欄位」——若每列各自跑馬燈會多列同時捲動、視覺雜亂;lightbox 對「快速掃視」的警戒清單多一層點擊摩擦。改 `truncate`→整段換行(`flex items-center`→`items-start`、`<span class="truncate">`→`<p class="min-w-0 flex-1 leading-relaxed">`),比照全站其他長文字元件(如 `announcement-banner`)既有換行慣例;`dashboard-card` 無固定高度,換行後自然撐高安全。
+
+**驗收**:172 測試綠(無測試引用舊 truncate 標記);線上桌機浮動卡與手機底部彈窗實機確認長警戒全文換行完整、不再裁切。commit `b3fe02e`。
+
+### 12.14 v0.3 五次回饋(2026-07-08 PM:四項實機修正)
+
+PM 實機測試(含手機截圖)再回報 4 項:
+
+1. **回報表單矮螢幕無法捲動**(item 1):iPhone SE(375×667)等矮螢幕下,回報表單比視窗高時,外層 `fixed inset-0 flex items-end` 本身不捲動,會把表單頂端(分類選項)頂出視窗上緣選不到。面板加 `max-h-[90dvh] overflow-y-auto`:面板高度上限收在視窗內、靠底(bottom sheet)、內容內部捲動,頂端恆在視窗內可達。
+2. **統計/透明度時間軸地圖 JS 洩漏**(item 2):`stats`/`transparency` 時間軸地圖的 Alpine `x-data` 內以 `@json(...)` 內嵌分類配色。**`@json` 預設 `options=0` 不轉義雙引號**,輸出的原始 `"` 直接關閉 `x-data="..."` 屬性,其後 `(h) => ...` 整段 JS 被瀏覽器當純文字印在畫面上(PM 截圖可見大段程式碼)。改用 `{{ Js::from(...) }}`(同檔既有 chart 段落作法,`"`→`"` 轉義)安全內嵌於屬性。**通則**:在 HTML 屬性(尤其 Alpine `x-data`)內嵌資料一律用 `Js::from`,勿用 `@json`。
+3. **head nav 跑馬燈手機太快讀不到**(item 3):原速度固定約 120px/s。改為固定 **60px/s**(`MARQUEE_SPEED`,依實際捲動距離 `wrapW + scrollWidth` 換算 `--marquee-duration`),並讓文字自 wrapper 右緣進場(JS 設 `--marquee-start` = wrapper 寬度)而非元素自身寬度,消除長訊息開頭一大段空白。線上實測 60px/s。
+4. **底色/卡片色抽成 config**(item 4):PM 覺得 `#002923` 太綠。底色與卡片色(`#003a30`,比底色亮一級)抽成 `config('hazdar.theme')`→`env(HAZDAR_COLOR_BG / HAZDAR_COLOR_CARD)`,由 layout `<head>` 以 CSS 變數(`--color-radar-bg` / `--color-radar-card`)注入覆蓋 `app.css @theme` 預設。全站 `bg-[#002923]`/`bg-[#003a30]` 改用 `bg-radar-bg` / `bg-radar-card` token(Tailwind 4 opacity 修飾如 `/98`、`/95` 經 `color-mix` 仍吃 CSS 變數)。改 env 即可全站換色不必動各處 blade 重編;預設值不變外觀無回歸。**注意**:若之後啟用 `config:cache`,改 env 後需 `config:cache` 重建才生效。
+
+**驗收**:174 測試綠(新增 `test_theme_colors_are_config_driven`、`test_open_report_modal_panel_is_scrollable`,+2)。線上(PostgreSQL)實機:`stats`/`transparency` 時間軸地圖恢復正常渲染無 JS 洩漏、跑馬燈實測 60px/s、注入 style 帶 config 色值生效、手機底色/卡片色無回歸。item 1 因瀏覽器工作階段未登入無法開表單實點,以 PHPUnit(面板含 `overflow-y-auto`+`max-h-[90dvh]`)+ 已編譯 CSS 佐證(`stats`/`transparency` 沿用 §12「PostgreSQL 專屬 SQL 無法於 SQLite render」慣例,item 2 於線上驗證)。commit `b071302`。
