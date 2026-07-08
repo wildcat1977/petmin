@@ -43,6 +43,11 @@ Laravel 13 / PHP 8.4 / Livewire 4 / Filament 5 / PostgreSQL / Tailwind 4。新�
 - **spec §11.5 誤標**：`2bbfb30e` 其實是「抽水站」dataset 且為 `openapi` 型，用 `scope=resourceAquire` 回空陣列；真資料在 HEO `pumb/latest`。此處更正。
 - **清運（垃圾車停收 / 災後集中點）**：無結構化 API，**本階段不做**，維持手動 `InfoLink`。
 
+**TDX 實測補充（2026-07-08 以 PM 憑證於生產機驗證，token len 1031、三端點皆 HTTP 200）**
+- **正常狀態不是空陣列**：捷運/纜車正常時回**單一 sentinel** `{"AlertID":"0","Status":1,"Title":"正常營運","Scope":{空}}`。解析規則：整段只有 `AlertID="0"` 或全部 `Status=1` → 顯示「全線正常」；有 `AlertID≠"0"` 且 `Status∈{0,2}`、`Scope.Lines/Routes` 有值 → 才是真的異常。
+- **公車 feed 很吵**：實測 39 筆多為例行（寒假調整、活動改道，`Cause=11`）。災害卡片**只取災害相關**：`Cause=6(氣候)` 或 `Effect∈{4停駛,7重大延遲}`，其餘不顯示；平時（無災害相關）顯示「公車 正常」。
+- 欄位確認：`Status`(0/1/2)、`Cause`、`Effect`、`Scope.Routes[].RouteName.Zh_tw`、`Scope.Lines[].LineName`、`Title`、`Description`、`StartTime/EndTime`、`PublishTime`。
+
 ## 2. 資料模型
 
 **新增 `pump_stations`（抽水站即時，`hazdar:fetch-pump-status` 每 10 分鐘）**
