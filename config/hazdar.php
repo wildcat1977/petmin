@@ -58,6 +58,7 @@ return [
         ],
         'ncdr_alerts' => [
             'feed_url' => env('NCDR_FEED_URL', 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx'),
+            'closure_feed_url' => env('NCDR_CLOSURE_FEED_URL', 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33'),
             'interval_minutes' => 5,
             'max_detail_fetches' => 30,      // 每輪最多抓幾筆 CAP 明細（僅新 cap_id）
         ],

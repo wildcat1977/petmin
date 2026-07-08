@@ -31,59 +31,14 @@ class FetchNcdrAlerts extends Command
         $config = config('hazdar.sources.ncdr_alerts');
 
         try {
-            $response = Http::timeout(10)->get($config['feed_url']);
-            if (! $response->successful()) {
-                throw new RuntimeException("feed HTTP {$response->status()}");
-            }
-
-            $entries = $this->parseFeed($response->body());
-
-            // feed 內同一 cap_id 可能出現多次（多語系/重發），連同 DB 既有的一起去重
-            $seen = ExternalAlert::query()
-                ->whereIn('cap_id', array_column($entries, 'cap_id'))
-                ->pluck('cap_id')
-                ->flip()
-                ->all();
-
             $detailBudget = (int) $config['max_detail_fetches'];
-            $created = 0;
-
-            foreach ($entries as $entry) {
-                if (isset($seen[$entry['cap_id']])) {
-                    continue;
-                }
-
-                // 明細預算用完即停：未入庫的留待下一輪（feed 新的在前，
-                // 最新警戒永遠優先處理），避免以空 areas 入庫後再也不補
-                if ($entry['cap_link'] && $detailBudget <= 0) {
-                    break;
-                }
-                $seen[$entry['cap_id']] = true;
-
-                $areas = [];
-                $severity = null;
-                if ($entry['cap_link']) {
-                    $detailBudget--;
-                    [$areas, $severity] = $this->fetchCapDetail($entry['cap_link']);
-                }
-
-                ExternalAlert::create([
-                    'source' => $entry['source'],
-                    'cap_id' => $entry['cap_id'],
-                    'alert_type' => $entry['alert_type'],
-                    'headline' => $entry['headline'],
-                    'severity' => $severity,
-                    'areas' => $areas,
-                    'covers_taipei' => $this->coversTaipei($areas),
-                    'effective_at' => $entry['effective_at'],
-                    'expires_at' => $entry['expires_at'],
-                    'raw' => $entry,
-                ]);
-                $created++;
+            $created = $this->ingestFeed($config['feed_url'], null, $detailBudget);
+            if (! empty($config['closure_feed_url'])) {
+                $created += $this->ingestFeed($config['closure_feed_url'], '停班停課', $detailBudget);
             }
 
             $health->recordSuccess('ncdr_alerts');
-            $this->info("NCDR alerts: {$created} new / ".count($entries).' in feed');
+            $this->info("NCDR alerts: {$created} new");
 
             return self::SUCCESS;
         } catch (Throwable $e) {
@@ -94,6 +49,65 @@ class FetchNcdrAlerts extends Command
 
             return self::FAILURE;
         }
+    }
+
+    /**
+     * 抓單一 feed → 去重 → 逐筆入庫。$alertTypeOverride 非 null 時（如停班停課 feed）
+     * 覆蓋 feed title 判斷出的 alert_type；$detailBudget 由呼叫端傳入並跨多次呼叫累計扣減。
+     */
+    private function ingestFeed(string $url, ?string $alertTypeOverride, int &$detailBudget): int
+    {
+        $response = Http::timeout(10)->get($url);
+        if (! $response->successful()) {
+            throw new RuntimeException("feed HTTP {$response->status()}");
+        }
+
+        $entries = $this->parseFeed($response->body());
+
+        // feed 內同一 cap_id 可能出現多次（多語系/重發），連同 DB 既有的一起去重
+        $seen = ExternalAlert::query()
+            ->whereIn('cap_id', array_column($entries, 'cap_id'))
+            ->pluck('cap_id')
+            ->flip()
+            ->all();
+
+        $created = 0;
+
+        foreach ($entries as $entry) {
+            if (isset($seen[$entry['cap_id']])) {
+                continue;
+            }
+
+            // 明細預算用完即停：未入庫的留待下一輪（feed 新的在前，
+            // 最新警戒永遠優先處理），避免以空 areas 入庫後再也不補
+            if ($entry['cap_link'] && $detailBudget <= 0) {
+                break;
+            }
+            $seen[$entry['cap_id']] = true;
+
+            $areas = [];
+            $severity = null;
+            if ($entry['cap_link']) {
+                $detailBudget--;
+                [$areas, $severity] = $this->fetchCapDetail($entry['cap_link']);
+            }
+
+            ExternalAlert::create([
+                'source' => $entry['source'],
+                'cap_id' => $entry['cap_id'],
+                'alert_type' => $alertTypeOverride ?? $entry['alert_type'],
+                'headline' => $entry['headline'],
+                'severity' => $severity,
+                'areas' => $areas,
+                'covers_taipei' => $this->coversTaipei($areas),
+                'effective_at' => $entry['effective_at'],
+                'expires_at' => $entry['expires_at'],
+                'raw' => $entry,
+            ]);
+            $created++;
+        }
+
+        return $created;
     }
 
     /** @return list<array{cap_id: string, alert_type: string, headline: string, source: string, effective_at: ?Carbon, expires_at: ?Carbon, cap_link: string}> */
