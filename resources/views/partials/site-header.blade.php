@@ -33,6 +33,10 @@
                     class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">
                 {{ __('聯絡管理員') }}
             </button>
+            <a href="https://join.puma.taipei/line/mgnqKwOm" class="flex items-center gap-2 rounded-full bg-white/10 px-2 py-1.5 hover:bg-white/20" target="_blank" rel="noopener">
+                <img src="/images/line.png" alt="" class="h-5 w-5 rounded-full object-cover">
+                <span class="hidden text-slate-200 sm:inline"></span>
+            </a>            
             @auth
                 <a href="{{ route('profile') }}"
                    class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">
