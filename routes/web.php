@@ -44,6 +44,9 @@ Route::get('/news', function () {
     return view('pages.news', ['items' => $items]);
 })->name('news');
 
+// 交通與清運資訊（spec §11.5）：view 內用 App\Support\CityInfo 靜態查詢，不需 controller
+Route::view('/info', 'pages.city-info')->name('city-info');
+
 // 圖卡專區改為首頁輪播 banner（spec §12.5）；舊網址 302 轉向
 Route::redirect('/cards', '/', 302)->name('cards');
 
