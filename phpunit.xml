@@ -32,5 +32,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- 主題配色釘死預設值，讓測試不受各機器 .env 的 HAZDAR_COLOR_* 覆蓋影響 -->
+        <env name="HAZDAR_COLOR_BG" value="#002923"/>
+        <env name="HAZDAR_COLOR_CARD" value="#003a30"/>
     </php>
 </phpunit>

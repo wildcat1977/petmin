@@ -14,9 +14,11 @@ return [
      *   bg   = 全站底色（原 #002923，PM 覺得太綠可調整）
      *   card = 資訊卡片色，比底色亮一級（原 #003a30）
      */
+    // 用 ?: 而非 env 第二參數：env 值為「空字串」時（例：.env 寫 HAZDAR_COLOR_BG=#001910
+    // 未加引號，# 之後被當註解 → 值變空）也要退回預設，避免注入空 CSS 變數把全站底色變透明。
     'theme' => [
-        'bg' => env('HAZDAR_COLOR_BG', '#002923'),
-        'card' => env('HAZDAR_COLOR_CARD', '#003a30'),
+        'bg' => env('HAZDAR_COLOR_BG') ?: '#002923',
+        'card' => env('HAZDAR_COLOR_CARD') ?: '#003a30',
     ],
 
     // AI 通過後直接核准（公開照片），不需人工再審
