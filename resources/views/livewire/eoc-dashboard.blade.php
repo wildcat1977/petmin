@@ -120,13 +120,18 @@ new class extends Component
             ->active()
             ->coversTaipei()
             ->latest('effective_at')
-            ->limit(8)
+            ->limit(50)
             ->get(['alert_type', 'headline', 'severity', 'effective_at'])
+            // 同 type+內文的重複警戒（發布時間不同）只保留最新一筆；排序已新→舊，unique 取首筆
+            ->unique(fn ($a) => $a->alert_type.'|'.$a->headline)
+            ->take(8)
             ->map(fn ($a) => [
                 'type' => $a->alert_type,
                 'headline' => $a->headline,
                 'severity' => $a->severity,
+                'published_at' => $a->effective_at?->format('Y-m-d H:i'),
             ])
+            ->values()
             ->all();
     }
 

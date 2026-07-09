@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ExternalAlert;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\WeatherObservation;
@@ -134,5 +135,47 @@ class EocDashboardTest extends TestCase
 
         $afterExpiry = Livewire::test('eoc-dashboard')->get('stats');
         $this->assertSame(6, collect($afterExpiry)->firstWhere('slug', Report::CATEGORY_FLOOD)['count']);
+    }
+
+    /** NCDR 卡（spec §12.18）：同 type+內文的重複警戒只保留最新一筆、並附發布時間 */
+    public function test_alerts_dedupe_duplicate_content_keeping_latest_with_published_time(): void
+    {
+        $newer = now()->subHour();
+
+        ExternalAlert::create([
+            'source' => 'NCDR', 'cap_id' => 'DUP_OLD', 'alert_type' => '高溫',
+            'headline' => '各地天氣高溫炎熱，請注意', 'severity' => 'Moderate',
+            'covers_taipei' => true, 'effective_at' => now()->subHours(3), 'expires_at' => now()->addDay(),
+        ]);
+        ExternalAlert::create([
+            'source' => 'NCDR', 'cap_id' => 'DUP_NEW', 'alert_type' => '高溫',
+            'headline' => '各地天氣高溫炎熱，請注意', 'severity' => 'Moderate',
+            'covers_taipei' => true, 'effective_at' => $newer, 'expires_at' => now()->addDay(),
+        ]);
+        ExternalAlert::create([
+            'source' => 'NCDR', 'cap_id' => 'OTHER', 'alert_type' => '強風',
+            'headline' => '沿海及蘭嶼強陣風', 'severity' => 'Moderate',
+            'covers_taipei' => true, 'effective_at' => now(), 'expires_at' => now()->addDay(),
+        ]);
+
+        $alerts = collect(Livewire::test('eoc-dashboard')->get('alerts'));
+
+        $hot = $alerts->where('headline', '各地天氣高溫炎熱，請注意');
+        $this->assertCount(1, $hot);                                          // 去重後只剩一筆
+        $this->assertSame($newer->format('Y-m-d H:i'), $hot->first()['published_at']); // 保留的是最新一筆
+        $this->assertCount(2, $alerts);                                       // 高溫(1) + 強風(1)
+    }
+
+    public function test_alerts_card_renders_published_time(): void
+    {
+        ExternalAlert::create([
+            'source' => 'NCDR', 'cap_id' => 'P1', 'alert_type' => '土石流',
+            'headline' => '大台北地區土石流黃色警戒', 'severity' => 'Moderate',
+            'covers_taipei' => true, 'effective_at' => now(), 'expires_at' => now()->addDay(),
+        ]);
+
+        Livewire::test('eoc-dashboard')
+            ->assertSee('大台北地區土石流黃色警戒')
+            ->assertSee('發布');
     }
 }

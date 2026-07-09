@@ -460,3 +460,11 @@ PM 實機測試(含手機截圖)再回報 4 項:
 **C. 公告清單標題欄橫捲**(同批 PM 回饋):`AnnouncementResource` list 的 `title` 欄為單行長文字致橫捲,加 `->wrap()->width('32rem')` 自動換行 + 限寬。
 
 **驗收**:208 測試綠(新增 `AnnouncementBannerTest` 4 測 + `ReportsTableActionsTest` 5 測;既有 `NewsPageTest`/`ReportsTableBannedUserBadgeTest` 續綠)。**部署需**:`php artisan migrate`(content 轉 nullable + 回填);banner 用到新 Tailwind class(`decoration-blue-300/40` 等)需 `npm run build`。Filament PHP 變更免前端重建。
+
+### 12.18 首頁 NCDR 警戒卡去重 + 發布時間(2026-07-09 PM 回饋)
+
+首頁 NCDR 警戒卡(`livewire/partials/card-alerts.blade.php`,桌機浮動卡與手機 bottom-sheet 共用)的 `eoc-dashboard::computeAlerts()`:
+1. **同內文去重**:同一 `alert_type + headline` 但發布時間不同的重複警戒(NCDR 常見)只保留最新一筆。作法:查詢 `latest('effective_at')`(新→舊)後 `->unique(type.'|'.headline)->take(8)`;為免 dedup 前就被 `limit(8)` 砍掉唯一警戒,fetch 上限先放寬到 50 再去重取 8。
+2. **補發布時間**:map 加 `published_at` = `effective_at?->format('Y-m-d H:i')`(純字串,遵守禁存 Eloquent/Carbon 物件於快取);partial 於每筆下方顯示「🕒 …發布」,`effective_at` 為 null 時不顯示。
+
+跑馬燈(`site-ticker`)不在本次範圍,維持原樣。**驗收**:210 測試綠(`EocDashboardTest` 新增 2 測:去重保留最新+published_at 正確、卡片 render 出發布時間)。純 Blade/Volt 變更、無新 Tailwind class,免 `npm run build`。

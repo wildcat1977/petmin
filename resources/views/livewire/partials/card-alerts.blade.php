@@ -11,6 +11,9 @@
             <p class="min-w-0 flex-1 text-[10px] leading-relaxed text-slate-500">
                 <span class="text-xs font-semibold text-slate-200">{{ $alert['type'] }}</span>
                 {{ $alert['headline'] }}
+                @if (! empty($alert['published_at']))
+                    <span class="mt-0.5 block text-[10px] text-slate-600">🕒 {{ $alert['published_at'] }} 發布</span>
+                @endif
             </p>
         </div>
     @empty
