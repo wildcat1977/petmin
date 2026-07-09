@@ -37,7 +37,12 @@ new class extends Component
                     @if ($announcement->title)
                         <p class="text-xs font-semibold text-blue-300">{{ $announcement->title }}</p>
                     @endif
-                    <p class="mt-0.5 text-[12px] leading-relaxed whitespace-pre-line text-slate-300">{{ $announcement->content }}</p>
+                    @php
+                        // 富文本 body 為單一內容來源；彈窗僅顯示 strip 後前 30 字摘要（fallback 舊 content）
+                        $plain = trim(preg_replace('/\s+/', ' ', strip_tags($announcement->body ?: (string) $announcement->content)));
+                        $truncated = mb_strlen($plain) > 30;
+                    @endphp
+                    <p class="mt-0.5 text-[12px] leading-relaxed text-slate-300">{{ mb_substr($plain, 0, 30) }}@if ($truncated)…&nbsp;<a href="{{ route('news') }}" class="font-medium text-blue-300 underline decoration-blue-300/40 underline-offset-2 hover:text-blue-200">[{{ __('詳見最新消息') }}]</a>@endif</p>
                 </div>
                 <button
                     type="button"

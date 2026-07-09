@@ -14,7 +14,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -23,6 +22,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
 
 class AnnouncementResource extends Resource
 {
@@ -42,13 +42,6 @@ class AnnouncementResource extends Resource
                 ->maxLength(100)
                 ->columnSpanFull(),
 
-            Textarea::make('content')
-                ->label('公告內容')
-                ->required()
-                ->rows(6)
-                ->maxLength(2000)
-                ->columnSpanFull(),
-
             Toggle::make('is_active')
                 ->label('立即顯示')
                 ->default(true),
@@ -59,7 +52,9 @@ class AnnouncementResource extends Resource
                 ->nullable(),
 
             RichEditor::make('body')
-                ->label('內文（最新消息頁，選填；空白時顯示上方公告內容）')
+                ->label('內容')
+                ->helperText('最新消息頁顯示完整內文；首頁彈窗顯示前 30 字摘要。')
+                ->required()
                 ->columnSpanFull(),
 
             TextInput::make('link_url')
@@ -90,11 +85,13 @@ class AnnouncementResource extends Resource
                 TextColumn::make('title')
                     ->label('標題')
                     ->default('（無標題）')
+                    ->wrap()
+                    ->width('32rem')
                     ->searchable(),
 
-                TextColumn::make('content')
+                TextColumn::make('body')
                     ->label('內容')
-                    ->limit(60)
+                    ->formatStateUsing(fn (?string $state): string => Str::limit(strip_tags((string) $state), 60))
                     ->searchable(),
 
                 IconColumn::make('is_pinned')

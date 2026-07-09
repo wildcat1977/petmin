@@ -443,3 +443,20 @@ PM 實機測試(含手機截圖)再回報 4 項:
 **慣例偏離(已說明)**:此檔其餘字串全包 `__()`,但此段為整段中文法律條文、無多語需求,直接以結構化 HTML 寫入 blade,不逐句包 `__()`(Rule 11 主動揭示)。
 
 **驗收**:更新 `AuthOnboardingTest` 斷言 modal render 出聲明標題(面板恆在 DOM、僅隱藏,`assertSee` 可驗);登入鍵仍可直接觸發、無新增必填閘門。
+
+### 12.17 公告後台整合 + 災情審核按鈕依狀態呈現(2026-07-09 PM 回饋)
+
+**A. 公告內容整合為單一富文本欄位**
+- 原本後台有兩塊：`content`(Textarea 公告內容,`required`,首頁彈窗 `announcement-banner` 讀它)與 `body`(RichEditor 內文,nullable,`/news` 頁讀它)。PM:整合成只留富文本編輯器。
+- 表單移除 `content` 欄,`body` 升為必填、標籤改「內容」。`content` 退為 legacy:migration 將其改 nullable,並把既有只有 content 的公告回填進 body(`'<p>'.nl2br(e($content)).'</p>'`,保留換行、轉義防注入),避免既有公告在改讀 body 後消失(非破壞性,不 drop 欄位)。
+- **首頁彈窗**(`announcement-banner`):改顯示 `strip_tags(body)` 正規化空白後**前 30 字**;超過 30 字才附「[詳見最新消息]」連往 `/news`(≤30 字顯示全文、無連結)。fallback:`body ?: content`,相容尚未回填的舊列。
+- `/news` 頁不動(已讀 body、`@else content` 續留作 legacy fallback);後台 list 的「內容」欄改讀 `body`(strip 後 limit 60)。
+
+**B. 災情審核操作按鈕依狀態呈現**(`Reports/Tables/ReportsTable.php`)
+- 原本 6 顆 record action 全部 inline(核准/官方核實/已通報/已排除/拒絕/編輯)→ 列面橫向溢出,審核鈕被擠出視窗要往右捲。
+- PM 決議:**依狀態顯示 + 分組**。待審核只出主按鈕 `核准`(拿掉「（公開照片）」字樣)｜`拒絕`｜`編輯`;`官方核實 / 已通報 / 已排除` 三顆收進 `ActionGroup`(⋮ 狀態標記)下拉,且整組 `->visible(status === APPROVED)`(核准後才出現)。三顆各自原有的 per-record `visible()` 條件保留;群組內全隱藏時 Filament 自動不渲染。
+- `user.name`(回報者)欄加 `->width('14rem')->wrap()` 固定寬度(橫捲主因之一);description 測試不受影響。
+
+**C. 公告清單標題欄橫捲**(同批 PM 回饋):`AnnouncementResource` list 的 `title` 欄為單行長文字致橫捲,加 `->wrap()->width('32rem')` 自動換行 + 限寬。
+
+**驗收**:208 測試綠(新增 `AnnouncementBannerTest` 4 測 + `ReportsTableActionsTest` 5 測;既有 `NewsPageTest`/`ReportsTableBannedUserBadgeTest` 續綠)。**部署需**:`php artisan migrate`(content 轉 nullable + 回填);banner 用到新 Tailwind class(`decoration-blue-300/40` 等)需 `npm run build`。Filament PHP 變更免前端重建。

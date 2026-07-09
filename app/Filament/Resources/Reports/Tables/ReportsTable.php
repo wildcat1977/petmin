@@ -7,6 +7,7 @@ use App\Models\Report;
 use App\Models\ReportCategory;
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -37,6 +38,8 @@ class ReportsTable
                 TextColumn::make('user.name')
                     ->label('回報者')
                     ->default('訪客')
+                    ->width('14rem')
+                    ->wrap()
                     ->searchable([], fn (Builder $query, string $search): Builder => $query
                         ->whereRelation('user', 'name', 'like', "%{$search}%")
                         ->orWhere('address', 'like', "%{$search}%"))
@@ -152,33 +155,13 @@ class ReportsTable
                     ->options(Report::VERIFICATION_LABELS),
             ])
             ->recordActions([
+                // 待審核：核准 / 拒絕 為主按鈕
                 Action::make('approve')
-                    ->label('核准（公開照片）')
+                    ->label('核准')
                     ->color('success')
                     ->icon('heroicon-o-check-circle')
                     ->visible(fn (Report $record) => $record->status === Report::STATUS_PENDING)
                     ->action(fn (Report $record) => $record->update(['status' => Report::STATUS_APPROVED])),
-
-                Action::make('mark_official')
-                    ->label('標記官方核實')
-                    ->color('success')
-                    ->icon('heroicon-o-check-badge')
-                    ->visible(fn (Report $record) => $record->verification_level !== Report::VERIFICATION_OFFICIAL)
-                    ->action(fn (Report $record) => $record->update(['verification_level' => Report::VERIFICATION_OFFICIAL])),
-
-                Action::make('mark_notified')
-                    ->label('標記已通報')
-                    ->color('info')
-                    ->icon('heroicon-o-megaphone')
-                    ->visible(fn (Report $record) => $record->notified_at === null && $record->resolved_at === null)
-                    ->action(fn (Report $record) => $record->update(['notified_at' => now()])),
-
-                Action::make('mark_resolved')
-                    ->label('標記已排除')
-                    ->color('gray')
-                    ->icon('heroicon-o-flag')
-                    ->visible(fn (Report $record) => $record->resolved_at === null)
-                    ->action(fn (Report $record) => $record->update(['resolved_at' => now()])),
 
                 Action::make('reject')
                     ->label('拒絕')
@@ -197,6 +180,33 @@ class ReportsTable
                         'status' => Report::STATUS_REJECTED,
                         'rejection_reason' => $data['rejection_reason'],
                     ])),
+
+                // 核准後才有的後續標記，收進下拉選單保持列面乾淨
+                ActionGroup::make([
+                    Action::make('mark_official')
+                        ->label('標記官方核實')
+                        ->color('success')
+                        ->icon('heroicon-o-check-badge')
+                        ->visible(fn (Report $record) => $record->verification_level !== Report::VERIFICATION_OFFICIAL)
+                        ->action(fn (Report $record) => $record->update(['verification_level' => Report::VERIFICATION_OFFICIAL])),
+
+                    Action::make('mark_notified')
+                        ->label('標記已通報')
+                        ->color('info')
+                        ->icon('heroicon-o-megaphone')
+                        ->visible(fn (Report $record) => $record->notified_at === null && $record->resolved_at === null)
+                        ->action(fn (Report $record) => $record->update(['notified_at' => now()])),
+
+                    Action::make('mark_resolved')
+                        ->label('標記已排除')
+                        ->color('gray')
+                        ->icon('heroicon-o-flag')
+                        ->visible(fn (Report $record) => $record->resolved_at === null)
+                        ->action(fn (Report $record) => $record->update(['resolved_at' => now()])),
+                ])
+                    ->label('狀態標記')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->visible(fn (Report $record) => $record->status === Report::STATUS_APPROVED),
 
                 EditAction::make(),
             ])
