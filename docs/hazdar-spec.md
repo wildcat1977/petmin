@@ -468,3 +468,21 @@ PM 實機測試(含手機截圖)再回報 4 項:
 2. **補發布時間**:map 加 `published_at` = `effective_at?->format('Y-m-d H:i')`(純字串,遵守禁存 Eloquent/Carbon 物件於快取);partial 於每筆下方顯示「🕒 …發布」,`effective_at` 為 null 時不顯示。
 
 跑馬燈(`site-ticker`)不在本次範圍,維持原樣。**驗收**:210 測試綠(`EocDashboardTest` 新增 2 測:去重保留最新+published_at 正確、卡片 render 出發布時間)。純 Blade/Volt 變更、無新 Tailwind class,免 `npm run build`。
+
+### 12.19 底圖圖磚可設定化：MapTiler 取代 OSM 標準圖(2026-07-09)
+
+OSM 標準圖磚標示過多過雜,改為**可設定的圖磚來源**。`config/hazdar.php` `map` 區塊新增 `tile_url`/`tile_attribution`/`tile_subdomains`/`tile_max_zoom`/`tile_size`/`tile_zoom_offset`:設 `MAPTILER_API_KEY` 即用 MapTiler(預設 `positron` 極簡風,`HAZDAR_MAP_TILE_STYLE` 可換 streets-v2/toner-v2/dataviz…),未設則退回 OSM;要換其他供應商設 `HAZDAR_MAP_TILE_URL` 整組覆蓋,不動程式碼。主地圖(`radar-map`)以 `data-tile-*` 屬性傳設定給 `app.js`,回報彈窗(`report-list`)共用同一份 tile 設定與深色 CSS filter,不再各自寫死供應商。`radar` 頁把版權文字與 MapTiler logo 放進保證可見的底帶(全螢幕地圖 z-0 被上層 UI 遮住,Leaflet 內建 attribution 疊在地圖裡看不到;免費方案條款要求 logo+文字可見)。i18n 補「切換圖層」。commit `dfbe703`。
+
+### 12.20 NCDR 停課抓取加固 + 來源延遲時停課卡防呆(2026-07-09)
+
+**事件**:北市宣布明天停課,站上卻仍顯示「正常上班上課」。查因:(a) NCDR CAP feed 有時間差(北市/人事總處先在自己管道公布,NCDR 晚一段才刊出);(b) 我方排程一直撞 HTTP 429——實測 NCDR 為**依 IP 頻率**限流(連發即擋、與 User-Agent 無關),而 `hazdar:fetch-ncdr-alerts` 每輪送「2 feed + 最多 30 筆 CAP 明細」必觸發。
+
+**抓取加固(`FetchNcdrAlerts`)**:
+- **停課 feed 先抓、且與主 feed 各自 `try/catch`**:安全關鍵的停課不再被主 feed 的 429 連坐吞掉;單一請求最易落在「首發不擋」的成功窗。
+- **自我限速**(`throttle_us` 預設 300ms)+ **對 429/連線錯誤退避重試**(`retry_backoff_ms`,測試設 0):避免整輪爆量。明細預算 30→12。
+- **涵蓋台北改用 headline 判定**(`coversTaipei($areas, $headline)`):停課 feed 不抓 CAP 明細(範圍已在 headline 如「臺北市:7/10停止上班」),明細被限流時仍能正確標記涵蓋台北。
+- **選用 proxy**(`HAZDAR_NCDR_PROXY`)換出口 IP 規避 IP 限流,預設關(直連已穩定綠燈;實測家用 tinyproxy 出口為 TW IP、打 NCDR 200)。
+
+**安全防呆(`CityInfo::closureSourceStale()` + `closure`/`card-info` 視圖)**:停課來源紅燈/過舊(`ncdr_alerts` 狀態非 green)且查無停課時,**不再顯示綠色「正常上班上課」**,改中性提示「請以行政院人事行政總處官方公告為準」(附 DGPA `nds.html` 連結),首頁卡改「資料更新中」。理由:防災站在來源延遲時誤告正常有實際安全風險。
+
+**更權威來源(未接,備選)**:DGPA `www.dgpa.gov.tw/typh/daily/nds.html` 比 NCDR CAP 快、涵蓋更完整,但為 HTML 表格(較脆);先把 NCDR 修穩,需要再接。**驗收**:214 測試綠(新增/改 6 測:解耦落地、headline 判定、429 退避重試、stale 防呆);線上實測健康燈紅→綠、`/info` 正確顯示「臺北市:7/10停止上班」。commit `fa9e17c`。
