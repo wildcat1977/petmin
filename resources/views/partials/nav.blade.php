@@ -7,3 +7,6 @@
 
 {{-- 聯絡表單 Modal（由 open-contact-form 事件觸發）--}}
 <livewire:contact-form />
+
+{{-- 登入引導 Modal（由共用 head nav 的登入鈕觸發 open-auth-onboarding，spec §12.16/PM 回饋）--}}
+<livewire:auth-onboarding />

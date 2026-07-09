@@ -289,11 +289,11 @@ function createPopupEl(p) {
     return wrap;
 }
 
-// 分類色水滴 pin（spec §12.3）：中置分類 emoji；三態 reported=實色 / notified=20% / resolved=灰階
+// 分類色水滴 pin（spec §12.3；PM 回饋：20% 太淡改 60%）：中置分類 emoji；三態 reported=實色 / notified=60% / resolved=灰階
 function pinIcon(meta, status) {
     const color = meta?.color ?? '#94a3b8';
     const emoji = meta?.emoji ?? '📍';
-    const opacity = status === 'notified' ? 0.2 : 1;
+    const opacity = status === 'notified' ? 0.6 : 1;
     const grayscale = status === 'resolved' ? 'grayscale(1)' : 'none';
     const html =
         `<div style="opacity:${opacity};filter:${grayscale}">` +
@@ -406,7 +406,7 @@ async function renderShelters() {
     const layer = L.layerGroup();
     sheltersCache.forEach((s) => {
         const icon = L.divIcon({
-            html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;background:#4ade80;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(74,222,128,0.7);opacity:${s.open ? 1 : 0.45}">🏠</div>`,
+            html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;background:#4ade80;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(74,222,128,0.7);opacity:${s.open ? 1 : 0.6}">🏠</div>`,
             className: '',
             iconSize: [28, 28],
             iconAnchor: [14, 14],

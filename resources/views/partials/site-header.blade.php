@@ -53,8 +53,10 @@
                     <button class="rounded-full bg-white/10 px-2 py-2 text-slate-400 hover:text-slate-200">{{ __('登出') }}</button>
                 </form>
             @else
-                <a href="{{ route('auth.redirect', ['provider' => 'google']) }}"
-                   class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">{{ __('登入') }}</a>
+                {{-- 直連 Google 會跳過 LINE/Google 選擇與個資告知聲明（spec §12.16）；
+                     改成跟「立即回報」guest 流程一致，開啟登入引導 modal（PM 回饋）。 --}}
+                <button type="button" onclick="window.Livewire.dispatch('open-auth-onboarding')"
+                        class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">{{ __('登入') }}</button>
             @endauth
         </nav>
 
@@ -105,7 +107,9 @@
                     <button class="w-full rounded-lg px-3 py-2 text-left text-slate-300 hover:bg-white/10">{{ __('登出') }}</button>
                 </form>
             @else
-                <a href="{{ route('auth.redirect', ['provider' => 'google']) }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('登入') }}</a>
+                <button type="button"
+                        @click="mobileNavOpen = false; window.Livewire.dispatch('open-auth-onboarding')"
+                        class="w-full rounded-lg px-3 py-2 text-left text-slate-300 hover:bg-white/10">{{ __('登入') }}</button>
             @endauth
         </nav>
     </div>

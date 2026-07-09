@@ -15,6 +15,10 @@
 @endphp
 <div class="min-h-dvh bg-radar-bg text-slate-200">
     @include('partials.site-header')
+
+    {{-- 登入引導 Modal（由共用 head nav 的登入鈕觸發 open-auth-onboarding，spec §12.16/PM 回饋）--}}
+    <livewire:auth-onboarding />
+
     <div class="mx-auto max-w-4xl px-4 py-8">
         <h1 class="mb-6 text-2xl font-bold text-white">🚦 交通與清運資訊</h1>
 
