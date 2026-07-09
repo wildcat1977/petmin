@@ -4,6 +4,7 @@
 @php
     use App\Support\CityInfo;
     $closure = CityInfo::closure();
+    $closureStale = CityInfo::closureSourceStale();
     $pumpsByDistrict = CityInfo::pumpStationsByDistrict();
     $gates = CityInfo::floodgates();
     $sanitation = CityInfo::manualSanitation();
@@ -18,7 +19,7 @@
         <h1 class="mb-6 text-2xl font-bold text-white">🚦 交通與清運資訊</h1>
 
         {{-- 停班停課 --}}
-        @include('partials.city-info.closure', ['closure' => $closure])
+        @include('partials.city-info.closure', ['closure' => $closure, 'closureStale' => $closureStale])
 
         {{-- 大眾交通（Phase 2 才有內容；空則不顯示整段）--}}
         @include('partials.city-info.transit', ['transit' => $transit])

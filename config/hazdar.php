@@ -75,7 +75,15 @@ return [
             'feed_url' => env('NCDR_FEED_URL', 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx'),
             'closure_feed_url' => env('NCDR_CLOSURE_FEED_URL', 'https://alerts.ncdr.nat.gov.tw/RssAtomFeed.ashx?AlertType=33'),
             'interval_minutes' => 5,
-            'max_detail_fetches' => 30,      // 每輪最多抓幾筆 CAP 明細（僅新 cap_id）
+            // 每輪最多抓幾筆 CAP 明細（僅新 cap_id）。NCDR 依 IP 限流、連發易 429，故壓低（原 30）。
+            'max_detail_fetches' => (int) env('HAZDAR_NCDR_MAX_DETAIL_FETCHES', 12),
+            // 自我限速：每個對 NCDR 的請求之間至少間隔此微秒數（避免連發觸發 429）。測試設 0。
+            'throttle_us' => (int) env('HAZDAR_NCDR_THROTTLE_US', 300000),
+            // 遇 429／連線失敗的退避重試間隔（ms）；0 = 不等待。測試設 0。
+            'retry_backoff_ms' => (int) env('HAZDAR_NCDR_RETRY_BACKOFF_MS', 1500),
+            // 選用 proxy（換出口 IP 規避 IP 限流）；null = 直連。例：http://catwild.ddns.net:8888
+            // ⚠ 該 tinyproxy 目前疑似有 domain 白名單，需先放行 alerts.ncdr.nat.gov.tw 才可用。
+            'proxy' => env('HAZDAR_NCDR_PROXY') ?: null,
         ],
         'radar_echo' => [
             // 雷達回波整合圖（免授權碼公開圖檔）；後端 proxy + cache 避免 CORS 與打爆來源

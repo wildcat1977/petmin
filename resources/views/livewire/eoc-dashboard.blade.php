@@ -144,13 +144,14 @@ new class extends Component
      * 首頁卡「交通與清運資訊彙整」parsed 摘要（Task 6 起取代逐區塊連結清單，
      * 完整內容改置於 /info；共用 App\Support\CityInfo 作為單一資料源）。
      *
-     * @return array{runningPumps: int, closureActive: bool, shelters: int, metroStatus: ?int, busStatus: ?int}
+     * @return array{runningPumps: int, closureActive: bool, closureStale: bool, shelters: int, metroStatus: ?int, busStatus: ?int}
      */
     private function computeCityInfoSummary(): array
     {
         return [
             'runningPumps' => CityInfo::runningPumpCount(),
             'closureActive' => CityInfo::closure() !== null,
+            'closureStale' => CityInfo::closureSourceStale(),
             'shelters' => CityInfo::mappableShelterCount(),
             'metroStatus' => CityInfo::metroOverallStatus(),
             'busStatus' => CityInfo::busOverallStatus(),
@@ -224,11 +225,13 @@ new class extends Component
 
     {{-- 行動版右側 IITC 圖層/資訊面板（spec §12.7）：取代舊底部抽屜 --}}
     <div class="lg:hidden" x-data="{ panelOpen: false, activeCard: null }">
-        {{-- 右緣收合 tab --}}
+        {{-- 右緣收合 tab（加直排「切換圖層」提示，避免使用者不知道右側可展開圖層面板）--}}
         <button type="button" @click="panelOpen = ! panelOpen"
-                class="pointer-events-auto fixed right-0 top-1/2 z-[510] -translate-y-1/2 rounded-l-lg bg-radar-bg px-1.5 py-5 text-lg text-slate-200 shadow-lg shadow-black/40"
-                :aria-expanded="panelOpen">
-            <span x-text="panelOpen ? '›' : '‹'"></span>
+                class="pointer-events-auto fixed right-0 top-1/2 z-[510] flex -translate-y-1/2 flex-col items-center gap-1.5 rounded-l-lg bg-radar-bg px-1.5 py-3 text-slate-200 shadow-lg shadow-black/40"
+                :aria-expanded="panelOpen"
+                aria-label="{{ __('切換圖層') }}">
+            <span class="text-lg leading-none" x-text="panelOpen ? '›' : '‹'"></span>
+            <span class="text-xs tracking-[0.15em] [writing-mode:vertical-rl]" x-show="! panelOpen">{{ __('切換圖層') }}</span>
         </button>
 
         {{-- 面板 --}}

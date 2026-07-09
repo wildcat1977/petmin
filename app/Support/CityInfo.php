@@ -8,6 +8,7 @@ use App\Models\InfoLink;
 use App\Models\PumpStation;
 use App\Models\Shelter;
 use App\Models\TransitAlert;
+use App\Services\DataSourceHealth;
 use Illuminate\Support\Collection;
 
 /** /info 頁面與首頁卡共用的資料彙整（只讀落地資料）。 */
@@ -20,6 +21,16 @@ class CityInfo
             ->active()->coversTaipei()
             ->latest('effective_at')
             ->first();
+    }
+
+    /**
+     * 停課資料源（NCDR）是否非「正常綠燈」——延遲(yellow)或中斷(red)。
+     * 供停課卡在「查無停課」時判斷：來源不新鮮就別拍胸脯說「正常上班上課」，
+     * 改提示以官方公告為準，避免事件期間來源延遲卻誤告正常（安全考量）。
+     */
+    public static function closureSourceStale(): bool
+    {
+        return app(DataSourceHealth::class)->status('ncdr_alerts')['status'] !== DataSourceHealth::STATUS_OK;
     }
 
     /** @return Collection<int, PumpStation> */

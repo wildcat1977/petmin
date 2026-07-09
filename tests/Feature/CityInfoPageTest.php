@@ -7,6 +7,7 @@ use App\Models\InfoLink;
 use App\Models\PumpStation;
 use App\Models\Shelter;
 use App\Models\TransitAlert;
+use App\Services\DataSourceHealth;
 use App\Support\CityInfo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -15,9 +16,25 @@ class CityInfoPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_page_renders_normal_state_when_no_data(): void
+    public function test_page_renders_normal_state_when_source_healthy_and_no_closure(): void
     {
+        // 「正常上班上課」只在停課資料源健康（近期成功）時才顯示——否則不可拍胸脯報正常
+        app(DataSourceHealth::class)->recordSuccess('ncdr_alerts');
+
         $this->get('/info')->assertOk()->assertSee('正常上班上課');
+    }
+
+    /**
+     * 安全防呆：停課資料源延遲/中斷（無近期成功）且查無停課時，不得顯示綠色「正常上班上課」，
+     * 改中性提示以官方公告為準（事件期間來源延遲卻誤告正常有實際風險）。
+     */
+    public function test_page_warns_instead_of_normal_when_closure_source_stale(): void
+    {
+        // 未 recordSuccess → ncdr_alerts 狀態為 red（從未成功）
+        $this->get('/info')->assertOk()
+            ->assertDontSee('正常上班上課')
+            ->assertSee('請以')
+            ->assertSee('dgpa.gov.tw/typh/daily/nds.html', false);
     }
 
     public function test_page_shows_active_closure_and_running_pumps(): void

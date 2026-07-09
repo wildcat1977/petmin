@@ -37,5 +37,8 @@
         <env name="HAZDAR_COLOR_CARD" value="#003a30"/>
         <!-- 受保護管理員名單清空，避免測試吃到本機 .env 的真實 admin email；需要時各測試自行 config() 覆蓋 -->
         <env name="PROTECTED_ADMIN_EMAILS" value=""/>
+        <!-- NCDR 抓取自我限速/退避在測試中設 0，避免每次 HTTP fake 都真的 sleep 拖慢測試 -->
+        <env name="HAZDAR_NCDR_THROTTLE_US" value="0"/>
+        <env name="HAZDAR_NCDR_RETRY_BACKOFF_MS" value="0"/>
     </php>
 </phpunit>

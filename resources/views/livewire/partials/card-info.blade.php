@@ -2,9 +2,14 @@
 <div class="mt-2 space-y-1.5 text-sm">
     <div class="flex items-center justify-between">
         <span class="text-slate-400">停班停課</span>
-        <span class="{{ $s['closureActive'] ? 'text-rose-300 font-semibold' : 'text-emerald-400' }}">
-            {{ $s['closureActive'] ? '已發布' : '正常' }}
-        </span>
+        @if ($s['closureActive'])
+            <span class="text-rose-300 font-semibold">已發布</span>
+        @elseif (! empty($s['closureStale']))
+            {{-- 來源延遲/中斷：不顯示「正常」，改中性提示（避免誤告） --}}
+            <span class="text-amber-300 font-semibold">資料更新中</span>
+        @else
+            <span class="text-emerald-400">正常</span>
+        @endif
     </div>
     <div class="flex items-center justify-between">
         <span class="text-slate-400">抽水站運轉中</span>
