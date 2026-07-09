@@ -88,21 +88,70 @@ window.onPhotoChange = async function (input, wire) {
     wire.setLocationFromExif(loc.lat, loc.lng);
 };
 
-const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const MAP_THEME_KEY = 'hazdar_map_theme';
-const TILE_OPTIONS = {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    subdomains: 'abc',
-    maxZoom: 19,
-};
+
+// 底圖 tile：由 config('hazdar.map.*') 經 #radar-map 的 data-tile-* 屬性傳入，
+// 沒有該元素（例如測試環境）時退回 OSM 標準 tile 當預設值。
+const { TILE_URL, TILE_OPTIONS } = (() => {
+    const el = document.getElementById('radar-map');
+    const ds = el?.dataset ?? {};
+    const options = {
+        attribution: ds.tileAttribution || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: ds.tileMaxZoom ? Number(ds.tileMaxZoom) : 19,
+    };
+    if (ds.tileSubdomains) {
+        options.subdomains = ds.tileSubdomains;
+    }
+    if (ds.tileSize) {
+        options.tileSize = Number(ds.tileSize);
+    }
+    if (ds.tileZoomOffset) {
+        options.zoomOffset = Number(ds.tileZoomOffset);
+    }
+    return {
+        TILE_URL: ds.tileUrl || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        TILE_OPTIONS: options,
+    };
+})();
 
 // 暗色模式用 CSS filter 實現（免 API key）
+const TILE_DARK_FILTER = 'invert(100%) hue-rotate(180deg) brightness(0.85) contrast(1.05)';
+
+const IS_MAPTILER_TILE = TILE_URL.includes('maptiler.com');
+
+// MapTiler 免費方案條款要求「每張發布的地圖都要可見 MapTiler logo」，
+// Leaflet 的 attributionControl 只會顯示文字，logo 圖示要另外疊加（官方文件建議寫法）。
+function appendMapTilerLogo(container) {
+    if (!IS_MAPTILER_TILE || !container || container.querySelector('.hazdar-maptiler-logo')) return;
+    const link = document.createElement('a');
+    link.href = 'https://www.maptiler.com';
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.className = 'hazdar-maptiler-logo';
+    link.style.cssText = 'position:absolute;left:10px;bottom:10px;z-index:999;';
+    const img = document.createElement('img');
+    img.src = 'https://api.maptiler.com/resources/logo.svg';
+    img.alt = 'MapTiler logo';
+    img.style.height = '20px';
+    link.appendChild(img);
+    container.appendChild(link);
+}
+
+// 供其他非 app.js 模組的 Alpine inline 元件（如通報詳情彈窗地圖）共用同一份 tile 設定，
+// 避免各自寫死 tile URL（曾經寫死 Carto，供應商被限流後整個壞掉）。
+window.__HAZDAR_TILE__ = {
+    url: TILE_URL,
+    options: TILE_OPTIONS,
+    darkFilter: TILE_DARK_FILTER,
+    appendLogo: appendMapTilerLogo,
+};
+
 function applyTileDarkFilter(theme) {
     if (!radarMap) return;
     const pane = radarMap.getPane('tilePane');
     if (pane) {
         pane.style.filter = theme === 'dark'
-            ? 'invert(100%) hue-rotate(180deg) brightness(0.85) contrast(1.05)'
+            ? TILE_DARK_FILTER
             : '';
     }
 }
@@ -505,6 +554,9 @@ function initRadar() {
     const zoom = parseInt(el.dataset.defaultZoom, 10);
 
     el.classList.toggle('map-theme-dark', currentTheme === 'dark');
+    // 主地圖是全螢幕 z-0，疊在上面的 UI 是 z-[500]，Leaflet 內建 attribution 疊在地圖容器
+    // 內部會被底帶蓋住看不到——故關閉內建 attribution，改由 pages/radar.blade.php 的底帶
+    // 統一顯示 logo + 版權文字（保證可見）。
     radarMap = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], zoom);
 
     currentTileLayer = L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(radarMap);
@@ -571,10 +623,11 @@ window.initPinMap = function (el, wire) {
     const DEFAULT_LNG = 121.5654;
     let skipNextMoveEnd = false;
 
-    const map = L.map(el, { zoomControl: true, attributionControl: false })
+    const map = L.map(el, { zoomControl: true, attributionControl: true })
         .setView([DEFAULT_LAT, DEFAULT_LNG], 17);
 
     L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(map);
+    appendMapTilerLogo(el);
 
     // 地址搜尋（Nominatim / OSM，免費無 API Key）
     createGeocoder({

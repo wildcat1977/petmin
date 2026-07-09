@@ -50,5 +50,11 @@ new class extends Component
     data-radar-echo-bounds='@json(config('hazdar.sources.radar_echo.bounds'))'
     data-flood-potential='@json(config('hazdar.flood_potential'))'
     data-categories='@json($this->categoryMeta)'
+    data-tile-url="{{ config('hazdar.map.tile_url') }}"
+    data-tile-attribution="{{ config('hazdar.map.tile_attribution') }}"
+    data-tile-subdomains="{{ config('hazdar.map.tile_subdomains') }}"
+    data-tile-max-zoom="{{ config('hazdar.map.tile_max_zoom') }}"
+    data-tile-size="{{ config('hazdar.map.tile_size') }}"
+    data-tile-zoom-offset="{{ config('hazdar.map.tile_zoom_offset') }}"
     @if ($showDistricts) data-districts-url="{{ asset('geo/taipei-districts.json') }}" @endif
 ></div>

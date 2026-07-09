@@ -123,11 +123,15 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
         },
         _initMap() {
             if (this._map) { this._map.remove(); this._map = null; }
-            const map = L.map(this.$refs.modalMapEl, { zoomControl: true, attributionControl: false })
+            const map = L.map(this.$refs.modalMapEl, { zoomControl: true, attributionControl: true })
                 .setView([this.mapLat, this.mapLng], 17);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                subdomains: 'abcd', maxZoom: 20
-            }).addTo(map);
+            // 與主地圖共用同一份 tile 設定（見 resources/js/app.js），不再寫死供應商。
+            // 這個彈窗本身固定深色底，套用主地圖同款 CSS filter 做暗色，不依賴供應商的深色樣式。
+            const tile = window.__HAZDAR_TILE__ ?? { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {} };
+            L.tileLayer(tile.url, tile.options).addTo(map);
+            tile.appendLogo?.(this.$refs.modalMapEl);
+            const pane = map.getPane('tilePane');
+            if (pane && tile.darkFilter) { pane.style.filter = tile.darkFilter; }
 
             // 其他通報：小灰點
             this.allCoords.forEach(r => {

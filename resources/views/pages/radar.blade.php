@@ -63,6 +63,18 @@
             <div class="mx-auto w-full max-w-3xl">
                 @include('partials.footer-links')
             </div>
+            {{-- 底圖版權（MapTiler 免費方案條款要求 logo + 文字都要「可見」，OSM 也要求文字）：
+                 地圖是全螢幕 z-0，蓋在上面的 UI（這層 z-[500]）會遮住地圖容器內疊加的任何元素，
+                 所以 Leaflet 內建的 attribution 疊在地圖裡會被這條底帶蓋住看不到——改把 logo 與
+                 版權文字都放進這條保證可見的底帶。logo 只在 MapTiler 時出現，換供應商時自動消失。 --}}
+            <div class="mx-auto mt-1 flex w-full max-w-3xl items-center gap-2 text-[10px] text-slate-500 [&_a]:underline [&_a]:hover:text-slate-300">
+                @if (str_contains(config('hazdar.map.tile_url'), 'maptiler.com'))
+                    <a href="https://www.maptiler.com" target="_blank" rel="noopener" class="shrink-0 no-underline opacity-80 hover:opacity-100">
+                        <img src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo" class="h-4">
+                    </a>
+                @endif
+                <span class="truncate">{!! config('hazdar.map.tile_attribution') !!}</span>
+            </div>
         </div>
     </div>
 
