@@ -6,6 +6,7 @@ use Livewire\Component;
 new class extends Component
 {
     public bool $open = false;
+
     public string $browserType = 'normal'; // 'normal' | 'line' | 'other_inapp'
 
     public function mount(): void
@@ -32,6 +33,7 @@ new class extends Component
 
 <div>
     @if ($open)
+        <div x-data="{ showPolicy: false }">
         <div class="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
              wire:click.self="close">
             <div class="w-full max-w-md rounded-t-3xl bg-[#161b22] p-6 text-slate-100 shadow-2xl ring-1 ring-white/10 sm:rounded-3xl">
@@ -56,6 +58,10 @@ new class extends Component
                 <p class="mt-4 text-[11px] leading-relaxed text-slate-500">
                     {{ __('登入即代表您同意我們儲存上傳之照片與當下的地理位置資訊，僅用於本平台之災情回報用途。') }}
                 </p>
+                <button type="button" @click="showPolicy = true"
+                        class="mt-2 text-left text-[11px] font-medium text-cyan-400 underline decoration-cyan-400/40 underline-offset-2 transition hover:text-cyan-300">
+                    {{ __('詳閱完整《個人資料蒐集、處理及利用告知聲明》') }}
+                </button>
 
                 <div class="mt-6 space-y-3">
                     @if ($browserType === 'other_inapp')
@@ -101,6 +107,74 @@ new class extends Component
                     {{ __('稍後再說') }}
                 </button>
             </div>
+        </div>
+
+        {{-- 個資法告知聲明（spec §12.16）：Alpine 本地開關，疊於登入 modal 之上；靜態內容不走 Livewire 往返 --}}
+        <div x-show="showPolicy" x-cloak
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             class="fixed inset-0 z-[1100] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:p-4"
+             @click.self="showPolicy = false">
+            <div class="flex max-h-[88dvh] w-full max-w-lg flex-col rounded-t-3xl bg-[#161b22] text-slate-100 shadow-2xl ring-1 ring-white/10 sm:max-h-[85dvh] sm:rounded-3xl">
+                <div class="flex items-start justify-between gap-4 border-b border-white/10 px-6 pb-4 pt-6">
+                    <h2 class="text-lg font-bold leading-snug">{{ __('個人資料蒐集、處理及利用告知聲明') }}</h2>
+                    <button type="button" @click="showPolicy = false"
+                            class="-mr-1 shrink-0 rounded-full p-1 text-slate-400 transition hover:bg-white/10 hover:text-slate-200"
+                            aria-label="{{ __('關閉') }}">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <div class="grow space-y-4 overflow-y-auto px-6 py-5 text-[13px] leading-relaxed text-slate-300">
+                    <p>為保障網路通訊安全並防堵惡意程式（機器人），台北市民資訊回報（以下簡稱本網站）依《個人資料保護法》規定告知下列事項。當您使用 LINE 帳號或 Google 帳號登入時，即表示同意本聲明：</p>
+
+                    <div>
+                        <p class="font-semibold text-slate-100">一、本網站蒐集您個人資料的目的在於：</p>
+                        <ol class="mt-1 list-decimal space-y-1 pl-6">
+                            <li>資訊安全與防護：防堵自動化程式（機器人）、惡意攻擊、詐欺、破壞性行為或任何違反本網站服務條款之惡意行為，以維護系統穩定與安全。</li>
+                            <li>使用者身分驗證：透過第三方認證機制確認使用者真實身分，降低匿名惡意註冊之風險。</li>
+                            <li>客戶管理與服務：進行資訊管理、提供相關服務、統計分析或排除技術障礙。</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <p class="font-semibold text-slate-100">二、資料類別：</p>
+                        <ol class="mt-1 list-decimal space-y-1 pl-6">
+                            <li>第三方平台授權之基本資料。</li>
+                            <li>網路技術紀錄：IP 位址、連線時間、操作行為與裝置資訊，用於異常流量偵測。</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <p class="font-semibold text-slate-100">三、利用期間、地區、對象及方式：</p>
+                        <p class="mt-1">於本網站營運期間與地區內，由本網站以電子化方式進行身分驗證與資安行為分析。除非法律另有規定、或為配合司法機關調查外，本網站不會將您的資料提供給任何無關之第三方。</p>
+                    </div>
+
+                    <div>
+                        <p class="font-semibold text-slate-100">四、您的權利：</p>
+                        <p class="mt-1">依據個資法第三條規定，您就本網站保有之個人資料，得行使以下權利：</p>
+                        <ol class="mt-1 list-decimal space-y-1 pl-6">
+                            <li>查詢、請求閱覽或請求製給複製本。</li>
+                            <li>請求補充或更正。</li>
+                            <li>請求停止蒐集、處理或利用，或請求刪除。</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <p class="font-semibold text-slate-100">五、不提供之影響：</p>
+                        <p class="mt-1">您可自由選擇是否提供，但若不同意，本網站將無法進行安全驗證，您將無法使用回報功能。</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-white/10 px-6 py-4">
+                    <button type="button" @click="showPolicy = false"
+                            class="w-full rounded-xl bg-cyan-600 px-4 py-3 font-semibold text-white transition hover:bg-cyan-500">
+                        {{ __('我知道了') }}
+                    </button>
+                </div>
+            </div>
+        </div>
         </div>
     @endif
 </div>

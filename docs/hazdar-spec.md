@@ -424,3 +424,22 @@ PM 實機測試(含手機截圖)再回報 4 項:
 **驗收**:190 測試綠(SDD 逐任務 spec+品質雙複審 + opus 整支複審「Ready to ship as-is」)。線上(hazdar.puma.taipei)Phase 1+2 皆實機驗證:`/info` 顯示 97 抽水站狀態、疏散門 36、停班停課「正常上班上課」、捷運/貓空纜車「正常」(真實 TDX);nav 已換;首頁卡 parsed 摘要。commits `ff8adbb`..`4f50cb8`。
 
 **PM 回饋微調(commit `e0be7e5`,196 測試綠)**:(1) 交通系統即使無異常也顯示「正常」——捷運/貓空纜車/公車一律列出(公車先前無異常時 0 筆不顯示,現 `transitBySystem` 於 `TransitAlert::exists()` 時補正常列);首頁卡加公車。(2) 抽水站依 12 行政區 Alpine 收合分組(預設收合),`district` 欄由新 `hazdar:sync-pump-districts`(日更)以靜態清單 rid `d1f9c6e0…` 的 `站名→行政區域` 回填(62/97 對到,HEO 分站如建國擴/社臨系列不在靜態清單→歸「其他」)。(3) 收容所改顯示真實列管量「全市 X 處(可定位 Y)」+ 僅在 `is_open>0` 附「開設 N」(`is_open` 是災時開設旗標,平時多為 demo 的 2 筆,非列管數)。**已知(非本功能造成)**:全站公開載入偏慢(app 內部 render 僅 80ms,但每請求框架 bootstrap ~4s + Cloudflare 疊加 → 公開 9–35s;首頁同樣慢)——疑 php-fpm OPcache 未啟用,待後續 infra 處理(config 仍維持不快取以保留 env 換色)。
+
+### 12.16 登入前個資蒐集告知聲明(2026-07-08)
+
+在登入引導 modal(`livewire/auth-onboarding.blade.php`)加一份正式的《個人資料蒐集、處理及利用告知聲明》。**與 §11.3 免責彈窗是不同的東西**:§11.3 是「勿依賴平台、緊急撥 119」的免責聲明;本項是個資法(PIPA)第八條之蒐集/處理/利用告知,對象為 OAuth 登入者。
+
+**同意方式**:被動同意——聲明本文明訂「當您使用 LINE 帳號或 Google 帳號登入時,即表示同意本聲明」,故登入鍵維持可直接按,**不加勾選框、不加 must-scroll 閘門**。
+
+**呈現(brainstorming 決議)**:
+- 現有 modal 第 56-58 行簡短同意句保留,其下加一行連結「詳閱完整《個人資料蒐集、處理及利用告知聲明》」。
+- 點連結 → 疊上一張 `fixed inset-0 z-[1100]`(高於 modal 的 `z-[1000]`)全螢幕面板:sticky header(標題)+ 中段 `overflow-y-auto` 捲動全文 + sticky footer「我知道了」關閉鍵;關閉回到登入 modal。手機底部滑出、桌機置中,沿用現有 `#161b22`/slate 深色配色。
+- **機制用 Alpine 本地狀態**(`x-data="{ showPolicy: false }"`),不走 Livewire 往返——聲明為靜態內容,client-side 開關即可。此元件非 `wire:poll` scope,Alpine 狀態不會被 morph 蓋掉(不需 §12.10 的 `wire:ignore`)。
+
+**內容處理(2 項文字修正,已套用)**:
+1. 原文兩個「三、」(利用期間 / 您的權利)重編為 一～五(利用期間=三、權利=四、不提供之影響=五)。
+2. 法律內文自稱「台北市民資訊回報」與品牌名 Hazdar 不一致;**照使用者原文保留「台北市民資訊回報」**(不逕改法律措辭),日後要統一為單行修改。
+
+**慣例偏離(已說明)**:此檔其餘字串全包 `__()`,但此段為整段中文法律條文、無多語需求,直接以結構化 HTML 寫入 blade,不逐句包 `__()`(Rule 11 主動揭示)。
+
+**驗收**:更新 `AuthOnboardingTest` 斷言 modal render 出聲明標題(面板恆在 DOM、僅隱藏,`assertSee` 可驗);登入鍵仍可直接觸發、無新增必填閘門。
