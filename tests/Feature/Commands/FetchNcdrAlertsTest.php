@@ -6,6 +6,7 @@ use App\Models\ExternalAlert;
 use App\Services\DataSourceHealth;
 use App\Support\CityInfo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -22,6 +23,14 @@ use Tests\TestCase;
 class FetchNcdrAlertsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // 停課 fixtures 用固定日期（停課至 2026/7/10），凍結時間避免真實日期跨過期限後
+        // active() 把 fixture 濾掉造成 flaky（Laravel 於 tearDown 自動重置 test now）。
+        Carbon::setTestNow('2026-07-09 08:00:00');
+    }
 
     /** 主警報 feed（一般警戒，含 cap_link → 會抓 CAP 明細取 areaDesc）。 */
     private function feedXml(): string
