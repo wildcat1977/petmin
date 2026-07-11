@@ -55,19 +55,38 @@ new class extends Component
         ]);
     }
 
-    /** 24H 每小時雨量（該小時觀測的 rain_1h 最大值） */
+    /**
+     * 24H 每小時「獨立」雨量。
+     *
+     * ⚠ CWA 的 `Now.Precipitation`（落地為 rain_1h）其實是「當日累積雨量」——每日 00:00 起累加、
+     * 每日 00:00 歸零，並非該小時的獨立雨量。若直接畫它會得到單調上升的累積曲線、再加總更會爆量
+     * （每格都含前面所有小時）。故此處以「相鄰小時的累積值差分」還原每小時獨立雨量：
+     *   - 每個「日期+小時」桶取最後一筆累積值（＝該小時結束時的當日累積）
+     *   - 該小時獨立雨量 = 本小時累積 − 前一小時累積；跨日歸零（本 < 前）時取本小時累積值本身
+     *   - 該小時無觀測時累積值沿用前一小時（累積不變＝沒下雨）
+     * 多抓 1 小時作為最舊一格的差分基準。`rainAccumulated`＝這些差分之和＝真實 24H 總雨量。
+     */
     private function computeRainTrend(): array
     {
-        $byHour = WeatherObservation::query()
-            ->where('observed_at', '>=', now()->subDay())
+        // key：'Y-m-d H'（依日期+小時分桶，避免舊版用 'G' 造成跨日同一小時互相覆蓋）
+        $endOfHourCumulative = WeatherObservation::query()
+            ->where('observed_at', '>=', now()->subDay()->subHour())
+            ->orderBy('observed_at')
             ->get(['observed_at', 'rain_1h'])
-            ->groupBy(fn ($o) => $o->observed_at->timezone('Asia/Taipei')->format('G'))
-            ->map(fn ($group) => round((float) $group->max('rain_1h'), 1));
+            ->groupBy(fn ($o) => $o->observed_at->timezone('Asia/Taipei')->format('Y-m-d H'))
+            ->map(fn ($group) => (float) $group->last()->rain_1h);
 
         $trend = [];
-        for ($i = 23; $i >= 0; $i--) {
-            $hour = now()->timezone('Asia/Taipei')->subHours($i)->format('G');
-            $trend[] = ['h' => $hour, 'v' => $byHour[$hour] ?? 0];
+        $prev = null; // 前一小時累積值（差分基準）
+        for ($i = 24; $i >= 0; $i--) {
+            $slot = now()->timezone('Asia/Taipei')->subHours($i);
+            $cumulative = $endOfHourCumulative[$slot->format('Y-m-d H')] ?? $prev ?? 0.0;
+
+            if ($prev !== null) { // i=24 那格只作差分基準，不輸出 → trend 收 24 格（i=23..0）
+                $hourly = $cumulative >= $prev ? $cumulative - $prev : $cumulative;
+                $trend[] = ['h' => $slot->format('G'), 'v' => round($hourly, 1)];
+            }
+            $prev = $cumulative;
         }
 
         return $trend;
@@ -78,7 +97,7 @@ new class extends Component
         return $this->sharedCardData()['rainTrend'];
     }
 
-    /** 24H 累積雨量（每小時雨量加總的近似值） */
+    /** 24H 累積雨量＝各小時「獨立」雨量（computeRainTrend 已差分還原）之和＝真實 24H 總量。 */
     public function getRainAccumulatedProperty(): float
     {
         return round(collect($this->rainTrend)->sum('v'), 1);

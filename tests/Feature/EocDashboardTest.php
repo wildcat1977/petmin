@@ -97,6 +97,38 @@ class EocDashboardTest extends TestCase
         $component->assertDontSee('CWA 資料更新中斷');
     }
 
+    /**
+     * 雨量趨勢 bug（2026-07-11）：CWA `Now.Precipitation`（落地 rain_1h）是「當日累積雨量」，
+     * 不是每小時獨立值。舊版直接畫它（單調累積曲線）且底部把每格累積值再全部加總 → 爆量。
+     * 修正後：圖表值＝相鄰小時差分還原的「該小時獨立雨量」，24H 累積＝這些差分之和＝真實總量。
+     * 本測試以 4 個連續小時的累積值（含一次跨日歸零）驗證差分與加總正確。
+     */
+    public function test_rain_trend_differences_cumulative_source_into_hourly_and_totals_correctly(): void
+    {
+        // 累積雨量序列（每小時結束時的當日累積）：20 → 40 →（跨日歸零）5 → 12
+        foreach ([4 => 20.0, 3 => 40.0, 2 => 5.0, 1 => 12.0] as $hoursAgo => $cumulative) {
+            WeatherObservation::create([
+                'station_id' => '466920',
+                'observed_at' => now()->subHours($hoursAgo),
+                'temp' => 27.0,
+                'rain_1h' => $cumulative,
+                'wind_speed' => 1.0,
+                'visibility' => 8.0,
+            ]);
+        }
+
+        $component = Livewire::test('eoc-dashboard');
+        $values = collect($component->get('rainTrend'))->pluck('v');
+
+        // 每小時獨立雨量：4h=20-0、3h=40-20=20、2h=5(跨日歸零取本值)、1h=12-5=7
+        $this->assertTrue($values->contains(7.0), '相鄰小時差分（12-5=7）未還原');
+        $this->assertTrue($values->contains(5.0), '跨日歸零該小時應取累積值本身（5），非負差');
+        $this->assertFalse($values->contains(40.0), '不得直接把累積值當每小時值畫出');
+
+        // 24H 累積＝差分之和 20+20+5+7=52；而非舊版把累積值全加（20+40+5+12=77）
+        $this->assertSame(52.0, $component->get('rainAccumulated'));
+    }
+
     public function test_dashboard_url_redirects_to_home(): void
     {
         $this->get('/dashboard')->assertRedirect('/');

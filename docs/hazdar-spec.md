@@ -486,3 +486,11 @@ OSM 標準圖磚標示過多過雜,改為**可設定的圖磚來源**。`config/
 **安全防呆(`CityInfo::closureSourceStale()` + `closure`/`card-info` 視圖)**:停課來源紅燈/過舊(`ncdr_alerts` 狀態非 green)且查無停課時,**不再顯示綠色「正常上班上課」**,改中性提示「請以行政院人事行政總處官方公告為準」(附 DGPA `nds.html` 連結),首頁卡改「資料更新中」。理由:防災站在來源延遲時誤告正常有實際安全風險。
 
 **更權威來源(未接,備選)**:DGPA `www.dgpa.gov.tw/typh/daily/nds.html` 比 NCDR CAP 快、涵蓋更完整,但為 HTML 表格(較脆);先把 NCDR 修穩,需要再接。**驗收**:214 測試綠(新增/改 6 測:解耦落地、headline 判定、429 退避重試、stale 防呆);線上實測健康燈紅→綠、`/info` 正確顯示「臺北市:7/10停止上班」。commit `fa9e17c`。
+
+### 12.21 24H 雨量卡計算錯誤修正:累積源需差分還原每小時雨量(2026-07-11)
+
+**bug**:「24H 累積雨量」卡的圖表畫成單調上升的累積曲線,底部總量爆量(如 729.5 mm)。根因:CWA `Now.Precipitation`(落地 `rain_1h`)其實是**當日累積雨量**(00:00 起累加、每日 00:00 歸零),非每小時獨立值;`computeRainTrend()` 舊版直接取每小時 `max(rain_1h)`(＝累積值)畫圖,`rainAccumulated` 又把這些累積值**全部加總**(每格都含前面所有小時)→ 爆量。
+
+**修正**(`eoc-dashboard::computeRainTrend()`):以「日期+小時」分桶(修掉舊版用 `format('G')` 造成跨日同小時互相覆蓋的隱性 bug),取每桶最後一筆累積值,對相鄰小時**差分**還原「該小時獨立雨量」(跨日歸零 `cur<prev` 時取 `cur`,無觀測小時沿用前值),多抓 1h 作最舊格差分基準。`rainAccumulated`＝這些差分之和＝真實 24H 總量。**驗收**:225 測試綠(`EocDashboardTest` 新增差分+跨日歸零+總量測試);線上實測 24H 總量 806.5→**86.5 mm**,每小時序列與 CWA 官方「過去 24 小時雨量變化圖」形狀吻合。
+
+**另修**:`FetchNcdrAlertsTest` 停課 fixtures 用固定日期(停課至 2026/7/10),真實日期跨過後 `active()` 會濾掉 fixture 造成 flaky → 加 `Carbon::setTestNow` 凍結時間。
