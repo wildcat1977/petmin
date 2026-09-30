@@ -473,6 +473,8 @@ PM 實機測試(含手機截圖)再回報 4 項:
 
 OSM 標準圖磚標示過多過雜,改為**可設定的圖磚來源**。`config/hazdar.php` `map` 區塊新增 `tile_url`/`tile_attribution`/`tile_subdomains`/`tile_max_zoom`/`tile_size`/`tile_zoom_offset`:設 `MAPTILER_API_KEY` 即用 MapTiler(預設 `positron` 極簡風,`HAZDAR_MAP_TILE_STYLE` 可換 streets-v2/toner-v2/dataviz…),未設則退回 OSM;要換其他供應商設 `HAZDAR_MAP_TILE_URL` 整組覆蓋,不動程式碼。主地圖(`radar-map`)以 `data-tile-*` 屬性傳設定給 `app.js`,回報彈窗(`report-list`)共用同一份 tile 設定與深色 CSS filter,不再各自寫死供應商。`radar` 頁把版權文字與 MapTiler logo 放進保證可見的底帶(全螢幕地圖 z-0 被上層 UI 遮住,Leaflet 內建 attribution 疊在地圖裡看不到;免費方案條款要求 logo+文字可見)。i18n 補「切換圖層」。commit `dfbe703`。
 
+> **2026-10-01 更新**：MapTiler 已由自架 Protomaps（`tiles.puma.taipei`）取代，本節的 `tile_*` 設定與 CSS 反色暗色模式皆已移除，見 `docs/basemap.md`。
+
 ### 12.20 NCDR 停課抓取加固 + 來源延遲時停課卡防呆(2026-07-09)
 
 **事件**:北市宣布明天停課,站上卻仍顯示「正常上班上課」。查因:(a) NCDR CAP feed 有時間差(北市/人事總處先在自己管道公布,NCDR 晚一段才刊出);(b) 我方排程一直撞 HTTP 429——實測 NCDR 為**依 IP 頻率**限流(連發即擋、與 User-Agent 無關),而 `hazdar:fetch-ncdr-alerts` 每輪送「2 feed + 最多 30 筆 CAP 明細」必觸發。

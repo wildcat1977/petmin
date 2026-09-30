@@ -22,12 +22,13 @@
     font-family: var(--font-sans);
 }
 
-/* 雷達主地圖：亮色（預設）／暗色（由 .map-theme-dark 切換） */
+/* 雷達主地圖：亮色／暗色（由 .map-theme-dark 切換）。底圖畫出來前看到的是容器底色，
+   用 Protomaps light / dark 風格的陸地色（earth），避免先灰一兩秒 */
 #radar-map {
-    background: #f1f5f9;
+    background: #e2dfda;
 }
 #radar-map.map-theme-dark {
-    background: var(--color-radar-bg);
+    background: #1f1f1f;
 }
 
 /* Geocoder 搜尋框（亮色預設） */

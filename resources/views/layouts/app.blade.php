@@ -42,6 +42,16 @@
             locating:               @js(__('定位中…')),
         };
     </script>
+    {{-- 自架底圖設定（docs/basemap.md）：所有前台地圖經 window.__HAZDAR_BASEMAP__.create('light'|'dark') 取用 --}}
+    <script>
+        window.__HAZDAR_BASEMAP_CONFIG__ = @js([
+            'styles' => config('hazdar.map.basemap_styles'),
+            'attribution' => config('hazdar.map.basemap_attribution'),
+            'maxZoom' => (int) config('hazdar.map.max_zoom'),
+        ]);
+    </script>
+    {{-- 頁面自己的預載（主地圖的底圖 style）：要排在 app.js 之前才能跟它同時下載 --}}
+    @stack('head')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 

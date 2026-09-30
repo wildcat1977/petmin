@@ -1,9 +1,32 @@
 @extends('layouts.app')
 
+@push('head')
+    {{-- 底圖 style 原本要等 app.js 執行完才開始抓，後面圖示、圖磚一路串起來會先灰一兩秒；
+         預先連線並依使用者上次選的主題預載 style（MapLibre 以 CORS 匿名 fetch，須帶 crossorigin） --}}
+    <link rel="preconnect" href="{{ parse_url(config('hazdar.map.basemap_styles.dark'), PHP_URL_SCHEME).'://'.parse_url(config('hazdar.map.basemap_styles.dark'), PHP_URL_HOST) }}" crossorigin>
+    <script>
+        (() => {
+            let theme = 'dark';
+            // 與 app.js 的 MAP_THEME_KEY 相同
+            try { theme = localStorage.getItem('hazdar_map_theme') || 'dark'; } catch (_) {}
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'fetch';
+            link.crossOrigin = 'anonymous';
+            link.href = window.__HAZDAR_BASEMAP_CONFIG__.styles[theme] ?? window.__HAZDAR_BASEMAP_CONFIG__.styles.dark;
+            document.head.appendChild(link);
+        })();
+    </script>
+@endpush
+
 @section('content')
 <div class="relative min-h-dvh radar-page">
     {{-- 全螢幕地圖 --}}
     <livewire:radar-map />
+    {{-- 沒有 WebGL 時 app.js 取消隱藏（docs/basemap.md）；點位與圖層照常 --}}
+    <p data-basemap-unsupported class="pointer-events-none fixed inset-x-0 top-40 z-[501] mx-auto hidden w-fit max-w-[80%] rounded-lg bg-slate-900/90 px-3 py-1.5 text-center text-xs text-slate-200 shadow">
+        {{ __('此瀏覽器無法顯示地圖底圖，災情點位仍會照常顯示。') }}
+    </p>
 
     {{-- EOC 戰情室浮動卡片層（自身已 fixed 定位，spec §11.1）--}}
     <livewire:eoc-dashboard />
@@ -63,17 +86,11 @@
             <div class="mx-auto w-full max-w-3xl">
                 @include('partials.footer-links')
             </div>
-            {{-- 底圖版權（MapTiler 免費方案條款要求 logo + 文字都要「可見」，OSM 也要求文字）：
-                 地圖是全螢幕 z-0，蓋在上面的 UI（這層 z-[500]）會遮住地圖容器內疊加的任何元素，
-                 所以 Leaflet 內建的 attribution 疊在地圖裡會被這條底帶蓋住看不到——改把 logo 與
-                 版權文字都放進這條保證可見的底帶。logo 只在 MapTiler 時出現，換供應商時自動消失。 --}}
+            {{-- 底圖版權（ODbL 要求標示出處）：地圖是全螢幕 z-0，蓋在上面的 UI（這層 z-[500]）會遮住
+                 地圖容器內疊加的任何元素，所以 Leaflet 內建的 attribution 會被這條底帶蓋住看不到——
+                 改把版權文字放進這條保證可見的底帶。 --}}
             <div class="mx-auto mt-1 flex w-full max-w-3xl items-center gap-2 text-[10px] text-slate-500 [&_a]:underline [&_a]:hover:text-slate-300">
-                @if (str_contains(config('hazdar.map.tile_url'), 'maptiler.com'))
-                    <a href="https://www.maptiler.com" target="_blank" rel="noopener" class="shrink-0 no-underline opacity-80 hover:opacity-100">
-                        <img src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo" class="h-4">
-                    </a>
-                @endif
-                <span class="truncate">{!! config('hazdar.map.tile_attribution') !!}</span>
+                <span class="truncate">{!! config('hazdar.map.basemap_attribution') !!}</span>
             </div>
         </div>
     </div>

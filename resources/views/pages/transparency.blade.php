@@ -266,13 +266,15 @@
 
                      initMap() {
                          if (this.map) return;
-                         this.map = L.map(this.$refs.mapel, { zoomControl: true, attributionControl: false })
+                         this.map = L.map(this.$refs.mapel, { zoomControl: true, attributionControl: true, maxZoom: window.__HAZDAR_BASEMAP__?.maxZoom() ?? 19 })
                              .setView([25.045, 121.54], 12);
-                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                             subdomains: 'abc', maxZoom: 19,
-                         }).addTo(this.map);
-                         const tilePane = this.map.getPane('tilePane');
-                         if (tilePane) tilePane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(0.85) contrast(1.05)';
+                         // 共用自架底圖的 dark 風格（resources/js/basemap.js）；原本直連 OSM 並以 CSS 反色做暗色。
+                         // attribution 打開：ODbL 要求標示出處
+                         try {
+                             window.__HAZDAR_BASEMAP__?.create('dark')?.addTo(this.map);
+                         } catch (error) {
+                             console.error('basemap failed', error);
+                         }
                          this.renderPoints();
                      },
 

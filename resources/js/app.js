@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import { geocoder as createGeocoder, geocoders } from 'leaflet-control-geocoder';
 import exifr from 'exifr';
+import { basemapMaxZoom, createBasemapLayer, setBasemapTheme } from './basemap.js';
 import {
     Chart,
     ArcElement, Tooltip, Legend, PieController,
@@ -90,72 +91,6 @@ window.onPhotoChange = async function (input, wire) {
 
 const MAP_THEME_KEY = 'hazdar_map_theme';
 
-// 底圖 tile：由 config('hazdar.map.*') 經 #radar-map 的 data-tile-* 屬性傳入，
-// 沒有該元素（例如測試環境）時退回 OSM 標準 tile 當預設值。
-const { TILE_URL, TILE_OPTIONS } = (() => {
-    const el = document.getElementById('radar-map');
-    const ds = el?.dataset ?? {};
-    const options = {
-        attribution: ds.tileAttribution || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: ds.tileMaxZoom ? Number(ds.tileMaxZoom) : 19,
-    };
-    if (ds.tileSubdomains) {
-        options.subdomains = ds.tileSubdomains;
-    }
-    if (ds.tileSize) {
-        options.tileSize = Number(ds.tileSize);
-    }
-    if (ds.tileZoomOffset) {
-        options.zoomOffset = Number(ds.tileZoomOffset);
-    }
-    return {
-        TILE_URL: ds.tileUrl || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        TILE_OPTIONS: options,
-    };
-})();
-
-// 暗色模式用 CSS filter 實現（免 API key）
-const TILE_DARK_FILTER = 'invert(100%) hue-rotate(180deg) brightness(0.85) contrast(1.05)';
-
-const IS_MAPTILER_TILE = TILE_URL.includes('maptiler.com');
-
-// MapTiler 免費方案條款要求「每張發布的地圖都要可見 MapTiler logo」，
-// Leaflet 的 attributionControl 只會顯示文字，logo 圖示要另外疊加（官方文件建議寫法）。
-function appendMapTilerLogo(container) {
-    if (!IS_MAPTILER_TILE || !container || container.querySelector('.hazdar-maptiler-logo')) return;
-    const link = document.createElement('a');
-    link.href = 'https://www.maptiler.com';
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.className = 'hazdar-maptiler-logo';
-    link.style.cssText = 'position:absolute;left:10px;bottom:10px;z-index:999;';
-    const img = document.createElement('img');
-    img.src = 'https://api.maptiler.com/resources/logo.svg';
-    img.alt = 'MapTiler logo';
-    img.style.height = '20px';
-    link.appendChild(img);
-    container.appendChild(link);
-}
-
-// 供其他非 app.js 模組的 Alpine inline 元件（如通報詳情彈窗地圖）共用同一份 tile 設定，
-// 避免各自寫死 tile URL（曾經寫死 Carto，供應商被限流後整個壞掉）。
-window.__HAZDAR_TILE__ = {
-    url: TILE_URL,
-    options: TILE_OPTIONS,
-    darkFilter: TILE_DARK_FILTER,
-    appendLogo: appendMapTilerLogo,
-};
-
-function applyTileDarkFilter(theme) {
-    if (!radarMap) return;
-    const pane = radarMap.getPane('tilePane');
-    if (pane) {
-        pane.style.filter = theme === 'dark'
-            ? TILE_DARK_FILTER
-            : '';
-    }
-}
-
 // ── 災情分類視覺：由後台 report_categories 驅動（spec §11.7）──
 const CATEGORY_META = {};
 {
@@ -177,7 +112,7 @@ let sheltersLayer = null;      // 收容所圖層
 let radarEchoLayer = null;     // 雷達回波 ImageOverlay
 let radarEchoTimer = null;
 let floodLayer = null;         // 淹水潛勢 WMTS
-let currentTileLayer = null;   // 底圖圖層（隨主題切換）
+let currentTileLayer = null;   // 底圖圖層（MapLibre；隨主題換 style，沒有 WebGL 時為 null）
 // 含停用分類：停用只關新回報入口，既有點位不得消失（spec §11.7）
 let activeCategories = new Set(Object.keys(CATEGORY_META));
 let showResolved = true;
@@ -521,9 +456,7 @@ function setMapTheme(theme) {
     try { localStorage.setItem(MAP_THEME_KEY, theme); } catch (_) {}
     const mapEl = document.getElementById('radar-map');
     if (mapEl) mapEl.classList.toggle('map-theme-dark', theme === 'dark');
-    if (radarMap && currentTileLayer) {
-        applyTileDarkFilter(theme);
-    }
+    setBasemapTheme(currentTileLayer, theme);
 }
 
 const ThemeToggleControl = L.Control.extend({
@@ -558,11 +491,19 @@ function initRadar() {
     // 主地圖是全螢幕 z-0，疊在上面的 UI 是 z-[500]，Leaflet 內建 attribution 疊在地圖容器
     // 內部會被底帶蓋住看不到——故關閉內建 attribution，改由 pages/radar.blade.php 的底帶
     // 統一顯示 logo + 版權文字（保證可見）。
-    radarMap = L.map(el, { zoomControl: false, attributionControl: false }).setView([lat, lng], zoom);
+    radarMap = L.map(el, { zoomControl: false, attributionControl: false, maxZoom: basemapMaxZoom() }).setView([lat, lng], zoom);
 
-    currentTileLayer = L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(radarMap);
-    // dark filter 需在 map 初始化後再套用
-    radarMap.whenReady(() => applyTileDarkFilter(currentTheme));
+    // 沒有 WebGL 或 MapLibre 建構失敗：不畫底圖、顯示提示，點位與圖層照常
+    try {
+        currentTileLayer = createBasemapLayer(currentTheme);
+        currentTileLayer?.addTo(radarMap);
+    } catch (error) {
+        currentTileLayer = null;
+        console.error('basemap failed', error);
+    }
+    if (!currentTileLayer) {
+        document.querySelector('[data-basemap-unsupported]')?.classList.remove('hidden');
+    }
     L.control.zoom({ position: 'topright' }).addTo(radarMap);
 
     radarMap.on('moveend', scheduleFetch);
@@ -624,11 +565,15 @@ window.initPinMap = function (el, wire) {
     const DEFAULT_LNG = 121.5654;
     let skipNextMoveEnd = false;
 
-    const map = L.map(el, { zoomControl: true, attributionControl: true })
+    const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: basemapMaxZoom() })
         .setView([DEFAULT_LAT, DEFAULT_LNG], 17);
 
-    L.tileLayer(TILE_URL, TILE_OPTIONS).addTo(map);
-    appendMapTilerLogo(el);
+    // 亮色底圖；沒有 WebGL 時略過，地址搜尋、定位與 EXIF 仍可放釘
+    try {
+        createBasemapLayer('light')?.addTo(map);
+    } catch (error) {
+        console.error('basemap failed', error);
+    }
 
     // 地址搜尋（Nominatim / OSM，免費無 API Key）
     createGeocoder({

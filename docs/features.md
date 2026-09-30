@@ -51,7 +51,8 @@
 
 ### F. 地標搜尋 / 亮暗切換 / 多語系
 - 地標搜尋（Nominatim OSM，`countrycodes: tw`）、地圖亮暗切換、中/EN 語言切換皆**無需登入**
-- 地圖主題偏好存 `localStorage`（key: `hazdar_map_theme`，預設暗色）
+- 地圖主題偏好存 `localStorage`（key: `hazdar_map_theme`，預設暗色）；切換時底圖換 Protomaps light / dark 風格
+  （2026-10-01 前是 CSS 反色，會連淹水潛勢圖層一起反色）
 
 ## EOC 戰情室（`/dashboard`，公開唯讀大屏）
 

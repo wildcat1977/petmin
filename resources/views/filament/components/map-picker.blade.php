@@ -1,9 +1,13 @@
 @once
     @push('styles')
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+        <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="">
     @endpush
     @push('scripts')
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" defer></script>
+        {{-- 自架 Protomaps 底圖（docs/basemap.md）；版本與 package.json 一致，defer 依序執行 --}}
+        <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="" defer></script>
+        <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js" crossorigin="" defer></script>
     @endpush
 @endonce
 
@@ -79,17 +83,26 @@ function mapPickerInit_{{ $record?->id ?? 0 }}() {
         currentLng: {{ $lng }},
         init() {
             const tryInit = () => {
-                if (typeof L === 'undefined') { setTimeout(tryInit, 100); return; }
+                if (typeof L === 'undefined' || typeof L.maplibreGL === 'undefined') { setTimeout(tryInit, 100); return; }
 
                 this.map = L.map(this.$refs.mapEl, {
                     zoomControl: true,
-                    attributionControl: false,
+                    attributionControl: true,
+                    maxZoom: {{ (int) config('hazdar.map.max_zoom') }},
                 }).setView([{{ $lat }}, {{ $lng }}], 17);
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    subdomains: 'abc',
-                    maxZoom: 19,
-                }).addTo(this.map);
+                // 與前台同一套自架底圖（亮色）。不直連 OSM 官方圖磚伺服器：會被 OSM 以不符使用政策
+                // 擋成 403「Access blocked」（gotcha 後台 2026-09-24 中招）；attribution 打開：ODbL 要求標示出處
+                try {
+                    L.maplibreGL({
+                        style: @js(config('hazdar.map.basemap_styles.light')),
+                        attribution: @js(config('hazdar.map.basemap_attribution')),
+                        localIdeographFontFamily: "'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif",
+                    }).addTo(this.map);
+                } catch (error) {
+                    // 底圖失敗時圖釘仍可拖
+                    console.error('basemap failed', error);
+                }
 
                 this.marker = L.marker([{{ $lat }}, {{ $lng }}], { draggable: true }).addTo(this.map);
 

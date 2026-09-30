@@ -46,20 +46,14 @@ return [
         'cluster_below_zoom' => 15,          // zoom < 15 回傳 geohash 聚合
         'cache_seconds' => (int) env('HAZDAR_MAP_CACHE_SECONDS', 20),
 
-        // 底圖 tile（測試反映 OSM 標準樣式標示過多過雜）：
-        // 有設 MAPTILER_API_KEY 就預設用 MapTiler 的某個風格（HAZDAR_MAP_TILE_STYLE，預設 positron 極簡風），否則退回 OSM 標準 tile。
-        // 風格名稱可在 MapTiler 後台「Standard maps」列表點進去看網址上的 slug（如 streets-v2、toner-v2、dataviz…）。
-        // 要換其他供應商（如 Geoapify）直接設 HAZDAR_MAP_TILE_URL 整組覆蓋即可，不用改程式碼。
-        'tile_url' => env('HAZDAR_MAP_TILE_URL', env('MAPTILER_API_KEY')
-            ? 'https://api.maptiler.com/maps/'.env('HAZDAR_MAP_TILE_STYLE', 'positron').'/{z}/{x}/{y}.png?key='.env('MAPTILER_API_KEY')
-            : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
-        'tile_attribution' => env('HAZDAR_MAP_TILE_ATTRIBUTION', env('MAPTILER_API_KEY')
-            ? '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'),
-        'tile_subdomains' => env('HAZDAR_MAP_TILE_SUBDOMAINS', env('MAPTILER_API_KEY') ? '' : 'abc'),
-        'tile_max_zoom' => (int) env('HAZDAR_MAP_TILE_MAX_ZOOM', 19),
-        'tile_size' => (int) env('HAZDAR_MAP_TILE_SIZE', env('MAPTILER_API_KEY') ? 512 : 256),
-        'tile_zoom_offset' => (int) env('HAZDAR_MAP_TILE_ZOOM_OFFSET', env('MAPTILER_API_KEY') ? -1 : 0),
+        // 自架 Protomaps 底圖（docs/basemap.md）。MapTiler 條款禁止代理與伺服器端快取、原本還把 key
+        // 印在網頁原始碼；2026-10 改自架。亮／暗兩種官方風格，主地圖切換主題時換 style（不再用 CSS 反色）
+        'basemap_styles' => [
+            'light' => env('HAZDAR_BASEMAP_LIGHT_STYLE_URL', 'https://tiles.puma.taipei/styles/light.json'),
+            'dark' => env('HAZDAR_BASEMAP_DARK_STYLE_URL', 'https://tiles.puma.taipei/styles/dark.json'),
+        ],
+        'basemap_attribution' => '© <a href="https://protomaps.com">Protomaps</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        'max_zoom' => (int) env('HAZDAR_MAP_MAX_ZOOM', 19),
     ],
 
     // 外部資料整合層（spec §5）：scheduled command 拉 → 落地 → 前端只讀落地資料

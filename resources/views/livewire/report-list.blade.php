@@ -123,15 +123,15 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
         },
         _initMap() {
             if (this._map) { this._map.remove(); this._map = null; }
-            const map = L.map(this.$refs.modalMapEl, { zoomControl: true, attributionControl: true })
+            const map = L.map(this.$refs.modalMapEl, { zoomControl: true, attributionControl: true, maxZoom: window.__HAZDAR_BASEMAP__?.maxZoom() ?? 19 })
                 .setView([this.mapLat, this.mapLng], 17);
-            // 與主地圖共用同一份 tile 設定（見 resources/js/app.js），不再寫死供應商。
-            // 這個彈窗本身固定深色底，套用主地圖同款 CSS filter 做暗色，不依賴供應商的深色樣式。
-            const tile = window.__HAZDAR_TILE__ ?? { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', options: {} };
-            L.tileLayer(tile.url, tile.options).addTo(map);
-            tile.appendLogo?.(this.$refs.modalMapEl);
-            const pane = map.getPane('tilePane');
-            if (pane && tile.darkFilter) { pane.style.filter = tile.darkFilter; }
+            // 與主地圖共用同一套自架底圖（resources/js/basemap.js）；彈窗固定深色底，用 dark 風格。
+            // 沒有 WebGL 時回傳 null，點位照常
+            try {
+                window.__HAZDAR_BASEMAP__?.create('dark')?.addTo(map);
+            } catch (error) {
+                console.error('basemap failed', error);
+            }
 
             // 其他通報：小灰點
             this.allCoords.forEach(r => {
@@ -152,6 +152,9 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
               .openPopup();
 
             this._map = map;
+            // 建立當下彈窗還沒排版完成，Leaflet 量到的尺寸是 0×0（底圖與點位全灰、彈出框跑到左上角）；
+            // 排版後重新量一次，同統計頁的做法
+            setTimeout(() => this._map?.invalidateSize(), 50);
         }
     }"
     class="mx-auto max-w-4xl px-4 py-6"

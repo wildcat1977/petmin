@@ -40,7 +40,8 @@
 ### 1. 進入民眾地圖 → 看到災情點位
 1. `routes/web.php` `/` 渲染 `pages/radar.blade.php`，內含 `<livewire:radar-map />`
 2. `radar-map` 只輸出地圖容器與 `data-reports-url`（點位不再序列化進 HTML）
-3. `resources/js/app.js` 在 `livewire:initialized` 初始化 Leaflet，依當前 viewport 向
+3. `resources/js/app.js` 在 `livewire:initialized` 初始化 Leaflet（底圖為自架 Protomaps 向量圖磚，
+   見 `docs/basemap.md`），依當前 viewport 向
    `GET /api/map/reports?bbox=&zoom=&categories=` 抓點
 4. 地圖平移／縮放（`moveend`/`zoomend`）觸發 debounce 後重新抓取；前一個未完成的請求以 `AbortController` 取消
 
@@ -51,7 +52,8 @@
 3. `zoom` 低 → 依 `substr(geohash7, 1, precision)`（precision 隨 zoom 4~6）分桶聚合，
    回 `{center, count, dominant_category}`
 4. 回應以 bbox（3 位小數）+ zoom + filter 為 key 快取 `hazdar.map.cache_seconds` 秒
-5. 照片 URL 只在 `status = approved` 時輸出（`Report::publicImageUrl()`），審核前不公開
+5. 照片 URL 只在 `status = approved` 時輸出（`Report::publicImageUrl()`），審核前不公開；
+   彈窗改用 `img_md`（長邊 1280 的縮圖），還沒產生時排入 `GenerateReportPhotoVariants` 並先用原圖（`docs/basemap.md`）
 
 ### 3. 回報送出（`ReportForm::submit()`）
 1. 反濫用檢查：帳號封禁 → cooldown → 每小時上限（`config('hazdar.report_*')`）
