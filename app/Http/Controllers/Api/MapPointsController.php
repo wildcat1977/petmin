@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\ReportCategory;
 use App\Support\Geohash;
+use App\Support\ReportPhotoVariants;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -99,6 +100,8 @@ class MapPointsController extends Controller
                 'st' => $r->resolved_at ? 'resolved' : ($r->notified_at ? 'notified' : null),
                 'extra' => $r->extra_value,
                 'img' => $r->publicImageUrl(),
+                // 彈窗用的縮圖；只替已公開照片產生（ReportPhotoVariants 的說明）
+                'img_md' => $r->publicImageUrl() ? ReportPhotoVariants::mediumUrl($r->image_path) : null,
                 'desc' => $r->description ? Str::limit($r->description, 60) : null,
                 'at' => $r->created_at->diffForHumans(),
             ], fn ($v) => $v !== null))->values()->all(),

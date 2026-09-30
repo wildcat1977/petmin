@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\GenerateReportPhotoVariants;
 use App\Models\Report;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -99,6 +102,8 @@ class MapPointsApiTest extends TestCase
 
     public function test_photo_url_exposed_only_after_content_approval(): void
     {
+        // 公開照片會排縮圖 job（測試環境 sync 當場執行），不可碰到真正的 storage
+        Storage::fake('public');
         $this->makeReport(['image_path' => 'reports/a.jpg', 'status' => Report::STATUS_PENDING]);
         $this->makeReport(['image_path' => 'reports/b.jpg', 'status' => Report::STATUS_APPROVED]);
 
@@ -108,6 +113,51 @@ class MapPointsApiTest extends TestCase
         // AI／人工審核通過前照片不得公開（spec §6.1-4）
         $this->assertCount(1, $withImg);
         $this->assertStringContainsString('reports/b.jpg', $withImg->first()['img']);
+    }
+
+    /**
+     * 手機原圖（上傳只重新編碼、不縮小）動輒數 MB，彈窗只有 260×180。
+     * 縮圖在點位 API 讀到「已公開」照片時才於背景產生，不改上傳流程（做法同洋流好店）。
+     */
+    public function test_approved_photo_without_medium_queues_generation_and_keeps_the_original(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        $this->makeReport(['image_path' => 'reports/b.jpg', 'status' => Report::STATUS_APPROVED]);
+
+        $point = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16')->json('points.0');
+
+        // 縮圖還沒產生：彈窗先用原圖（不破圖）
+        $this->assertStringEndsWith('/storage/reports/b.jpg', $point['img']);
+        $this->assertArrayNotHasKey('img_md', $point);
+        Queue::assertPushed(GenerateReportPhotoVariants::class, fn ($job) => $job->path === 'reports/b.jpg');
+    }
+
+    public function test_approved_photo_with_medium_serves_it_for_the_popup(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        $this->makeReport(['image_path' => 'reports/b.jpg', 'status' => Report::STATUS_APPROVED]);
+        Storage::disk('public')->put('reports/b-md.jpg', 'x');
+
+        $point = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16')->json('points.0');
+
+        // 彈窗用 md；點開仍看原圖
+        $this->assertStringEndsWith('/storage/reports/b-md.jpg', $point['img_md']);
+        $this->assertStringEndsWith('/storage/reports/b.jpg', $point['img']);
+        Queue::assertNotPushed(GenerateReportPhotoVariants::class);
+    }
+
+    public function test_pending_photo_is_not_processed(): void
+    {
+        // 照片審核通過前不公開（spec §6.1-4），也不替它產生縮圖
+        Queue::fake();
+        Storage::fake('public');
+        $this->makeReport(['image_path' => 'reports/a.jpg', 'status' => Report::STATUS_PENDING]);
+
+        $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16')->assertOk();
+
+        Queue::assertNotPushed(GenerateReportPhotoVariants::class);
     }
 
     public function test_low_zoom_returns_geohash_clusters_with_dominant_category(): void

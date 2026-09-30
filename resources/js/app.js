@@ -245,7 +245,8 @@ function createPopupEl(p) {
 
     if (p.img) {
         const img = document.createElement('img');
-        img.src = p.img;
+        // 彈窗用縮圖（點位 API 的 img_md，還沒產生時退回原圖）；點開看原圖
+        img.src = p.img_md ?? p.img;
         img.alt = window.i18n?.reportPhoto ?? '回報照片';
         img.style.cssText = 'width:100%;height:180px;object-fit:cover;border-radius:6px;margin-bottom:8px;display:block;cursor:pointer';
         img.addEventListener('click', () => window.open(p.img, '_blank'));
