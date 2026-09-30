@@ -13,13 +13,19 @@ const CJK_FONTS = "'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-ser
 
 const config = () => window.__HAZDAR_BASEMAP_CONFIG__ ?? {};
 
+// 探測結果快取、探測用的 context 立刻釋放：WebGL context 有數量上限，每開一張地圖就多留一個探測 context 會擠掉主地圖
+let webglSupported = null;
 function webglAvailable() {
-    try {
-        const canvas = document.createElement('canvas');
-        return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
-    } catch {
-        return false;
+    if (webglSupported === null) {
+        try {
+            const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
+            webglSupported = Boolean(gl);
+            gl?.getExtension('WEBGL_lose_context')?.loseContext();
+        } catch {
+            webglSupported = false;
+        }
     }
+    return webglSupported;
 }
 
 /** 向量底圖本身不帶 maxZoom，地圖要自己設（門牌標籤在 Leaflet z19 才出現） */

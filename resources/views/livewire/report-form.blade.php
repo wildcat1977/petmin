@@ -297,7 +297,7 @@ new class extends Component
                         <div>
                             <label class="block text-xs font-medium text-slate-400">{{ __('📍 災情位置') }} <span class="text-slate-600">（{{ __('移動地圖即可調整') }}）</span></label>
                             <div wire:ignore
-                                 x-data
+                                 x-data="{ destroy() { this.$el.__pinMap?.remove(); this.$el.__exifCleanup?.(); } }"
                                  x-init="initPinMap($el, $wire)"
                                  class="mt-2 h-48 w-full overflow-hidden rounded-lg border border-white/10 bg-black/40"></div>
                             <p class="mt-1 text-[11px] text-slate-500">

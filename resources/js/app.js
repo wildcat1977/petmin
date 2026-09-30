@@ -658,6 +658,9 @@ window.initPinMap = function (el, wire) {
     window.addEventListener('exif-location', onExifLocation);
     // 元件移除時清理事件
     el.__exifCleanup = () => window.removeEventListener('exif-location', onExifLocation);
+    // 表單關閉時 Livewire 以 @if 移除整個 DOM，下次開啟是新元素、新地圖；舊地圖要由 Alpine destroy() 移除，
+    // 否則每開一次表單就多留一個 WebGL context，累積超過瀏覽器上限時會擠掉主地圖的底圖
+    el.__pinMap = map;
 
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(

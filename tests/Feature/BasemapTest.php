@@ -90,12 +90,30 @@ class BasemapTest extends TestCase
         $version = json_decode(file_get_contents(base_path('node_modules/maplibre-gl/package.json')), true)['version'];
         $this->assertSame($version, json_decode(file_get_contents(base_path('package.json')), true)['dependencies']['maplibre-gl'], 'package.json 必須釘死版本');
         $this->assertFileExists(base_path('node_modules/maplibre-gl/dist/maplibre-gl.js'));
+        // 外掛同理：前台 npm 與後台 CDN 必須同版
+        $plugin = json_decode(file_get_contents(base_path('node_modules/@maplibre/maplibre-gl-leaflet/package.json')), true)['version'];
+        $this->assertSame($plugin, json_decode(file_get_contents(base_path('package.json')), true)['dependencies']['@maplibre/maplibre-gl-leaflet'], 'package.json 必須釘死版本');
 
         // CDN <script> 以 @push 推進 layout 的 stack，Livewire::test 看不到，要整頁請求
         $this->get(EditReport::getUrl(['record' => $report]))
             ->assertOk()
             ->assertSee("maplibre-gl@{$version}/dist/maplibre-gl.js", false)
+            ->assertSee("maplibre-gl-leaflet@{$plugin}/leaflet-maplibre-gl.js", false)
             ->assertSee('L.maplibreGL', false)
             ->assertDontSee('tile.openstreetmap.org', false);
+    }
+
+    /**
+     * 回報表單關閉時 Livewire 以 @if 移除整個表單，下次開啟是新元素、新地圖；舊地圖若沒 remove()，
+     * 每開一次就多留一個 WebGL context，颱風天連續回報累積超過瀏覽器上限時會擠掉主地圖的底圖
+     * （2026-10-01 審查發現；瀏覽器實測修正前 3 次開關釋放 0 個、修正後 3 個）。JS 無測試環境，檢查接線。
+     */
+    public function test_report_form_pin_map_is_removed_when_the_form_closes(): void
+    {
+        $form = file_get_contents(resource_path('views/livewire/report-form.blade.php'));
+        $app = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('destroy() { this.$el.__pinMap?.remove();', $form);
+        $this->assertStringContainsString('el.__pinMap = map;', $app);
     }
 }

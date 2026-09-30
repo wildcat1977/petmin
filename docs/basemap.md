@@ -48,6 +48,8 @@ MapLibre 以 `@maplibre/maplibre-gl-leaflet` 嵌成 Leaflet 的底圖圖層；�
   容器底色設成風格的陸地色（light `#e2dfda`、dark `#1f1f1f`），避免先灰一兩秒。
 - **沒有 WebGL 或 MapLibre 建構失敗**：不畫底圖；主地圖顯示一行提示，其他地圖靜默略過，點位與圖層照常。
   不退回 OSM 點陣圖磚（會被擋，退回也是空白）。
+- 回報表單選點小地圖：表單關閉時 Livewire 以 `@if` 移除 DOM，Alpine `destroy()` 呼叫 `map.remove()` 釋放 WebGL context
+  （不釋放的話每開一次表單多留一個 context，超過瀏覽器上限會擠掉主地圖底圖）；`webglAvailable()` 探測結果快取、探測 context 立即釋放。
 - 通報列表地圖彈窗：建立當下彈窗還沒排版完成，Leaflet 量到 0×0（原本的點陣底圖也一樣全灰），
   建立後 50ms 呼叫 `invalidateSize()`（同統計頁做法）。
 
