@@ -230,7 +230,12 @@ new class extends Component
                         <button wire:click="close" class="text-slate-500 hover:text-slate-200">✕</button>
                     </div>
 
-                    <form wire:submit="submit" class="mt-4 space-y-4">
+                    {{-- 照片壓縮、上傳完成前不可送出：否則回報建立時照片還沒到，那筆就沒有照片（使用者卻以為附上了）。
+                         除了按鈕 disabled，送出時也擋：其他 Livewire 請求（如 EXIF 帶入位置）結束時 wire:loading 會拿掉 disabled --}}
+                    <form wire:submit="submit" class="mt-4 space-y-4"
+                          x-data="{ photoBusy: false }"
+                          x-on:photo-busy.window="photoBusy = $event.detail"
+                          x-on:submit.capture="if (photoBusy) { $event.preventDefault(); $event.stopImmediatePropagation(); }">
                         {{-- 災情分類（必選；來源 report_categories，配色對應地圖圖例） --}}
                         <div>
                             <label class="block text-xs font-medium text-slate-400">{{ __('災情分類') }}</label>
@@ -325,8 +330,12 @@ new class extends Component
 
                         <button type="submit"
                                 wire:loading.attr="disabled"
+                                x-bind:disabled="photoBusy"
                                 class="w-full rounded-xl bg-cyan-600 px-4 py-3 font-bold text-white shadow-[0_0_20px_rgba(8,145,178,0.5)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span wire:loading.remove>{{ __('送出回報') }}</span>
+                            <span wire:loading.remove>
+                                <span x-show="!photoBusy">{{ __('送出回報') }}</span>
+                                <span x-show="photoBusy" x-cloak>{{ __('⏳ 照片處理中…') }}</span>
+                            </span>
                             <span wire:loading>{{ __('⏳ 回報傳送中…') }}</span>
                         </button>
                     </form>

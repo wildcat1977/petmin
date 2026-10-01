@@ -73,8 +73,11 @@ window.onPhotoChange = async function (input, wire) {
     const file = input.files?.[0];
     if (!file) return;
 
+    // 壓縮＋上傳期間通知表單停用送出（report-form 的 photoBusy）
+    const busy = (on) => window.dispatchEvent(new CustomEvent('photo-busy', { detail: on }));
+    busy(true);
     const compressed = await compressImage(file);
-    wire.upload('photo', compressed, () => {}, () => {});
+    wire.upload('photo', compressed, () => busy(false), () => busy(false));
 
     // EXIF GPS（從原始檔讀，壓縮後 EXIF 已遺失）
     const loc = await readExifLocation(file);

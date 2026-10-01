@@ -207,5 +207,21 @@ class ReportSubmissionTest extends TestCase
         $this->assertStringNotContainsString('wire:model="photo"', $form);
         $this->assertStringContainsString("wire.upload('photo', compressed", $app);
     }
+
+    /**
+     * 照片壓縮、上傳完成前按送出，回報會在照片到之前就建立——那筆沒有照片，使用者卻以為附上了
+     * （2026-10-02 瀏覽器實測重現）。處理中按鈕停用，送出時也擋（wire:loading 結束會拿掉 disabled）。
+     * JS 無測試環境，檢查接線。
+     */
+    public function test_submit_is_blocked_while_the_photo_is_still_processing(): void
+    {
+        $form = file_get_contents(resource_path('views/livewire/report-form.blade.php'));
+        $app = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('x-on:photo-busy.window="photoBusy = $event.detail"', $form);
+        $this->assertStringContainsString('x-on:submit.capture="if (photoBusy)', $form);
+        $this->assertStringContainsString('x-bind:disabled="photoBusy"', $form);
+        $this->assertStringContainsString("wire.upload('photo', compressed, () => busy(false), () => busy(false));", $app);
+    }
 }
 
