@@ -62,24 +62,19 @@ async function compressImage(file, maxEdge = 1024, quality = 0.72) {
 /**
  * 全域供 blade 的 @change handler 呼叫。
  * 1. canvas 壓縮（長邊 ≤ 1024px）
- * 2. 解析 EXIF GPS
- * 3. 把壓縮後的 File 回填到 input，Livewire 再讀取就拿到小檔
+ * 2. 以 $wire.upload 上傳壓縮後的檔案（只傳一次）
+ * 3. 解析 EXIF GPS
+ *
+ * input 刻意不掛 wire:model：wire:model 在 change 當下就上傳原圖，而 Livewire 只聽 change、
+ * 壓縮後補發的 input 事件它不理，結果一直上傳手機原圖（2026-10-01 審查發現）。
+ * 改送 change 也不行：原圖上傳已在跑，兩次上傳競爭，後完成的那份會蓋掉前一份。
  */
 window.onPhotoChange = async function (input, wire) {
     const file = input.files?.[0];
     if (!file) return;
 
-    // 壓縮
     const compressed = await compressImage(file);
-
-    // 把壓縮後的檔案回填到 input（觸發 Livewire wire:model 重新讀取）
-    if (compressed !== file) {
-        const dt = new DataTransfer();
-        dt.items.add(compressed);
-        input.files = dt.files;
-        // 手動觸發 livewire 的 input event 讓 wire:model 更新
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+    wire.upload('photo', compressed, () => {}, () => {});
 
     // EXIF GPS（從原始檔讀，壓縮後 EXIF 已遺失）
     const loc = await readExifLocation(file);

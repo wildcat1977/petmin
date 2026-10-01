@@ -193,4 +193,19 @@ class ReportSubmissionTest extends TestCase
 
         $this->assertNull(Report::latest('id')->first()->extra_value);
     }
+
+    /**
+     * 前端把照片壓到長邊 1024 再上傳（省災時手機流量）。wire:model 會在 change 當下上傳原圖，
+     * 而 Livewire 只聽 change、不理壓縮後補發的 input 事件——結果一直上傳手機原圖
+     * （2026-10-01 審查發現；瀏覽器實測 5.9MB 原圖修正前照傳、修正後 88KB）。JS 無測試環境，檢查接線。
+     */
+    public function test_photo_input_uploads_the_compressed_file_instead_of_the_original(): void
+    {
+        $form = file_get_contents(resource_path('views/livewire/report-form.blade.php'));
+        $app = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringNotContainsString('wire:model="photo"', $form);
+        $this->assertStringContainsString("wire.upload('photo', compressed", $app);
+    }
 }
+

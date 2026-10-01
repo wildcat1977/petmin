@@ -55,7 +55,9 @@ MapLibre 以 `@maplibre/maplibre-gl-leaflet` 嵌成 Leaflet 的底圖圖層；�
 
 ## 照片縮圖
 
-- 上傳時只重新編碼成 JPEG、**不縮小**，手機原圖動輒數 MB；地圖點位彈窗只有 260×180。
+- 伺服器端只重新編碼成 JPEG、不縮小；地圖點位彈窗只有 260×180。前端本來就會壓到長邊 1024，但 2026-10-01 前
+  一直沒生效（`wire:model` 在 change 當下就上傳原圖，壓縮後補發的 input 事件 Livewire 不理），既有照片多是數 MB 的手機原圖。
+  現在改由 `onPhotoChange` 壓縮後以 `$wire.upload` 上傳一次；`-md` 仍保留，給既有原圖與壓縮失敗退回原檔的情況。
 - 點位 API（`MapPointsController`）讀到**已公開**照片（`Report::publicImageUrl()` 不為 null，即審核通過）時
   檢查 `-md`（長邊 1280）；缺的排入 `GenerateReportPhotoVariants`，這次先用原圖。payload 的 `img` 仍是原圖（點開看原圖），
   另加 `img_md` 給彈窗。待審照片不處理。

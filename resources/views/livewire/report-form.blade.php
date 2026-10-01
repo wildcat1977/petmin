@@ -287,8 +287,9 @@ new class extends Component
                                         @click="preview = null"
                                         class="text-xs text-slate-500 hover:text-slate-300">{{ __('✕ 重選') }}</button>
                             </div>
+                            {{-- 不用 wire:model：它在 change 當下就上傳原圖，前端壓縮完的小檔永遠送不出去
+                                 （2026-10-01 審查發現）。改由 onPhotoChange 壓縮後以 $wire.upload 上傳一次 --}}
                             <input type="file" accept="image/*"
-                                   wire:model="photo"
                                    x-on:change="setPreview($el.files); window.onPhotoChange($el, $wire)"
                                    class="mt-2 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-sm">
                             @error('photo') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
