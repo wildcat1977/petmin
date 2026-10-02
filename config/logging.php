@@ -123,12 +123,20 @@ return [
             'handler' => NullHandler::class,
         ],
 
+        // phpunit 專用（phpunit.xml 指定）：測試的 log 不混進正式站 laravel.log，又留著可除錯
+        'testing' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/testing.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+        ],
+
         // AI 圖片審核專用 log，每日輪替，保留 30 天
         'moderation' => [
             'driver' => 'daily',
-            'path'   => storage_path('logs/moderation.log'),
-            'level'  => 'info',
-            'days'   => 30,
+            'path' => storage_path(env('LOG_MODERATION_FILE', 'logs/moderation.log')),
+            'level' => 'info',
+            'days' => 30,
             'replace_placeholders' => true,
         ],
 
