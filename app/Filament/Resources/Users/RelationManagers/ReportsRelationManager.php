@@ -31,7 +31,7 @@ class ReportsRelationManager extends RelationManager
                     ->defaultImageUrl(null),
 
                 BadgeColumn::make('category')
-                    ->label('災情分類')
+                    ->label('分類')
                     ->color(fn (string $state) => match ($state) {
                         Report::CATEGORY_FLOOD => 'info',
                         Report::CATEGORY_ROAD_BLOCKED => 'warning',
@@ -84,7 +84,7 @@ class ReportsRelationManager extends RelationManager
             ])
             ->filters([
                 SelectFilter::make('category')
-                    ->label('災情分類')
+                    ->label('分類')
                     ->options(fn () => ReportCategory::labels()),
                 SelectFilter::make('status')
                     ->label('狀態')

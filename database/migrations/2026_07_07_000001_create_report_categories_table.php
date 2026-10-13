@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * 回報分類後台化（spec §11.7）：分類移入 DB，reports.category 維持 slug 字串鍵。
- * 基礎 6 類直接在 migration 內 seed（部署即生效，不依賴 db:seed）。
+ * 回報分類後台化：分類移入 DB，reports.category 維持 slug 字串鍵。
+ * 基礎 7 類直接在 migration 內 seed（部署即生效，不依賴 db:seed）。
  */
 return new class extends Migration
 {
@@ -26,22 +26,23 @@ return new class extends Migration
         });
 
         $now = now();
-        $floodExtra = json_encode([
-            'label' => '積水深度', 'unit' => 'cm', 'min' => 0, 'max' => 500,
+        $fullExtra = json_encode([
+            'label' => '滿溢程度', 'unit' => '%', 'min' => 0, 'max' => 100,
             'presets' => [
-                ['value' => 10, 'hint' => '腳踝'], ['value' => 30, 'hint' => '小腿'],
-                ['value' => 50, 'hint' => '及膝'], ['value' => 100, 'hint' => '及腰'],
-                ['value' => 150, 'hint' => '一層樓'],
+                ['value' => 50, 'hint' => '半滿'], ['value' => 80, 'hint' => '快滿'],
+                ['value' => 100, 'hint' => '滿出來'],
             ],
         ], JSON_UNESCAPED_UNICODE);
 
+        // slug 是程式鍵（DemandScoreService / TrashBinObserver 依賴 need_bin / full / exists / missing / dumping）
         DB::table('report_categories')->insert([
-            ['slug' => 'flood', 'name' => '淹水', 'emoji' => '💧', 'color' => '#38bdf8', 'sort_order' => 10, 'is_active' => true, 'extra_field' => $floodExtra, 'created_at' => $now, 'updated_at' => $now],
-            ['slug' => 'road_blocked', 'name' => '道路中斷', 'emoji' => '🚧', 'color' => '#fb923c', 'sort_order' => 20, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
-            ['slug' => 'power_outage', 'name' => '停電', 'emoji' => '⚡', 'color' => '#facc15', 'sort_order' => 30, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
-            ['slug' => 'structural_damage', 'name' => '結構受損', 'emoji' => '🏚️', 'color' => '#f87171', 'sort_order' => 40, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
-            ['slug' => 'water_outage', 'name' => '停水', 'emoji' => '🚱', 'color' => '#a78bfa', 'sort_order' => 50, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
-            ['slug' => 'falling_object', 'name' => '大型物品掉落', 'emoji' => '🌳', 'color' => '#d97706', 'sort_order' => 60, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
+            ['slug' => 'need_bin', 'name' => '這裡需要垃圾桶', 'emoji' => '🗑️', 'color' => '#f59e0b', 'sort_order' => 10, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
+            ['slug' => 'full', 'name' => '桶滿了', 'emoji' => '🤢', 'color' => '#ef4444', 'sort_order' => 20, 'is_active' => true, 'extra_field' => $fullExtra, 'created_at' => $now, 'updated_at' => $now],
+            ['slug' => 'missing', 'name' => '桶消失了', 'emoji' => '👻', 'color' => '#a78bfa', 'sort_order' => 30, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
+            ['slug' => 'exists', 'name' => '桶還在', 'emoji' => '✅', 'color' => '#22c55e', 'sort_order' => 40, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
+            ['slug' => 'bag_empty', 'name' => '狗便袋箱沒袋了', 'emoji' => '🐕', 'color' => '#38bdf8', 'sort_order' => 50, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
+            ['slug' => 'dumping', 'name' => '家戶垃圾亂丟', 'emoji' => '🚫', 'color' => '#fb923c', 'sort_order' => 60, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
+            ['slug' => 'hazard', 'name' => '毒餌／危險物', 'emoji' => '☠️', 'color' => '#c084fc', 'sort_order' => 70, 'is_active' => true, 'extra_field' => null, 'created_at' => $now, 'updated_at' => $now],
         ]);
     }
 

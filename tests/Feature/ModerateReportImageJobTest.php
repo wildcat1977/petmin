@@ -13,7 +13,7 @@ use Tests\TestCase;
 /**
  * AI 審核 queue 後補（spec §6.1-2 / §6.2）：
  * 明確違規才自動退件；不吻合分類僅留待人工，不自動退件；
- * API 失敗 fail-open 留在 pending，不誤擋災情回報。
+ * API 失敗 fail-open 留在 pending，不誤擋真實回報。
  */
 class ModerateReportImageJobTest extends TestCase
 {

@@ -1,0 +1,4 @@
+[
+  {"name": "華山公園狗活動區", "district": "中正區", "lat": 25.0470, "lng": 121.5265, "kind": "dog_park", "approx": true},
+  {"name": "大安森林公園", "district": "大安區", "lat": 25.0330, "lng": 121.5355, "kind": "park"}
+]

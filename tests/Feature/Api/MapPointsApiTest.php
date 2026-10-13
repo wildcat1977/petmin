@@ -24,7 +24,7 @@ class MapPointsApiTest extends TestCase
     private function makeReport(array $overrides = []): Report
     {
         return Report::factory()->create(array_merge([
-            'category' => Report::CATEGORY_FLOOD,
+            'category' => Report::CATEGORY_FULL,
             'latitude' => 25.0330,
             'longitude' => 121.5654,
         ], $overrides));
@@ -45,14 +45,14 @@ class MapPointsApiTest extends TestCase
 
     public function test_category_filter_narrows_results(): void
     {
-        $this->makeReport(['category' => Report::CATEGORY_FLOOD]);
-        $this->makeReport(['category' => Report::CATEGORY_POWER_OUTAGE]);
+        $this->makeReport(['category' => Report::CATEGORY_FULL]);
+        $this->makeReport(['category' => Report::CATEGORY_MISSING]);
 
-        $res = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16&categories=power_outage');
+        $res = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16&categories=missing');
 
         $points = $res->assertOk()->json('points');
         $this->assertCount(1, $points);
-        $this->assertSame(Report::CATEGORY_POWER_OUTAGE, $points[0]['cat']);
+        $this->assertSame(Report::CATEGORY_MISSING, $points[0]['cat']);
     }
 
     public function test_pending_is_visible_but_rejected_is_hidden(): void
@@ -62,7 +62,7 @@ class MapPointsApiTest extends TestCase
 
         $res = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=16');
 
-        // 災時「可能有事」的價值大於等核實 → pending 上圖；退件（垃圾內容）不上圖
+        // 「可能有狀況」的資訊價值大於等核實 → pending 上圖；退件（垃圾內容）不上圖
         $this->assertCount(1, $res->json('points'));
     }
 
@@ -165,7 +165,7 @@ class MapPointsApiTest extends TestCase
         User::factory()->count(4)->create()->each(function (User $u) {
             $this->makeReport(['user_id' => $u->id]);
         });
-        $this->makeReport(['category' => Report::CATEGORY_ROAD_BLOCKED]);
+        $this->makeReport(['category' => Report::CATEGORY_NEED_BIN]);
 
         $res = $this->getJson('/api/map/reports?bbox='.self::BBOX.'&zoom=12');
 
@@ -174,12 +174,12 @@ class MapPointsApiTest extends TestCase
         $this->assertNotEmpty($clusters);
         $this->assertSame(5, collect($clusters)->sum('count'));
         // 同格內以數量最多的分類為 dominant
-        $this->assertSame(Report::CATEGORY_FLOOD, $clusters[0]['dominant_category']);
+        $this->assertSame(Report::CATEGORY_FULL, $clusters[0]['dominant_category']);
     }
 
     public function test_points_are_capped_and_flagged_truncated(): void
     {
-        config(['hazdar.map.max_points' => 3]);
+        config(['petmin.map.max_points' => 3]);
         Report::factory()->count(5)->create([
             'latitude' => 25.0330,
             'longitude' => 121.5654,

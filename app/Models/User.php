@@ -43,6 +43,9 @@ class User extends Authenticatable implements FilamentUser
             'is_admin' => 'boolean',
             'is_banned' => 'boolean',
             'is_private' => 'boolean',
+            'points' => 'integer',
+            'streak_days' => 'integer',
+            'last_report_date' => 'date',
         ];
     }
 

@@ -46,8 +46,8 @@ class ReportCategoryResourceTest extends TestCase
     public function test_category_with_reports_cannot_be_deleted(): void
     {
         $this->actingAs($this->admin());
-        Report::factory()->create(['category' => 'flood']);
-        $flood = ReportCategory::where('slug', 'flood')->first();
+        Report::factory()->create(['category' => 'full']);
+        $flood = ReportCategory::where('slug', 'full')->first();
 
         Livewire::test(ListReportCategories::class)
             ->assertActionHidden(TestAction::make(DeleteAction::class)->table($flood));
@@ -56,12 +56,12 @@ class ReportCategoryResourceTest extends TestCase
     public function test_category_without_reports_can_be_deleted(): void
     {
         $this->actingAs($this->admin());
-        $empty = ReportCategory::where('slug', 'water_outage')->first();
+        $empty = ReportCategory::where('slug', 'bag_empty')->first();
 
         Livewire::test(ListReportCategories::class)
             ->callAction(TestAction::make(DeleteAction::class)->table($empty));
 
-        $this->assertNull(ReportCategory::bySlug('water_outage'));
+        $this->assertNull(ReportCategory::bySlug('bag_empty'));
     }
 
     public function test_extra_field_numeric_values_are_stored_as_int_even_when_submitted_as_strings(): void
@@ -103,9 +103,9 @@ class ReportCategoryResourceTest extends TestCase
     public function test_bulk_delete_skips_categories_with_reports_and_reports_partial_failure(): void
     {
         $this->actingAs($this->admin());
-        Report::factory()->create(['category' => 'flood']);
-        $flood = ReportCategory::where('slug', 'flood')->first();
-        $empty = ReportCategory::where('slug', 'water_outage')->first();
+        Report::factory()->create(['category' => 'full']);
+        $flood = ReportCategory::where('slug', 'full')->first();
+        $empty = ReportCategory::where('slug', 'bag_empty')->first();
 
         Livewire::test(ListReportCategories::class)
             ->selectTableRecords([$flood, $empty])
@@ -117,7 +117,7 @@ class ReportCategoryResourceTest extends TestCase
                 ['count' => 1, 'total' => 2],
             ));
 
-        $this->assertNotNull(ReportCategory::bySlug('flood'));
-        $this->assertNull(ReportCategory::bySlug('water_outage'));
+        $this->assertNotNull(ReportCategory::bySlug('full'));
+        $this->assertNull(ReportCategory::bySlug('bag_empty'));
     }
 }

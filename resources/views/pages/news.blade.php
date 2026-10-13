@@ -1,22 +1,22 @@
 @extends('layouts.app')
 
-@section('title', '最新消息 · Hazdar 災情回報')
+@section('title', '最新消息 · Petmin')
 
 @section('content')
 <div class="min-h-dvh bg-radar-bg text-slate-200">
     @include('partials.nav')
     <div class="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <h1 class="text-xl font-bold text-slate-100">📰 {{ __('最新消息') }}</h1>
-        <p class="mt-1 text-xs text-slate-500">{{ __('停班停課、居家災防、市府與氣象署公告、災情通報') }}</p>
+        <p class="mt-1 text-xs text-slate-500">{{ __('活動公告、政策進度、資料更新、環保局公告') }}</p>
 
         <div class="mt-6 space-y-4">
             @forelse ($items as $item)
                 @php
                     $badge = match ($item['category']) {
-                        'school_closure' => 'bg-amber-500/15 text-amber-300',
-                        'home_safety' => 'bg-cyan-500/15 text-cyan-300',
-                        'gov_press' => 'bg-sky-500/15 text-sky-300',
-                        'incident' => 'bg-rose-500/15 text-rose-300',
+                        'event' => 'bg-amber-500/15 text-amber-300',
+                        'policy' => 'bg-cyan-500/15 text-cyan-300',
+                        'data' => 'bg-sky-500/15 text-sky-300',
+                        'gov_press' => 'bg-rose-500/15 text-rose-300',
                         default => 'bg-white/10 text-slate-300',
                     };
                 @endphp

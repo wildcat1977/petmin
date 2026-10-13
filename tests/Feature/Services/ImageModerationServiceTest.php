@@ -45,7 +45,7 @@ class ImageModerationServiceTest extends TestCase
         imagejpeg(imagecreatetruecolor(8, 8), $image);
 
         try {
-            $result = $service->moderate($image, 'flood');
+            $result = $service->moderate($image, 'full');
         } finally {
             @unlink($image);
         }

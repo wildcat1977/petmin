@@ -32,6 +32,8 @@ class PublicPagesSmokeTest extends TestCase
             ['/reports'],
             ['/news'],
             ['/contact'],
+            ['/candidates'],
+            ['/leaderboard'],
         ];
     }
 

@@ -37,13 +37,13 @@ new class extends Component
         <div class="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
              wire:click.self="close">
             <div class="w-full max-w-md rounded-t-3xl bg-[#161b22] p-6 text-slate-100 shadow-2xl ring-1 ring-white/10 sm:rounded-3xl">
-                <h2 class="text-xl font-bold">{{ __('加入 Hazdar · 一起回報災情') }}</h2>
+                <h2 class="text-xl font-bold">{{ __('加入 Petmin · 遛狗順手回報') }}</h2>
                 <p class="mt-2 text-sm text-slate-400">{{ __('為了回報精準度，我們需要您協助：') }}</p>
 
                 <ol class="mt-4 space-y-3 text-sm">
                     <li class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400">1</span>
-                        <span>{!! __('發現淹水、道路中斷等災情時，拿出手機<strong>拍張照片</strong>。') !!}</span>
+                        <span>{!! __('看到垃圾桶滿了、消失了、或這裡該有一個，拿出手機<strong>拍張照片</strong>。') !!}</span>
                     </li>
                     <li class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400">2</span>
@@ -51,12 +51,12 @@ new class extends Component
                     </li>
                     <li class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400">3</span>
-                        <span>{{ __('送出回報，災情地圖即時更新。') }}</span>
+                        <span>{{ __('送出回報，地圖即時更新；核准後加點，累積上皮克敏榜。') }}</span>
                     </li>
                 </ol>
 
                 <p class="mt-4 text-[11px] leading-relaxed text-slate-500">
-                    {{ __('登入即代表您同意我們儲存上傳之照片與當下的地理位置資訊，僅用於本平台之災情回報用途。') }}
+                    {{ __('登入即代表您同意我們儲存上傳之照片與當下的地理位置資訊，僅用於本平台之垃圾桶回報用途。') }}
                 </p>
                 <button type="button" @click="showPolicy = true"
                         class="mt-2 text-left text-[11px] font-medium text-cyan-400 underline decoration-cyan-400/40 underline-offset-2 transition hover:text-cyan-300">
@@ -127,7 +127,7 @@ new class extends Component
                 </div>
 
                 <div class="grow space-y-4 overflow-y-auto px-6 py-5 text-[13px] leading-relaxed text-slate-300">
-                    <p>為保障網路通訊安全並防堵惡意程式（機器人），台北市民資訊回報（以下簡稱本網站）依《個人資料保護法》規定告知下列事項。當您使用 LINE 帳號或 Google 帳號登入時，即表示同意本聲明：</p>
+                    <p>為保障網路通訊安全並防堵惡意程式（機器人），Petmin 垃圾桶回報（以下簡稱本網站）依《個人資料保護法》規定告知下列事項。當您使用 LINE 帳號或 Google 帳號登入時，即表示同意本聲明：</p>
 
                     <div>
                         <p class="font-semibold text-slate-100">一、本網站蒐集您個人資料的目的在於：</p>

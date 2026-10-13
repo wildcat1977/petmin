@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '聯絡管理員 · Hazdar 災情回報')
+@section('title', '聯絡管理員 · Petmin')
 
 @section('content')
 <div class="min-h-dvh bg-radar-bg text-slate-200">

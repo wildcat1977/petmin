@@ -34,13 +34,10 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
-        <!-- 主題配色釘死預設值，讓測試不受各機器 .env 的 HAZDAR_COLOR_* 覆蓋影響 -->
-        <env name="HAZDAR_COLOR_BG" value="#002923"/>
-        <env name="HAZDAR_COLOR_CARD" value="#003a30"/>
+        <!-- 主題配色釘死預設值，讓測試不受各機器 .env 的 PETMIN_COLOR_* 覆蓋影響 -->
+        <env name="PETMIN_COLOR_BG" value="#1c1917"/>
+        <env name="PETMIN_COLOR_CARD" value="#292524"/>
         <!-- 受保護管理員名單清空，避免測試吃到本機 .env 的真實 admin email；需要時各測試自行 config() 覆蓋 -->
         <env name="PROTECTED_ADMIN_EMAILS" value=""/>
-        <!-- NCDR 抓取自我限速/退避在測試中設 0，避免每次 HTTP fake 都真的 sleep 拖慢測試 -->
-        <env name="HAZDAR_NCDR_THROTTLE_US" value="0"/>
-        <env name="HAZDAR_NCDR_RETRY_BACKOFF_MS" value="0"/>
     </php>
 </phpunit>

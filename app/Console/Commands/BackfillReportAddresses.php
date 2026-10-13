@@ -33,7 +33,7 @@ class BackfillReportAddresses extends Command
         $bar->start();
 
         $client = new Client([
-            'headers' => ['User-Agent' => 'Hazdar/1.0'],
+            'headers' => ['User-Agent' => 'Petmin/1.0'],
             'timeout' => 8,
         ]);
 

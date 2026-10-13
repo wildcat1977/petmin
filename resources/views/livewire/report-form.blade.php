@@ -3,6 +3,7 @@
 use App\Jobs\ModerateReportImage;
 use App\Models\Report;
 use App\Models\ReportCategory;
+use App\Models\TrashBin;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -36,6 +37,18 @@ new class extends Component
 
     public bool $submitted = false;
 
+    /** 吸附到的既有桶（30m 內最近；need_bin 類別送出時忽略） */
+    public ?int $trashBinId = null;
+
+    public string $snappedBinName = '';
+
+    public string $snappedBinKind = '';
+
+    public ?int $snappedBinDistance = null;
+
+    /** 從桶 popup「回報這個桶」進來：表單帶桶位座標，小地圖不再抓 GPS */
+    public bool $presetLocation = false;
+
     public function mount(): void
     {
         $this->category = ReportCategory::defaultSlug();
@@ -66,18 +79,45 @@ new class extends Component
     }
 
     /**
-     * 由首頁按鈕觸發；未登入則改開啟登入引導
+     * 由首頁按鈕或桶 popup 觸發；未登入則改開啟登入引導。
+     * 帶 binId 時預先吸附該桶並把位置定在桶上。
      */
     #[On('open-report-form')]
-    public function show(): void
+    public function show(?int $binId = null): void
     {
         if (! Auth::check()) {
             $this->dispatch('open-auth-onboarding');
             return;
         }
-        $this->reset(['photo', 'description', 'submitted', 'extraValue']);
+        $this->reset(['photo', 'description', 'submitted', 'extraValue', 'exifLocation',
+            'trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance', 'presetLocation']);
         $this->category = ReportCategory::defaultSlug();
+
+        if ($binId && ($bin = TrashBin::find($binId))) {
+            $this->latitude = (float) $bin->latitude;
+            $this->longitude = (float) $bin->longitude;
+            $this->address = $bin->district ? "台北市 {$bin->district}" : '';
+            $this->presetLocation = true;
+            $this->setSnappedBin($bin->id, $bin->address ?? '', $bin->kind, 0);
+            // 從桶進來，預設分類改成「桶滿了」（最常見的回報）
+            if (in_array(Report::CATEGORY_FULL, ReportCategory::activeSlugs(), true)) {
+                $this->category = Report::CATEGORY_FULL;
+            }
+        }
         $this->open = true;
+    }
+
+    public function setSnappedBin(int $id, string $name, string $kind, ?int $distance = null): void
+    {
+        $this->trashBinId = $id;
+        $this->snappedBinName = $name;
+        $this->snappedBinKind = $kind;
+        $this->snappedBinDistance = $distance;
+    }
+
+    public function clearSnappedBin(): void
+    {
+        $this->reset(['trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance']);
     }
 
     public function close(): void
@@ -138,11 +178,18 @@ new class extends Component
         // 無照片時內容無需 AI 審核；有照片時照片通過審核前不公開（點位照常顯示）
         $status = $this->photo
             ? Report::STATUS_PENDING
-            : (config('hazdar.auto_approve') ? Report::STATUS_APPROVED : Report::STATUS_PENDING);
+            : (config('petmin.auto_approve') ? Report::STATUS_APPROVED : Report::STATUS_PENDING);
+
+        // 「這裡需要桶」本來就是沒桶的地方，不掛在既有桶上；其餘分類掛到吸附的桶（若有）
+        $trashBinId = $this->category === Report::CATEGORY_NEED_BIN ? null : $this->trashBinId;
+        if ($trashBinId && ! TrashBin::whereKey($trashBinId)->exists()) {
+            $trashBinId = null;
+        }
 
         $report = Report::create([
             'user_id'        => Auth::id(),
             'category'       => $this->category,
+            'trash_bin_id'   => $trashBinId,
             'extra_value'    => ReportCategory::bySlug($this->category)?->extra_field ? $this->extraValue : null,
             'latitude'       => $this->latitude,
             'longitude'      => $this->longitude,
@@ -163,7 +210,7 @@ new class extends Component
     /** 反濫用：cooldown + 每帳號每小時上限（spec §6.1-5） */
     private function rateLimitError(): ?string
     {
-        $cooldown = (int) config('hazdar.report_cooldown_seconds');
+        $cooldown = (int) config('petmin.report_cooldown_seconds');
         $lastAt = Report::where('user_id', Auth::id())->latest()->value('created_at');
 
         if ($lastAt && $lastAt->diffInSeconds(now()) < $cooldown) {
@@ -172,7 +219,7 @@ new class extends Component
             return __('回報間隔太短，請 :s 秒後再試。', ['s' => max($wait, 1)]);
         }
 
-        $hourlyLimit = (int) config('hazdar.report_hourly_limit');
+        $hourlyLimit = (int) config('petmin.report_hourly_limit');
         $lastHour = Report::where('user_id', Auth::id())
             ->where('created_at', '>=', now()->subHour())
             ->count();
@@ -187,20 +234,20 @@ new class extends Component
 
 <div>
     @if ($open)
-        @php $disclaimerMode = config('hazdar.disclaimer.report_mode', 'every'); @endphp
+        @php $disclaimerMode = config('petmin.disclaimer.report_mode', 'every'); @endphp
         @if ($disclaimerMode !== 'off' && ! $submitted)
             {{-- 回報免責聲明（spec §11.3）：every=每次開表單重跳；session=每 session 一次 --}}
-            <div x-data="{ ack: @js($disclaimerMode) === 'session' && !! sessionStorage.getItem('hazdar:disclaimer:report') }"
+            <div x-data="{ ack: @js($disclaimerMode) === 'session' && !! sessionStorage.getItem('petmin:disclaimer:report') }"
                  x-show="! ack"
                  x-cloak
                  class="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
                 <div class="w-full max-w-md rounded-3xl bg-[#161b22] p-6 text-slate-100 shadow-2xl ring-1 ring-white/10">
                     <h2 class="text-lg font-bold">⚠️ {{ __('使用前請注意') }}</h2>
                     <p class="mt-3 text-sm leading-relaxed text-slate-300">
-                        {{ __('本地圖彙整網友回報與氣象局雨量回報所得之災情資訊，僅供大眾參考，不代表市府公告，緊急事故請直接撥打119/1999，切勿僅依賴本平台等待救援。希望市民朋友保護自身安全，如非必要請勿出門。') }}
+                        {{ __('本地圖彙整環保局開放資料與市民回報，僅供大眾參考，不代表市府公告。清運需求請同時撥打 1999 或使用台北市民當家熱線。回報時請注意自身與毛孩安全。') }}
                     </p>
                     <button type="button"
-                            @click="sessionStorage.setItem('hazdar:disclaimer:report', '1'); ack = true"
+                            @click="sessionStorage.setItem('petmin:disclaimer:report', '1'); ack = true"
                             class="mt-5 w-full rounded-xl bg-cyan-600 px-4 py-3 font-semibold hover:bg-cyan-500">
                         {{ __('我知道了，開始回報') }}
                     </button>
@@ -215,10 +262,10 @@ new class extends Component
                 @if ($submitted)
                     <div class="py-10 text-center">
                         <div class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-cyan-600/20">
-                            <span class="text-4xl">📡</span>
+                            <span class="text-4xl">🐾</span>
                         </div>
                         <h2 class="text-xl font-bold">{{ __('回報成功') }}</h2>
-                        <p class="mt-2 text-sm text-slate-400">{{ __('災情已上圖。鄰近若有其他市民回報相同災情，將自動升級為「多方佐證」。') }}</p>
+                        <p class="mt-2 text-sm text-slate-400">{{ __('已上圖。審核通過後會加點；同一個桶若有其他人也回報，會自動升級為「多方佐證」。') }}</p>
                         <button wire:click="close"
                                 class="mt-6 w-full rounded-xl bg-cyan-600 px-4 py-3 font-semibold">
                             {{ __('關閉') }}
@@ -226,7 +273,7 @@ new class extends Component
                     </div>
                 @else
                     <div class="flex items-start justify-between">
-                        <h2 class="text-xl font-bold">{{ __('⚠️ 回報災情') }}</h2>
+                        <h2 class="text-xl font-bold">{{ __('🐾 回報垃圾桶狀況') }}</h2>
                         <button wire:click="close" class="text-slate-500 hover:text-slate-200">✕</button>
                     </div>
 
@@ -236,9 +283,9 @@ new class extends Component
                           x-data="{ photoBusy: false }"
                           x-on:photo-busy.window="photoBusy = $event.detail"
                           x-on:submit.capture="if (photoBusy) { $event.preventDefault(); $event.stopImmediatePropagation(); }">
-                        {{-- 災情分類（必選；來源 report_categories，配色對應地圖圖例） --}}
+                        {{-- 狀況分類（必選；來源 report_categories，配色對應地圖圖例） --}}
                         <div>
-                            <label class="block text-xs font-medium text-slate-400">{{ __('災情分類') }}</label>
+                            <label class="block text-xs font-medium text-slate-400">{{ __('發生什麼事') }}</label>
                             <div class="mt-2 grid grid-cols-2 gap-2">
                                 @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
                                     <button type="button"
@@ -284,7 +331,7 @@ new class extends Component
                         @endif
 
                         <div x-data="{ preview: null, setPreview(files) { const f = files?.[0]; if (!f) return; const old = this.preview; this.preview = URL.createObjectURL(f); if (old) URL.revokeObjectURL(old); } }">
-                            <label class="block text-xs font-medium text-slate-400">{{ __('📸 現場照片') }} <span class="text-slate-600">（{{ __('選填；災時拍照請以自身安全為優先') }}）</span></label>
+                            <label class="block text-xs font-medium text-slate-400">{{ __('📸 現場照片') }} <span class="text-slate-600">（{{ __('選填；拍到桶或現場最好，不用拍到人') }}）</span></label>
                             {{-- 縮圖預覽 --}}
                             <div x-show="preview" x-cloak class="mt-2 flex items-center gap-3">
                                 <img :src="preview" alt="預覽" class="h-20 w-20 rounded-lg object-cover ring-1 ring-white/20">
@@ -301,11 +348,20 @@ new class extends Component
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-slate-400">{{ __('📍 災情位置') }} <span class="text-slate-600">（{{ __('移動地圖即可調整') }}）</span></label>
+                            <label class="block text-xs font-medium text-slate-400">{{ __('📍 位置') }} <span class="text-slate-600">（{{ __('移動地圖即可調整；靠近既有的桶會自動吸附') }}）</span></label>
                             <div wire:ignore
                                  x-data="{ destroy() { this.$el.__pinMap?.remove(); this.$el.__exifCleanup?.(); } }"
                                  x-init="initPinMap($el, $wire)"
+                                 data-nearby-url="{{ route('api.map.bins.nearby') }}"
+                                 @if ($presetLocation && $latitude && $longitude) data-preset-lat="{{ $latitude }}" data-preset-lng="{{ $longitude }}" @endif
                                  class="mt-2 h-48 w-full overflow-hidden rounded-lg border border-white/10 bg-black/40"></div>
+                            {{-- 吸附到的桶：need_bin 類別本來就是沒桶的地方，不顯示 --}}
+                            @if ($trashBinId && $category !== Report::CATEGORY_NEED_BIN)
+                                <div class="mt-2 flex items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                                    <span class="min-w-0 truncate">📌 {{ __('吸附到：:name', ['name' => ($snappedBinKind === TrashBin::KIND_DOG_BAG_BOX ? '🐕 ' : '🗑️ ').$snappedBinName]) }}@if ($snappedBinDistance !== null && $snappedBinDistance > 0)<span class="text-emerald-400/70">（{{ $snappedBinDistance }} m）</span>@endif</span>
+                                    <button type="button" wire:click="clearSnappedBin" class="shrink-0 text-emerald-400/70 hover:text-emerald-200">{{ __('取消') }}</button>
+                                </div>
+                            @endif
                             <p class="mt-1 text-[11px] text-slate-500">
                                 @if ($exifLocation && $latitude && $longitude)
                                     {{ __('📷 從照片 EXIF 取得：:coords（可移動地圖微調）', ['coords' => number_format($latitude, 5).', '.number_format($longitude, 5)]) }}
@@ -323,7 +379,7 @@ new class extends Component
                                 <span class="text-slate-600">（{{ __('選填') }}）</span>
                             </label>
                             <textarea wire:model="description" rows="3"
-                                      placeholder="{{ __('例如：水淹到機車排氣管、整條巷子都停電…') }}"
+                                      placeholder="{{ __('例如：遛狗必經，袋子只能帶回家；桶旁堆了三袋家用垃圾…') }}"
                                       class="mt-2 w-full rounded-lg border border-white/10 bg-black/30 p-2 text-sm placeholder:text-slate-600"></textarea>
                             @error('description') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
                         </div>

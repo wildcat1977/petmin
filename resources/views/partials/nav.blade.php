@@ -1,6 +1,6 @@
 {{--
     次要頁面（profile/reports/news/stats/transparency/contact）沿用全站共用 head nav
-    （v0.3 三次回饋：先前這裡是獨立一份「◎ Hazdar」文字版 header，與首頁的
+    （v0.3 三次回饋：先前這裡是獨立一份「◎ Petmin」文字版 header，與首頁的
     banner+跑馬燈版本不一致；改成單一來源，兩邊都用 partials.site-header）。
 --}}
 @include('partials.site-header')

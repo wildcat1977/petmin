@@ -1,0 +1,14 @@
+[
+  {"name": "華山公園狗活動區", "district": "中正區", "lat": 25.0470, "lng": 121.5265, "kind": "dog_park", "approx": true},
+  {"name": "迎風狗運動公園", "district": "中山區", "lat": 25.0790, "lng": 121.5520, "kind": "dog_park", "approx": true},
+  {"name": "潭美毛寶貝快樂公園", "district": "內湖區", "lat": 25.0570, "lng": 121.5820, "kind": "dog_park", "approx": true},
+  {"name": "萬興狗活動區", "district": "文山區", "lat": 24.9870, "lng": 121.5750, "kind": "dog_park", "approx": true},
+  {"name": "至善公園狗活動區", "district": "士林區", "lat": 25.1030, "lng": 121.5450, "kind": "dog_park", "approx": true},
+  {"name": "百齡右岸河濱狗活動區", "district": "士林區", "lat": 25.0950, "lng": 121.5150, "kind": "dog_park", "approx": true},
+  {"name": "大安森林公園", "district": "大安區", "lat": 25.0330, "lng": 121.5355, "kind": "park", "approx": false},
+  {"name": "青年公園", "district": "萬華區", "lat": 25.0215, "lng": 121.5010, "kind": "park", "approx": false},
+  {"name": "南港公園", "district": "南港區", "lat": 25.0390, "lng": 121.6130, "kind": "park", "approx": false},
+  {"name": "北投公園", "district": "北投區", "lat": 25.1360, "lng": 121.5020, "kind": "park", "approx": false},
+  {"name": "彩虹河濱公園", "district": "松山區", "lat": 25.0520, "lng": 121.5700, "kind": "park", "approx": true},
+  {"name": "迪化休閒運動公園", "district": "大同區", "lat": 25.0630, "lng": 121.5060, "kind": "park", "approx": true}
+]

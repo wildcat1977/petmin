@@ -88,15 +88,15 @@ function mapPickerInit_{{ $record?->id ?? 0 }}() {
                 this.map = L.map(this.$refs.mapEl, {
                     zoomControl: true,
                     attributionControl: true,
-                    maxZoom: {{ (int) config('hazdar.map.max_zoom') }},
+                    maxZoom: {{ (int) config('petmin.map.max_zoom') }},
                 }).setView([{{ $lat }}, {{ $lng }}], 17);
 
                 // 與前台同一套自架底圖（亮色）。不直連 OSM 官方圖磚伺服器：會被 OSM 以不符使用政策
                 // 擋成 403「Access blocked」（gotcha 後台 2026-09-24 中招）；attribution 打開：ODbL 要求標示出處
                 try {
                     L.maplibreGL({
-                        style: @js(config('hazdar.map.basemap_styles.light')),
-                        attribution: @js(config('hazdar.map.basemap_attribution')),
+                        style: @js(config('petmin.map.basemap_styles.light')),
+                        attribution: @js(config('petmin.map.basemap_attribution')),
                         localIdeographFontFamily: "'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif",
                     }).addTo(this.map);
                 } catch (error) {

@@ -21,8 +21,8 @@ class ReportFactory extends Factory
         return [
             'user_id' => User::factory(),
             'category' => $category,
-            'extra_value' => $category === Report::CATEGORY_FLOOD
-                ? $this->faker->optional()->randomElement([10, 30, 50, 100, 150])
+            'extra_value' => $category === Report::CATEGORY_FULL
+                ? $this->faker->optional()->randomElement([50, 80, 100])
                 : null,
             // 台北市範圍內隨機座標；geohash7 由 model creating hook 推導
             'latitude' => $this->faker->latitude(24.96, 25.21),

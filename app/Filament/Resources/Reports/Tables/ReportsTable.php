@@ -68,15 +68,20 @@ class ReportsTable
                     ),
 
                 BadgeColumn::make('category')
-                    ->label('災情分類')
+                    ->label('分類')
                     ->color(fn (string $state) => match ($state) {
-                        Report::CATEGORY_FLOOD => 'info',
-                        Report::CATEGORY_ROAD_BLOCKED => 'warning',
-                        Report::CATEGORY_POWER_OUTAGE => 'warning',
-                        Report::CATEGORY_STRUCTURAL_DAMAGE => 'danger',
+                        Report::CATEGORY_FULL, Report::CATEGORY_MISSING, Report::CATEGORY_HAZARD => 'danger',
+                        Report::CATEGORY_NEED_BIN, Report::CATEGORY_DUMPING => 'warning',
+                        Report::CATEGORY_EXISTS => 'success',
                         default => 'info',
                     })
                     ->formatStateUsing(fn (string $state) => ReportCategory::labels()[$state] ?? $state),
+
+                TextColumn::make('trashBin.address')
+                    ->label('對應桶位')
+                    ->default('—')
+                    ->wrap()
+                    ->toggleable(),
 
                 ImageColumn::make('image_path')
                     ->label('照片')
@@ -113,7 +118,7 @@ class ReportsTable
                     }),
 
                 BadgeColumn::make('verification_level')
-                    ->label('核實')
+                    ->label('佐證')
                     ->color(fn (string $state) => match ($state) {
                         Report::VERIFICATION_UNVERIFIED => 'gray',
                         Report::VERIFICATION_CORROBORATED => 'info',
@@ -141,7 +146,7 @@ class ReportsTable
             ])
             ->filters([
                 SelectFilter::make('category')
-                    ->label('災情分類篩選')
+                    ->label('分類篩選')
                     ->options(fn () => ReportCategory::labels()),
                 SelectFilter::make('status')
                     ->label('狀態篩選')
@@ -198,7 +203,7 @@ class ReportsTable
                         ->action(fn (Report $record) => $record->update(['notified_at' => now()])),
 
                     Action::make('mark_resolved')
-                        ->label('標記已排除')
+                        ->label('標記已處理')
                         ->color('gray')
                         ->icon('heroicon-o-flag')
                         ->visible(fn (Report $record) => $record->resolved_at === null)

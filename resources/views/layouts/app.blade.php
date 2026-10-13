@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Hazdar 全民韌性災害回報系統 | 台北市災情地圖')</title>
+    <title>@yield('title', 'Petmin 找回消失的垃圾桶 | 台北市遛狗族垃圾桶地圖')</title>
 
     {{-- SEO / OG --}}
-    <meta name="description" content="颱風豪雨災時，回報淹水、道路中斷、停電、結構受損，即時匯聚成台北市單一災情情勢圖。">
-    <meta name="theme-color" content="{{ config('hazdar.theme.bg') }}">
+    <meta name="description" content="遛狗順手回報：垃圾桶滿了、消失了、這裡需要一個。把市民需求變成台北市垃圾桶復設的決策資料。">
+    <meta name="theme-color" content="{{ config('petmin.theme.bg') }}">
     <link rel="canonical" href="{{ url()->current() }}">
 
-    <meta property="og:title" content="Hazdar 全民韌性災害回報系統">
-    <meta property="og:description" content="颱風豪雨災時，回報淹水、道路中斷、停電、結構受損，即時匯聚成台北市單一災情情勢圖。">
+    <meta property="og:title" content="Petmin 找回消失的垃圾桶">
+    <meta property="og:description" content="遛狗順手回報：垃圾桶滿了、消失了、這裡需要一個。把市民需求變成台北市垃圾桶復設的決策資料。">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta name="twitter:card" content="summary_large_image">
@@ -30,10 +30,19 @@
             vlCorroborated:         @js(__('多方佐證')),
             vlOfficial:             @js(__('官方核實')),
             stNotified:             @js(__('📣 已通報')),
-            stResolved:             @js(__('✅ 已排除')),
-            shelterOpen:            @js(__('🟢 開設中')),
-            shelterClosed:          @js(__('⚪ 未開設')),
-            shelterCapacity:        @js(__('容量')),
+            stResolved:             @js(__('✅ 已處理')),
+            binCleanBox:            @js(__('行人專用清潔箱')),
+            binBagBox:              @js(__('狗便清潔袋箱')),
+            binActive:              @js(__('使用中')),
+            binMissing:             @js(__('消失／已撤')),
+            binUnverified:          @js(__('待驗證')),
+            binVerified:            @js(__('最近驗證')),
+            binNeverVerified:       @js(__('尚未有人驗證')),
+            binReports:             @js(__('筆回報')),
+            binReportThis:          @js(__('🐾 回報這個桶')),
+            gapBoxes:               @js(__('狗便袋箱')),
+            gapNearest:             @js(__('最近清潔箱')),
+            gapNone:                @js(__('300m 內沒有')),
             reportPhoto:            @js(__('回報照片')),
             searchPlaceholderRadar: @js(__('搜尋地標或路名…(尚不支援詳細地址)')),
             searchPlaceholderPin:   @js(__('搜尋地標或路名…(暫不支援門牌號碼)')),
@@ -42,12 +51,12 @@
             locating:               @js(__('定位中…')),
         };
     </script>
-    {{-- 自架底圖設定（docs/basemap.md）：所有前台地圖經 window.__HAZDAR_BASEMAP__.create('light'|'dark') 取用 --}}
+    {{-- 自架底圖設定（docs/basemap.md）：所有前台地圖經 window.__PETMIN_BASEMAP__.create('light'|'dark') 取用 --}}
     <script>
-        window.__HAZDAR_BASEMAP_CONFIG__ = @js([
-            'styles' => config('hazdar.map.basemap_styles'),
-            'attribution' => config('hazdar.map.basemap_attribution'),
-            'maxZoom' => (int) config('hazdar.map.max_zoom'),
+        window.__PETMIN_BASEMAP_CONFIG__ = @js([
+            'styles' => config('petmin.map.basemap_styles'),
+            'attribution' => config('petmin.map.basemap_attribution'),
+            'maxZoom' => (int) config('petmin.map.max_zoom'),
         ]);
     </script>
     {{-- 頁面自己的預載（主地圖的底圖 style）：要排在 app.js 之前才能跟它同時下載 --}}
@@ -55,13 +64,13 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 
-    {{-- 主題配色覆蓋（v0.3 五次回饋 item 4）：以 config('hazdar.theme') 覆蓋 app.css @theme
+    {{-- 主題配色覆蓋：以 config('petmin.theme') 覆蓋 app.css @theme
          的 --color-radar-bg / --color-radar-card 預設，改 env 即可全站換色不必重編樣式。
          需放在 @vite 之後才蓋得過 Tailwind 產出的 :root 變數。 --}}
     <style>
         :root {
-            --color-radar-bg: {{ config('hazdar.theme.bg') }};
-            --color-radar-card: {{ config('hazdar.theme.card') }};
+            --color-radar-bg: {{ config('petmin.theme.bg') }};
+            --color-radar-card: {{ config('petmin.theme.card') }};
         }
     </style>
 

@@ -1,14 +1,14 @@
 # 底圖與照片縮圖
 
-2026-10-01 地圖底圖從 MapTiler（`config/hazdar.php` 的 `tile_*`，key 直接印在網頁原始碼）與
+2026-10-01 地圖底圖從 MapTiler（`config/petmin.php` 的 `tile_*`，key 直接印在網頁原始碼）與
 直連 `tile.openstreetmap.org` 改為自架的 Protomaps 向量圖磚，同時為回報照片加上縮圖。兩者都從
 洋流好店（friendly-store-map）移植。圖磚服務的架設、更新與完整設計寫在洋流好店的
-`docs/basemap-spec.md`（§3 圖磚服務、§9 照片縮圖）與 `docs/deployment.md`「自架底圖」一節，這裡只記 hazdar 自己的部分。
+`docs/basemap-spec.md`（§3 圖磚服務、§9 照片縮圖）與 `docs/deployment.md`「自架底圖」一節，這裡只記 petmin 自己的部分。
 
 ## 為什麼換
 
 - MapTiler 一張 512px 圖磚算 4 次請求，條款又禁止代理與伺服器端快取；Flex 方案只到 2026-10-12。
-- hazdar 把 MapTiler key 直接印在網頁原始碼。
+- petmin 把 MapTiler key 直接印在網頁原始碼。
 - 統計、透明度頁與後台直連 OSM 官方圖磚伺服器：不符 OSM 使用政策，會被擋成 403（gotcha 後台 2026-09-24 中招）。
 - 暗色模式用 CSS `filter: invert(…)` 反色整個 `tilePane`，連疊在同一個 pane 的淹水潛勢圖層也一起反色。
 
@@ -20,12 +20,12 @@
 
 ## 前端
 
-MapLibre 以 `@maplibre/maplibre-gl-leaflet` 嵌成 Leaflet 的底圖圖層；點位、聚合、收容所、雷達回波、
+MapLibre 以 `@maplibre/maplibre-gl-leaflet` 嵌成 Leaflet 的底圖圖層；點位、聚合、桶位、有袋沒桶、需求熱力、
 淹水潛勢、行政區界等 Leaflet 圖層都沒動。
 
-- **設定**：`config('hazdar.map.basemap_styles')`（`light` / `dark`，env `HAZDAR_BASEMAP_LIGHT_STYLE_URL`、
-  `HAZDAR_BASEMAP_DARK_STYLE_URL`）、`basemap_attribution`、`max_zoom`（預設 19）。
-  `layouts/app.blade.php` 注入 `window.__HAZDAR_BASEMAP_CONFIG__`，所有前台地圖經 `resources/js/basemap.js` 取用。
+- **設定**：`config('petmin.map.basemap_styles')`（`light` / `dark`，env `PETMIN_BASEMAP_LIGHT_STYLE_URL`、
+  `PETMIN_BASEMAP_DARK_STYLE_URL`）、`basemap_attribution`、`max_zoom`（預設 19）。
+  `layouts/app.blade.php` 注入 `window.__PETMIN_BASEMAP_CONFIG__`，所有前台地圖經 `resources/js/basemap.js` 取用。
 - **各地圖**：
 
   | 地圖 | 位置 | 風格 |
@@ -39,7 +39,7 @@ MapLibre 以 `@maplibre/maplibre-gl-leaflet` 嵌成 Leaflet 的底圖圖層；�
 - **maplibre-gl 釘死 5.24.0**：6.x 只出 ESM，打包後 worker 載不到（底圖全灰），後台 CDN 也沒有 UMD 檔。
   前後台必須同一版本，`BasemapTest` 會比對實際安裝版本與 CDN 網址。
 - **疊放順序**：MapLibre 容器在 `tilePane` 且沒有 z-index；淹水潛勢 `L.tileLayer` 同在 `tilePane`、z-index 1，
-  所以仍疊在底圖上；雷達回波、點位在更上層的 pane。
+  所以仍疊在底圖上；熱力圖、點位在更上層的 pane。
 - Leaflet zoom＝MapLibre zoom＋1（外掛內部 −1）；門牌標籤要放到 Leaflet z19 才出現。
 - 中文標籤用系統字體（`localIdeographFontFamily`），Protomaps 字型只含拉丁字。
 - **版權**：主地圖關掉 Leaflet 內建 attribution（會被浮動 UI 蓋住），改放在 `pages/radar.blade.php` 底帶；
@@ -62,7 +62,7 @@ MapLibre 以 `@maplibre/maplibre-gl-leaflet` 嵌成 Leaflet 的底圖圖層；�
   檢查 `-md`（長邊 1280）；缺的排入 `GenerateReportPhotoVariants`，這次先用原圖。payload 的 `img` 仍是原圖（點開看原圖），
   另加 `img_md` 給彈窗。待審照片不處理。
 - **只產一種尺寸**（洋流好店、gotcha 是 thumb 256＋md 1280）：260px 寬的彈窗在高解析螢幕需要 500px 以上，
-  256 會糊；hazdar 目前沒有其他需要小圖的地方。
+  256 會糊；petmin 目前沒有其他需要小圖的地方。
 - job：`ShouldBeUnique`（鍵＝原圖路徑，鎖 1 小時）、原圖只解碼一次、原檔已不在就直接結束、
   寫完再確認原圖還在（處理期間被刪就把剛寫的縮圖刪掉）。點位 API 快取只有數十秒，產生完不必清快取。
 - `/api/v1/reports`（公開資料 API）與 CSV 匯出維持原圖網址——下游資料用途要原始解析度。
@@ -74,7 +74,7 @@ MapLibre 以 `@maplibre/maplibre-gl-leaflet` 嵌成 Leaflet 的底圖圖層；�
 1. `npm ci && npm run build`（新增 maplibre-gl、@maplibre/maplibre-gl-leaflet）
 2. `composer dump-autoload -o`（新 class）；有 config / route / view 快取就重建（`php artisan optimize:clear` 後照 deployment.md 重跑 cache）
 3. Horizon `terminate`（新 job）
-4. `.env` 刪除 `MAPTILER_API_KEY`、`HAZDAR_MAP_TILE_STYLE`（程式已不讀）
+4. `.env` 刪除 `MAPTILER_API_KEY`、`PETMIN_MAP_TILE_STYLE`（程式已不讀）
 
 ## 已知小問題
 

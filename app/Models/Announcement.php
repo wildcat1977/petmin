@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\Cache;
 class Announcement extends Model
 {
     public const CATEGORY_LABELS = [
-        'school_closure' => '停班停課',
-        'home_safety' => '居家災防',
-        'gov_press' => '市府與氣象署',
-        'incident' => '災情通報',
+        'event' => '活動',
+        'policy' => '政策進度',
+        'data' => '資料更新',
+        'gov_press' => '環保局公告',
     ];
 
     protected $fillable = [
@@ -51,7 +51,7 @@ class Announcement extends Model
     public static function publishedCountsByCategory(): array
     {
         return Cache::remember(
-            'hazdar:footer:news-counts',
+            'petmin:footer:news-counts',
             60,
             fn () => static::published()
                 ->selectRaw('category, count(*) as c')

@@ -6,12 +6,12 @@ import '@maplibre/maplibre-gl-leaflet';
 // 標記、聚合、雷達回波、淹水潛勢等 Leaflet 程式都不用改。
 // maplibre-gl 釘在 5.x：6.x 只出 ESM、沒有 UMD 檔，後台（CDN <script> 載入）用不了，
 // worker 也要另外處理。前後台同一版本。
-// 設定由 layouts/app.blade.php 注入 window.__HAZDAR_BASEMAP_CONFIG__。
+// 設定由 layouts/app.blade.php 注入 window.__PETMIN_BASEMAP_CONFIG__。
 
 // 中文標籤用系統字體：Protomaps 字型只含拉丁字，CJK 字型檔太大不自架
 const CJK_FONTS = "'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif";
 
-const config = () => window.__HAZDAR_BASEMAP_CONFIG__ ?? {};
+const config = () => window.__PETMIN_BASEMAP_CONFIG__ ?? {};
 
 // 探測結果快取、探測用的 context 立刻釋放：WebGL context 有數量上限，每開一張地圖就多留一個探測 context 會擠掉主地圖
 let webglSupported = null;
@@ -49,4 +49,4 @@ export function setBasemapTheme(layer, theme) {
 }
 
 // 給 Blade 內的 Alpine 元件（通報列表彈窗、統計頁、透明度頁）共用同一套底圖
-window.__HAZDAR_BASEMAP__ = { create: createBasemapLayer, maxZoom: basemapMaxZoom };
+window.__PETMIN_BASEMAP__ = { create: createBasemapLayer, maxZoom: basemapMaxZoom };

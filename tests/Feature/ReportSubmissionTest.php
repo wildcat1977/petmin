@@ -24,7 +24,7 @@ class ReportSubmissionTest extends TestCase
     private function submitReport(User $user, array $set = [])
     {
         $component = Livewire::actingAs($user)->test('report-form')
-            ->set('category', $set['category'] ?? Report::CATEGORY_FLOOD)
+            ->set('category', $set['category'] ?? Report::CATEGORY_FULL)
             ->set('latitude', $set['latitude'] ?? 25.0330)
             ->set('longitude', $set['longitude'] ?? 121.5654)
             ->set('description', $set['description'] ?? '');
@@ -65,7 +65,7 @@ class ReportSubmissionTest extends TestCase
             ->assertDispatched('report-submitted');
 
         $report = Report::sole();
-        $this->assertSame(Report::CATEGORY_FLOOD, $report->category);
+        $this->assertSame(Report::CATEGORY_FULL, $report->category);
         $this->assertSame(50, $report->extra_value);
         $this->assertSame(Report::VERIFICATION_UNVERIFIED, $report->verification_level);
         // geohash7 由寫入時自動推導（佐證與聚合依賴它）
@@ -94,7 +94,7 @@ class ReportSubmissionTest extends TestCase
 
     public function test_hourly_limit_blocks_further_reports(): void
     {
-        config(['hazdar.report_hourly_limit' => 3, 'hazdar.report_cooldown_seconds' => 0]);
+        config(['petmin.report_hourly_limit' => 3, 'petmin.report_cooldown_seconds' => 0]);
         $user = User::factory()->create();
 
         Report::factory()->count(3)->create([
@@ -136,7 +136,7 @@ class ReportSubmissionTest extends TestCase
         $user = User::factory()->create();
 
         $this->submitReport($user, [
-            'category' => Report::CATEGORY_POWER_OUTAGE,
+            'category' => Report::CATEGORY_MISSING,
             'extraValue' => 50,
         ])->assertHasNoErrors();
 
@@ -158,11 +158,11 @@ class ReportSubmissionTest extends TestCase
 
     public function test_deactivated_category_is_rejected_for_new_reports(): void
     {
-        ReportCategory::where('slug', 'power_outage')->first()->update(['is_active' => false]);
+        ReportCategory::where('slug', 'missing')->first()->update(['is_active' => false]);
 
         $user = User::factory()->create();
 
-        $this->submitReport($user, ['category' => Report::CATEGORY_POWER_OUTAGE])
+        $this->submitReport($user, ['category' => Report::CATEGORY_MISSING])
             ->assertHasErrors(['category']);
     }
 
@@ -170,18 +170,18 @@ class ReportSubmissionTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->submitReport($user, ['category' => Report::CATEGORY_FLOOD, 'extraValue' => 501])
+        $this->submitReport($user, ['category' => Report::CATEGORY_FULL, 'extraValue' => 501])
             ->assertHasErrors(['extraValue']);
     }
 
     public function test_extra_value_boundary_follows_category_db_config_not_hardcoded_range(): void
     {
-        ReportCategory::where('slug', 'flood')->first()->update([
+        ReportCategory::where('slug', 'full')->first()->update([
             'extra_field' => ['label' => '積水深度', 'unit' => 'cm', 'min' => 0, 'max' => 300],
         ]);
         $user = User::factory()->create();
 
-        $this->submitReport($user, ['category' => Report::CATEGORY_FLOOD, 'extraValue' => 400])
+        $this->submitReport($user, ['category' => Report::CATEGORY_FULL, 'extraValue' => 400])
             ->assertHasErrors(['extraValue']);
     }
 
@@ -189,13 +189,13 @@ class ReportSubmissionTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->submitReport($user, ['category' => Report::CATEGORY_ROAD_BLOCKED, 'extraValue' => 50]);
+        $this->submitReport($user, ['category' => Report::CATEGORY_NEED_BIN, 'extraValue' => 50]);
 
         $this->assertNull(Report::latest('id')->first()->extra_value);
     }
 
     /**
-     * 前端把照片壓到長邊 1024 再上傳（省災時手機流量）。wire:model 會在 change 當下上傳原圖，
+     * 前端把照片壓到長邊 1024 再上傳（省手機流量）。wire:model 會在 change 當下上傳原圖，
      * 而 Livewire 只聽 change、不理壓縮後補發的 input 事件——結果一直上傳手機原圖
      * （2026-10-01 審查發現；瀏覽器實測 5.9MB 原圖修正前照傳、修正後 88KB）。JS 無測試環境，檢查接線。
      */
@@ -224,4 +224,3 @@ class ReportSubmissionTest extends TestCase
         $this->assertStringContainsString("wire.upload('photo', compressed, () => busy(false), () => busy(false));", $app);
     }
 }
-
