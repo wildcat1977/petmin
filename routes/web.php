@@ -1,16 +1,18 @@
 <?php
 
+use App\Http\Controllers\Api\BinsController;
 use App\Http\Controllers\Api\MapPointsController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\GmailAuthController;
 use App\Http\Middleware\SetLocale;
 use App\Models\Announcement;
+use App\Models\DemandCell;
 use App\Models\Report;
-use App\Models\Shelter;
+use App\Services\BagBoxGapService;
+use App\Services\DemandScoreService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 
 Route::get('/locale/{locale}', function (string $locale) {
     if (in_array($locale, SetLocale::SUPPORTED, true)) {
@@ -20,14 +22,44 @@ Route::get('/locale/{locale}', function (string $locale) {
     return redirect()->back(302, [], route('home'));
 })->name('locale.set');
 
-// newsCounts 由共用 partials.footer-links 自算（Announcement::publishedCountsByCategory()），無需在此傳入
 Route::view('/', 'pages.radar')->name('home');
 
 Route::view('/reports', 'pages.reports')->name('reports');
 
-// 最新消息（spec §11.4）：上稿看 published_at；cache 60s 存純陣列
+Route::view('/leaderboard', 'pages.leaderboard')->name('leaderboard');
+
+// 候選復設點 + 撤除風險 + 有袋沒桶（需求分數由 demand:recompute 落地到 demand_cells）
+Route::get('/candidates', function (DemandScoreService $demand, BagBoxGapService $gaps) {
+    return view('pages.candidates', [
+        'candidates' => $demand->topCandidates(),
+        'dumping' => $demand->dumpingRisk(),
+        'gaps' => $gaps->gaps(),
+        'computedAt' => DemandCell::max('computed_at'),
+    ]);
+})->name('candidates');
+
+Route::get('/candidates/export', function (DemandScoreService $demand) {
+    $rows = $demand->topCandidates(200);
+    $headers = [
+        'Content-Type' => 'text/csv; charset=UTF-8',
+        'Content-Disposition' => 'attachment; filename="petmin_候選復設點_'.now()->format('Ymd_His').'.csv"',
+    ];
+
+    return response()->stream(function () use ($rows) {
+        $h = fopen('php://output', 'w');
+        fwrite($h, "\xEF\xBB\xBF");
+        fputcsv($h, ['排名', '網格', '緯度', '經度', '需求分數', '撤除風險分數', '證據明細']);
+        foreach ($rows as $i => $cell) {
+            $evidence = collect($cell->breakdown)->map(fn ($b, $k) => "{$k}×{$b['count']}".(! empty($b['samples']) ? '（'.implode('、', $b['samples']).'）' : ''))->implode('；');
+            fputcsv($h, [$i + 1, $cell->geohash6, $cell->latitude, $cell->longitude, $cell->score, $cell->dumping_score, $evidence]);
+        }
+        fclose($h);
+    }, 200, $headers);
+})->name('candidates.export');
+
+// 最新消息：上稿看 published_at；cache 60s 存純陣列
 Route::get('/news', function () {
-    $items = Cache::remember('hazdar:news-page:'.app()->getLocale(), 60, fn () => Announcement::published()
+    $items = Cache::remember('petmin:news-page:'.app()->getLocale(), 60, fn () => Announcement::published()
         ->orderByDesc('is_pinned')
         ->orderByDesc('published_at')
         ->get()
@@ -44,35 +76,26 @@ Route::get('/news', function () {
     return view('pages.news', ['items' => $items]);
 })->name('news');
 
-// 交通與清運資訊（spec §11.5）：view 內用 App\Support\CityInfo 靜態查詢，不需 controller
-Route::view('/info', 'pages.city-info')->name('city-info');
-
-// 圖卡專區改為首頁輪播 banner（spec §12.5）；舊網址 302 轉向
-Route::redirect('/cards', '/', 302)->name('cards');
-
-// 點位 API（server-side bbox query + geohash 聚合，spec §7.2）
+// 點位 API（server-side bbox query + geohash 聚合）
 Route::get('/api/map/reports', MapPointsController::class)->name('api.map.reports');
+Route::get('/api/map/bins', [BinsController::class, 'index'])->name('api.map.bins');
+Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api.map.bins.nearby');
 
-// 收容所點位（開設中的優先呈現；資料由 data.taipei 同步 + 後台維護）
-Route::get('/api/map/shelters', function () {
-    return response()->json(Cache::remember('map.shelters', 60, fn () => Shelter::query()
-        ->mappable()
-        ->orderByDesc('is_open')
-        ->get(['id', 'name', 'latitude', 'longitude', 'address', 'capacity', 'is_open'])
-        ->map(fn (Shelter $s) => [
-            'id' => $s->id,
-            'name' => $s->name,
-            'lat' => (float) $s->latitude,
-            'lng' => (float) $s->longitude,
-            'address' => $s->address,
-            'capacity' => $s->capacity,
-            'open' => $s->is_open,
-        ])->all()));
-})->name('api.map.shelters');
+// 需求熱力圖：geohash6 格中心 + 分數（leaflet.heat 直接吃）
+Route::get('/api/map/demand', function () {
+    return response()->json(Cache::remember('map.demand', 300, fn () => DemandCell::query()
+        ->where('score', '>', 0)
+        ->get(['latitude', 'longitude', 'score', 'geohash6'])
+        ->map(fn (DemandCell $c) => [(float) $c->latitude, (float) $c->longitude, (float) $c->score, $c->geohash6])
+        ->all()));
+})->name('api.map.demand');
+
+// 有袋沒桶圖層
+Route::get('/api/map/gaps', fn (BagBoxGapService $gaps) => response()->json($gaps->gaps()->all()))->name('api.map.gaps');
 
 Route::get('/reports/export', function () {
     $reports = Report::query()
-        ->with('user:id,name')
+        ->with(['user:id,name', 'trashBin:id,address'])
         ->whereNotIn('status', [Report::STATUS_REJECTED])
         ->latest()
         ->get();
@@ -83,7 +106,7 @@ Route::get('/reports/export', function () {
         Report::STATUS_REJECTED => '已退件',
     ];
 
-    $filename = '災情回報清單_'.now()->format('Ymd_His').'.csv';
+    $filename = '垃圾桶回報清單_'.now()->format('Ymd_His').'.csv';
 
     $headers = [
         'Content-Type' => 'text/csv; charset=UTF-8',
@@ -93,12 +116,13 @@ Route::get('/reports/export', function () {
     $callback = function () use ($reports, $statusLabels) {
         $handle = fopen('php://output', 'w');
         fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-        fputcsv($handle, ['回報時間', '分類', '補充數值', '地點', '審核狀態', '核實層級', '已通報', '已排除', '說明', '照片網址', '緯度', '經度']);
+        fputcsv($handle, ['回報時間', '分類', '對應桶位', '補充數值', '地點', '審核狀態', '核實層級', '已通報', '已處理', '說明', '照片網址', '緯度', '經度']);
 
         foreach ($reports as $report) {
             fputcsv($handle, [
                 $report->created_at->format('Y-m-d H:i'),
                 $report->categoryLabel(),
+                $report->trashBin?->address ?? '',
                 $report->extra_value !== null ? (string) $report->extra_value : '',
                 $report->address ?: '',
                 $statusLabels[$report->status] ?? $report->status,
@@ -128,8 +152,11 @@ Route::middleware('auth')->group(function () {
         ->name('admin.gmail.callback');
 });
 
-Route::get('/transparency', function () {
-    $stats = Cache::remember('transparency.stats', 3600, function () {
+/*
+ * 統計頁：PostgreSQL 專屬 SQL（DATE_TRUNC / ::date），SQLite 測試環境不冒煙，線上另行驗證。
+ */
+$transparencyStats = function (): array {
+    return Cache::remember('transparency.stats', 3600, function () {
         $rejectionBreakdown = DB::table('reports')
             ->where('status', 'rejected')
             ->whereNotNull('rejection_reason')
@@ -137,9 +164,8 @@ Route::get('/transparency', function () {
             ->groupBy('rejection_reason')
             ->orderByDesc('c')
             ->pluck('c', 'rejection_reason')
-            ->all(); // plain array to avoid Collection serialization issues
+            ->all();
 
-        // 週統計：每週 ISO 起始日 + 通報總數（created_at 已是台北時間，直接使用）
         $weekly = DB::table('reports')
             ->selectRaw("TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') AS label, COUNT(*) AS total")
             ->groupByRaw("DATE_TRUNC('week', created_at)")
@@ -149,7 +175,6 @@ Route::get('/transparency', function () {
             ->values()
             ->all();
 
-        // 日統計：近 90 天每日通報數
         $daily = DB::table('reports')
             ->selectRaw("TO_CHAR(created_at::date, 'YYYY-MM-DD') AS label, COUNT(*) AS total")
             ->where('created_at', '>=', now()->subDays(90))
@@ -160,7 +185,6 @@ Route::get('/transparency', function () {
             ->values()
             ->all();
 
-        // 地圖散點資料：epoch 需告知 PG「此值是台北時間」才能取到正確 UTC epoch
         $mapPoints = DB::table('reports')
             ->whereIn('status', Report::VISIBLE_STATUSES)
             ->selectRaw("latitude::float AS lat, longitude::float AS lng, category, EXTRACT(EPOCH FROM (created_at AT TIME ZONE 'Asia/Taipei'))::int AS ts")
@@ -186,87 +210,12 @@ Route::get('/transparency', function () {
             'map_points' => $mapPoints,
         ];
     });
+};
 
-    return view('pages.transparency', compact('stats'));
-})->name('transparency');
-
-Route::get('/stats', function () {
-    // 共用 transparency 的快取 key，不重複定義 closure
-    $stats = Cache::remember('transparency.stats', 3600, function () {
-        $rejectionBreakdown = DB::table('reports')
-            ->where('status', 'rejected')
-            ->whereNotNull('rejection_reason')
-            ->selectRaw('rejection_reason, COUNT(*) as c')
-            ->groupBy('rejection_reason')
-            ->orderByDesc('c')
-            ->pluck('c', 'rejection_reason')
-            ->all();
-
-        // created_at 已是台北本地時間，直接使用，無需轉換時區
-        $weekly = DB::table('reports')
-            ->selectRaw("TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') AS label, COUNT(*) AS total")
-            ->groupByRaw("DATE_TRUNC('week', created_at)")
-            ->orderByRaw("DATE_TRUNC('week', created_at)")
-            ->get()
-            ->map(fn ($r) => ['label' => $r->label, 'total' => (int) $r->total])
-            ->values()
-            ->all();
-
-        $daily = DB::table('reports')
-            ->selectRaw("TO_CHAR(created_at::date, 'YYYY-MM-DD') AS label, COUNT(*) AS total")
-            ->where('created_at', '>=', now()->subDays(90))
-            ->groupByRaw('created_at::date')
-            ->orderByRaw('created_at::date')
-            ->get()
-            ->map(fn ($r) => ['label' => $r->label, 'total' => (int) $r->total])
-            ->values()
-            ->all();
-
-        // epoch 需告知 PG「此值是台北時間」才能取到正確 UTC epoch
-        $mapPoints = DB::table('reports')
-            ->whereIn('status', Report::VISIBLE_STATUSES)
-            ->selectRaw("latitude::float AS lat, longitude::float AS lng, category, EXTRACT(EPOCH FROM (created_at AT TIME ZONE 'Asia/Taipei'))::int AS ts")
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn ($r) => [(float) $r->lat, (float) $r->lng, $r->category, (int) $r->ts])
-            ->values()
-            ->all();
-
-        return [
-            'total' => Report::count(),
-            'approved' => Report::where('status', Report::STATUS_APPROVED)->count(),
-            'pending' => Report::where('status', Report::STATUS_PENDING)->count(),
-            'rejected' => Report::where('status', Report::STATUS_REJECTED)->count(),
-            'ai_auto' => (int) ($rejectionBreakdown['ai_auto'] ?? 0),
-            'avg_review_hrs' => (float) (DB::table('reports')
-                ->whereNotNull('first_reviewed_at')
-                ->selectRaw('AVG(EXTRACT(EPOCH FROM (first_reviewed_at - created_at))/3600) AS avg_hrs')
-                ->value('avg_hrs') ?? 0),
-            'rejection_breakdown' => $rejectionBreakdown,
-            'weekly' => $weekly,
-            'daily' => $daily,
-            'map_points' => $mapPoints,
-        ];
-    });
-
-    return view('pages.stats', compact('stats'));
-})->name('stats');
+Route::get('/transparency', fn () => view('pages.transparency', ['stats' => $transparencyStats()]))->name('transparency');
+Route::get('/stats', fn () => view('pages.stats', ['stats' => $transparencyStats()]))->name('stats');
 
 Route::get('/contact', fn () => view('pages.contact'))->name('contact');
-
-// EOC dashboard 已整合進首頁（spec §11.1）；舊網址 302 轉向
-Route::redirect('/dashboard', '/', 302)->name('dashboard');
-
-// 雷達回波 proxy（scheduled fetch 落地的圖檔；前端 ImageOverlay 讀本站，spec §5）
-Route::get('/api/radar-echo', function () {
-    $path = Storage::disk('public')->path('radar/latest.png');
-    abort_unless(file_exists($path), 404);
-
-    return response()->file($path, [
-        'Content-Type' => 'image/png',
-        'Cache-Control' => 'public, max-age=60',
-    ]);
-})->name('api.radar-echo');
 
 Route::post('/logout', function () {
     auth()->logout();

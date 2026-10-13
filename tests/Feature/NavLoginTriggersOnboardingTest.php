@@ -7,8 +7,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * 共用 head nav 的「登入」鈕（PM 回饋）：原本直連 Google OAuth，會跳過 LINE/Google
- * 選擇與個資蒐集告知聲明（spec §12.16）。改為跟「立即回報」guest 流程一致，
+ * 共用 head nav 的「登入」鈕：原本直連 Google OAuth，會跳過 LINE/Google
+ * 選擇與個資蒐集告知聲明。改為跟「立即回報」guest 流程一致，
  * 觸發 open-auth-onboarding 開啟登入引導 modal；modal 需在該頁面確實掛載才吃得到事件。
  */
 class NavLoginTriggersOnboardingTest extends TestCase
@@ -24,7 +24,8 @@ class NavLoginTriggersOnboardingTest extends TestCase
             ['/reports'],
             ['/news'],
             ['/contact'],
-            ['/info'], // city-info：先前未掛載 auth-onboarding 的頁面，本次一併補上
+            ['/candidates'],
+            ['/leaderboard'],
         ];
     }
 

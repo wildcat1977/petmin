@@ -71,6 +71,10 @@ new class extends Component
                     {{ __('已回報 :count 筆', ['count' => Auth::user()->reports()->count()]) }}
                     ／{{ __('核准 :count 筆', ['count' => Auth::user()->reports()->where('status', 'approved')->count()]) }}
                 </p>
+                <p class="mt-1 text-sm font-semibold text-amber-400">
+                    🐾 {{ Auth::user()->points }} {{ __('點') }}
+                    @if (Auth::user()->streak_days > 1)<span class="ml-2 text-orange-300">🔥 {{ __('連續 :d 天', ['d' => Auth::user()->streak_days]) }}</span>@endif
+                </p>
             </div>
         </div>
 
@@ -104,7 +108,7 @@ new class extends Component
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-sm font-medium text-slate-200">{{ __('隱私模式') }}</p>
-                    <p class="mt-0.5 text-xs text-slate-500">{{ __('開啟後，公開頁面將以「匿名市民」顯示，隱藏你的名稱與頭像') }}</p>
+                    <p class="mt-0.5 text-xs text-slate-500">{{ __('開啟後，皮克敏榜將以「匿名皮克敏」顯示，隱藏你的名稱與頭像') }}</p>
                 </div>
                 <button wire:click="togglePrivate"
                         type="button"
@@ -127,7 +131,7 @@ new class extends Component
 
     @if ($reports->isEmpty())
         <div class="mt-4 rounded-2xl bg-white/5 p-8 text-center text-slate-500">
-            {{ __('還沒有任何回報，發現災情時歡迎隨手回報！') }}
+            {{ __('還沒有任何回報，遛狗經過垃圾桶時順手回報一筆吧！') }}
         </div>
     @else
         <div class="mt-4 flex flex-col gap-3">

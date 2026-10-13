@@ -123,12 +123,12 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
         },
         _initMap() {
             if (this._map) { this._map.remove(); this._map = null; }
-            const map = L.map(this.$refs.modalMapEl, { zoomControl: true, attributionControl: true, maxZoom: window.__HAZDAR_BASEMAP__?.maxZoom() ?? 19 })
+            const map = L.map(this.$refs.modalMapEl, { zoomControl: true, attributionControl: true, maxZoom: window.__PETMIN_BASEMAP__?.maxZoom() ?? 19 })
                 .setView([this.mapLat, this.mapLng], 17);
             // 與主地圖共用同一套自架底圖（resources/js/basemap.js）；彈窗固定深色底，用 dark 風格。
             // 沒有 WebGL 時回傳 null，點位照常
             try {
-                window.__HAZDAR_BASEMAP__?.create('dark')?.addTo(map);
+                window.__PETMIN_BASEMAP__?.create('dark')?.addTo(map);
             } catch (error) {
                 console.error('basemap failed', error);
             }
@@ -251,7 +251,7 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
             <thead class="border-b border-white/10 bg-white/5 text-left text-xs text-slate-400">
                 <tr>
                     <th class="w-28 px-4 py-3 font-medium">{{ __('通報時間') }}</th>
-                    <th class="w-20 px-4 py-3 font-medium">{{ __('災情分類') }}</th>
+                    <th class="w-20 px-4 py-3 font-medium">{{ __('分類') }}</th>
                     <th class="w-32 px-4 py-3 font-medium">{{ __('地點') }}</th>
                     <th class="w-24 px-4 py-3 font-medium">{{ __('核實') }}</th>
                     <th class="w-16 px-4 py-3 font-medium">{{ __('照片') }}</th>
@@ -405,7 +405,7 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
     <div x-show="tab==='pending'">
         <div class="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
             <p class="text-sm font-semibold text-amber-300">⏳ {{ __('待審核通報') }}</p>
-            <p class="mt-1 text-xs leading-relaxed text-amber-200/70">{{ __('以下回報尚未經管理員審核，資訊未經核實，僅供參考，請勿視為已確認的災情地點。') }}</p>
+            <p class="mt-1 text-xs leading-relaxed text-amber-200/70">{{ __('以下回報尚未經管理員審核，資訊未經核實，僅供參考。') }}</p>
         </div>
 
         @if($pendingReports->isEmpty())
@@ -418,7 +418,7 @@ $categoryFallback = fn ($category) => $categoryConfig[$category]
                 <thead class="border-b border-white/10 bg-white/5 text-left text-xs text-slate-400">
                     <tr>
                         <th class="w-28 px-4 py-3 font-medium">{{ __('通報時間') }}</th>
-                        <th class="w-20 px-4 py-3 font-medium">{{ __('災情分類') }}</th>
+                        <th class="w-20 px-4 py-3 font-medium">{{ __('分類') }}</th>
                         <th class="w-32 px-4 py-3 font-medium">{{ __('地點') }}</th>
                         <th class="w-16 px-4 py-3 font-medium">{{ __('照片') }}</th>
                         <th class="px-4 py-3 font-medium">{{ __('說明') }}</th>

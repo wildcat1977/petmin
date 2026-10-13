@@ -8,8 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * 首頁 chrome（spec §12.1/12.2/12.4/12.6）：配色 #002923、banner、
- * 頂帶 nav、底帶跑馬燈與 footer 分類新聞篇數。
+ * 首頁 chrome：配色、logo、頂帶 nav、跑馬燈與 footer 分類新聞篇數。
  */
 class HomeChromeTest extends TestCase
 {
@@ -19,23 +18,23 @@ class HomeChromeTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('#002923', false)
+            ->assertSee('#1c1917', false)
             ->assertDontSee('bg-[#0d1117]', false);
     }
 
-    public function test_home_shows_banner_image(): void
+    public function test_home_shows_logo(): void
     {
-        $this->get('/')->assertOk()->assertSee('Hazdar-Banner.png', false);
+        $this->get('/')->assertOk()->assertSee('Petmin', false)->assertSee('找回消失的垃圾桶');
     }
 
     /**
-     * v0.3 五次回饋 item 4：底色 / 卡片色改由 config('hazdar.theme') 注入 CSS 變數
+     * 底色 / 卡片色由 config('petmin.theme') 注入 CSS 變數
      * （--color-radar-bg / --color-radar-card），改 env 即可全站換色不必改各處 blade。
      * 驗證 config 值確實輸出到 layout <head> 的覆蓋 style。
      */
     public function test_theme_colors_are_config_driven(): void
     {
-        config(['hazdar.theme.bg' => '#123456', 'hazdar.theme.card' => '#abcdef']);
+        config(['petmin.theme.bg' => '#123456', 'petmin.theme.card' => '#abcdef']);
 
         $this->get('/')
             ->assertOk()
@@ -65,22 +64,21 @@ class HomeChromeTest extends TestCase
     public function test_footer_shows_published_news_counts(): void
     {
         // 注意：announcements.content 為 NOT NULL，create 必帶 content（見 NewsPageTest）
-        Announcement::create(['title' => '停課通知', 'content' => 'x', 'category' => 'school_closure', 'is_active' => true, 'published_at' => now()->subHour()]);
-        Announcement::create(['title' => '居家提醒', 'content' => 'x', 'category' => 'home_safety', 'is_active' => true, 'published_at' => now()->subHour()]);
+        Announcement::create(['title' => '黑客松報名', 'content' => 'x', 'category' => 'event', 'is_active' => true, 'published_at' => now()->subHour()]);
+        Announcement::create(['title' => '環保局回覆', 'content' => 'x', 'category' => 'gov_press', 'is_active' => true, 'published_at' => now()->subHour()]);
         // 未設定 published_at：不列入 footer 計數
-        Announcement::create(['title' => '草稿災情', 'content' => 'x', 'category' => 'incident', 'is_active' => true]);
+        Announcement::create(['title' => '草稿', 'content' => 'x', 'category' => 'policy', 'is_active' => true]);
 
         $this->withHeader('Accept-Language', 'zh-TW')->get('/')
             ->assertOk()
-            ->assertSee('停班停課')
-            ->assertSee('居家災防')
-            ->assertDontSee('災情通報')  // 該分類無已發佈 → 不列
+            ->assertSee('活動')
+            ->assertSee('環保局公告')
+            ->assertDontSee('政策進度')  // 該分類無已發佈 → 不列
             ->assertSee(route('news'), false);
     }
 
     /**
-     * v0.3 二次回饋 item 6：首頁頂帶與次要頁面共用同一份選單連結（partials.nav-page-links），
-     * 不再只有 news——舊版本刻意隱藏這些連結的行為已被此需求取代。
+     * 首頁頂帶與次要頁面共用同一份選單連結（partials.nav-page-links）。
      */
     public function test_top_nav_shares_page_links_with_secondary_pages(): void
     {
@@ -89,12 +87,12 @@ class HomeChromeTest extends TestCase
             ->assertSee(route('reports'), false)
             ->assertDontSee(route('transparency'), false)
             ->assertDontSee(route('stats'), false)
-            ->assertSee(route('city-info'), false);
+            ->assertSee(route('candidates'), false)
+            ->assertSee(route('leaderboard'), false);
     }
 
     /**
-     * v0.3 三次回饋：手機寬度塞不下完整 nav（尤其登入後 我的回報/頭像/登出 一起擠進來會
-     * 橫向溢出），改漢堡收合面板；桌機 nav（hidden lg:flex）維持不受影響，兩者各自
+     * 手機寬度塞不下完整 nav，改漢堡收合面板；桌機 nav（hidden lg:flex）維持不受影響，兩者各自
      * 獨立持有一份連結——用出現次數＝2 佐證漢堡面板不是空殼，桌機版也還在。
      */
     public function test_mobile_has_hamburger_menu_with_full_link_set(): void
@@ -108,8 +106,7 @@ class HomeChromeTest extends TestCase
             ->assertSee('mobileNavOpen', false)
             ->getContent();
 
-        // route('news') 另在 footer-links 出現一次（3 次）；route('city-info') 另在首頁
-        // card-info 卡片（桌機+手機各一份）出現，也不是乾淨的 2 次錨點。改用只存在於
+        // route('news') 另在 footer-links 出現一次（3 次）。改用只存在於
         // nav-page-links + 手機漢堡面板兩處、別處都不會用到的 route('reports') 驗證。
         $this->assertSame(2, substr_count($html, route('reports')), '桌機 nav-page-links + 手機漢堡面板應各出現一次');
         $this->assertSame(2, substr_count($html, '聯絡管理員'));
@@ -117,18 +114,16 @@ class HomeChromeTest extends TestCase
     }
 
     /**
-     * v0.3 三次回饋：次要頁面（profile/reports/news/...）先前是獨立一份「◎ Hazdar」
-     * 文字版 header，與首頁不一致；改用 partials.site-header 單一來源，兩邊都應顯示
-     * banner 圖與跑馬燈容器（#site-ticker 由獨立 site-ticker 元件供應，不必掛整個地圖）。
+     * 次要頁面（profile/reports/news/...）與首頁共用 partials.site-header 單一來源，
+     * 兩邊都應顯示 logo 與跑馬燈容器（#site-ticker 由獨立 site-ticker 元件供應，不必掛整個地圖）。
      */
-    public function test_secondary_pages_share_home_header_with_banner_and_ticker(): void
+    public function test_secondary_pages_share_home_header_with_logo_and_ticker(): void
     {
         foreach (['/news', '/contact'] as $path) {
             $this->withHeader('Accept-Language', 'zh-TW')->get($path)
                 ->assertOk()
-                ->assertSee('Hazdar-Banner.png', false)
-                ->assertSee('id="site-ticker"', false)
-                ->assertDontSee('◎</span> Hazdar', false);
+                ->assertSee('找回消失的垃圾桶')
+                ->assertSee('id="site-ticker"', false);
         }
     }
 }

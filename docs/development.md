@@ -19,11 +19,12 @@ composer dev
 php artisan serve              # 8000 port
 npm run dev                    # Vite
 php artisan horizon            # Production-like queue dashboard
-php artisan migrate:fresh --seed  # 重建 + 示範災情資料（僅 local 產生）
+php artisan migrate:fresh --seed  # 重建 + open data 匯入 + 示範回報（僅 local 產生）
 ```
 
-`DemoDisasterSeeder` 會在台北市 12 行政區灑約 190 筆各類回報，並刻意製造兩個佐證群
-（同網格 3 個不同帳號 → 自動升級 corroborated）與一筆官方核實，供驗證地圖視覺分層。
+`DemoSeeder` 會先跑所有 open data 匯入指令（清潔箱、狗便袋箱、公車站牌、狗活動區），
+再灑約 100 筆掛在桶上的回報、「這裡需要桶」回報、一個佐證群（同桶 2 帳號 → corroborated），
+最後 `demand:recompute` 產生需求分數。
 > 注意：`DatabaseSeeder` **不可**用 `WithoutModelEvents`——`geohash7` 推導與佐證判定都掛在
 > Report model events 上，關掉就不會觸發。跑 seed 後記得讓 queue worker 消化佐證 job。
 
@@ -64,9 +65,10 @@ php artisan test --compact tests/Feature/CorroborationTest.php
 | `tests/Unit/GeohashTest.php` | geohash 編碼參考向量、網格覆蓋 |
 | `tests/Feature/CorroborationTest.php` | 佐證升級（3 帳號/6h）、同帳號洗版不算、窗外不算、official 不被觸碰 |
 | `tests/Feature/Api/MapPointsApiTest.php` | bbox 過濾、高低 zoom 模式、照片僅審核後公開、筆數上限 |
-| `tests/Feature/ReportSubmissionTest.php` | 寫入即回應、cooldown/時限、淹水深度僅 flood |
+| `tests/Feature/ReportSubmissionTest.php` | 寫入即回應、cooldown/時限、滿溢程度僅 full |
 | `tests/Feature/ModerateReportImageJobTest.php` | 明確違規退件、不吻合分類留人工、API fail-open |
-| `tests/Feature/Commands/*` | CWA/NCDR 拉取、健康狀態燈、失敗不默默跳過 |
+| `tests/Feature/Commands/*` | open data 匯入（冪等、壞列跳過、狀態不覆寫）、OD 權重、失敗不默默跳過 |
+| `tests/Feature/Services/*` | 需求分數權重／上限／扣分、有袋沒桶 |
 | `tests/Feature/EocDashboardTest.php` | 統計定義、外部中斷降級面板、footer 真實健康 |
 
 ## 程式碼風格
@@ -92,7 +94,7 @@ npm run dev -- --host
 各 fetch command 可獨立執行觀察落地結果與健康燈：
 
 ```bash
-php artisan hazdar:fetch-ncdr-alerts   # 落地 external_alerts，印出 new/total
+php artisan petmin:fetch-ncdr-alerts   # 落地 external_alerts，印出 new/total
 php artisan tinker --execute 'print_r(app(App\Services\DataSourceHealth::class)->all());'
 ```
 
@@ -124,7 +126,7 @@ php artisan tinker --execute 'print_r(app(App\Services\DataSourceHealth::class)-
   CDP（`fetch http://127.0.0.1:9222/json/new`（**PUT**）拿分頁 → `Page.captureScreenshot`
   截圖 / `Runtime.evaluate` 跑 `document.elementFromPoint()` 做精確斷言），不經 MCP 也能截圖除錯。
 - 導頁目標用**跑得起來的網址**：本地 `php artisan serve`（見上方 `get-absolute-url` 拿正確
-  scheme/port），或線上 `https://hazdar.puma.taipei`。多數公開頁免登入即可重現。
+  scheme/port），或線上 `https://petmin.puma.taipei`。多數公開頁免登入即可重現。
 
 ### 核心工具序列
 
@@ -144,7 +146,7 @@ php artisan tinker --execute 'print_r(app(App\Services\DataSourceHealth::class)-
 - **重現「手機高度不足、回報表單無法上下滑」**：`emulate` 成矮視窗（如 iPhone SE 375×667）
   → `click` 開回報表單 → `take_screenshot` 看 modal 是否被裁切、能否滾動（對照
   `max-h-[90dvh] overflow-y-auto` 是否生效）。
-- **驗證主題配色改動（`HAZDAR_COLOR_BG/CARD`）**：`navigate_page` →
+- **驗證主題配色改動（`PETMIN_COLOR_BG/CARD`）**：`navigate_page` →
   `evaluate_script` 讀 `getComputedStyle(document.body).backgroundColor` 或
   `getComputedStyle(document.documentElement).getPropertyValue('--color-radar-bg')`
   確認注入值；再 `take_screenshot` 目視。（空白/透明底通常是 `.env` 的 `#` 值沒加引號被

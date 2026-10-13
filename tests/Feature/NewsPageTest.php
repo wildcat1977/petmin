@@ -17,15 +17,15 @@ class NewsPageTest extends TestCase
     public function test_published_items_render_in_pinned_then_date_order(): void
     {
         Announcement::create(['title' => '較舊消息', 'content' => 'x', 'is_active' => false, 'category' => 'gov_press', 'published_at' => now()->subDay()]);
-        Announcement::create(['title' => '置頂消息', 'content' => 'x', 'is_active' => false, 'category' => 'incident', 'is_pinned' => true, 'published_at' => now()->subDays(3)]);
-        Announcement::create(['title' => '最新消息一則', 'content' => 'x', 'is_active' => false, 'category' => 'school_closure', 'published_at' => now()->subHour()]);
+        Announcement::create(['title' => '置頂消息', 'content' => 'x', 'is_active' => false, 'category' => 'event', 'is_pinned' => true, 'published_at' => now()->subDays(3)]);
+        Announcement::create(['title' => '最新消息一則', 'content' => 'x', 'is_active' => false, 'category' => 'policy', 'published_at' => now()->subHour()]);
 
         $html = $this->withHeader('Accept-Language', 'zh-TW')->get('/news')->assertOk()->getContent();
 
         $this->assertTrue(strpos($html, '置頂消息') < strpos($html, '最新消息一則'));
         $this->assertTrue(strpos($html, '最新消息一則') < strpos($html, '較舊消息'));
-        $this->assertStringContainsString('災情通報', $html);   // 分類徽章
-        $this->assertStringContainsString('停班停課', $html);
+        $this->assertStringContainsString('活動', $html);   // 分類徽章
+        $this->assertStringContainsString('政策進度', $html);
     }
 
     public function test_unpublished_and_future_items_are_hidden(): void
@@ -59,7 +59,7 @@ class NewsPageTest extends TestCase
     public function test_body_html_is_sanitized_against_script_injection(): void
     {
         Announcement::create([
-            'title' => '注入測試', 'content' => 'x', 'is_active' => false, 'category' => 'incident',
+            'title' => '注入測試', 'content' => 'x', 'is_active' => false, 'category' => 'event',
             'body' => '<p>安全內容</p><script>alert(1)</script>',
             'published_at' => now(),
         ]);

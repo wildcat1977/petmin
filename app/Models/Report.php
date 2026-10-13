@@ -3,36 +3,48 @@
 namespace App\Models;
 
 use App\Jobs\EvaluateCorroboration;
+use App\Observers\ReportObserver;
 use App\Support\Geohash;
 use Database\Factories\ReportFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 
+#[ObservedBy(ReportObserver::class)]
 class Report extends Model
 {
     /** @use HasFactory<ReportFactory> */
     use HasFactory;
 
-    /** 內容適切性審核狀態（照片/內容是否可公開；與災情核實正交） */
+    /** 內容適切性審核狀態（照片/內容是否可公開；與佐證層級正交） */
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_APPROVED = 'approved';
 
     public const STATUS_REJECTED = 'rejected';
 
-    /** 災情分類 */
-    public const CATEGORY_FLOOD = 'flood';                          // 淹水
+    /**
+     * 程式有依賴的分類 slug（DemandScoreService / ReportObserver）。
+     * 其餘分類後台可自由增減。
+     */
+    public const CATEGORY_NEED_BIN = 'need_bin';      // 這裡需要垃圾桶
 
-    public const CATEGORY_ROAD_BLOCKED = 'road_blocked';            // 道路中斷
+    public const CATEGORY_FULL = 'full';              // 桶滿了
 
-    public const CATEGORY_POWER_OUTAGE = 'power_outage';            // 停電
+    public const CATEGORY_MISSING = 'missing';        // 桶消失了
 
-    public const CATEGORY_STRUCTURAL_DAMAGE = 'structural_damage';  // 結構受損
+    public const CATEGORY_EXISTS = 'exists';          // 桶還在
 
-    /** 災情核實層級（由佐證機制或官方人工升級） */
+    public const CATEGORY_BAG_EMPTY = 'bag_empty';    // 狗便袋箱沒袋了
+
+    public const CATEGORY_DUMPING = 'dumping';        // 家戶垃圾亂丟
+
+    public const CATEGORY_HAZARD = 'hazard';          // 毒餌／危險物
+
+    /** 佐證層級（由佐證機制或官方人工升級） */
     public const VERIFICATION_UNVERIFIED = 'unverified';
 
     public const VERIFICATION_CORROBORATED = 'corroborated';
@@ -61,17 +73,14 @@ class Report extends Model
         'ai_auto' => 'AI 自動審核攔截（圖片不符回報規範）',
         'duplicate' => '重複回報（鄰近已有相同回報）',
         'outdated' => '資訊過時（時間過長）',
-        'invalid_image' => '照片不符（無法對應所選災情分類）',
+        'invalid_image' => '照片不符（看不出垃圾桶或所選狀況）',
         'wrong_location' => '位置異常（座標不合理）',
         'insufficient' => '資料過少無法判讀，煩請補充地點資訊或照片後再次回報',
         'spam' => '不實／惡意回報',
         'other' => '其他',
     ];
 
-    /**
-     * 地圖上可顯示的狀態。災時「可能有事」的資訊價值大於等核實，
-     * 因此 pending 也上圖（unverified 視覺層級），僅內容審核退件隱藏。
-     */
+    /** 地圖上可顯示的狀態：pending 也上圖（未核實視覺層級），僅內容審核退件隱藏。 */
     public const VISIBLE_STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_APPROVED,
@@ -80,6 +89,7 @@ class Report extends Model
     protected $fillable = [
         'user_id',
         'category',
+        'trash_bin_id',
         'extra_value',
         'latitude',
         'longitude',
@@ -114,6 +124,11 @@ class Report extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function trashBin(): BelongsTo
+    {
+        return $this->belongsTo(TrashBin::class);
+    }
+
     public function categoryModel(): BelongsTo
     {
         return $this->belongsTo(ReportCategory::class, 'category', 'slug');
@@ -142,7 +157,7 @@ class Report extends Model
         // 寫入後觸發佐證判定（deterministic SQL，queue 執行不阻塞寫入路徑）
         static::created(function (Report $report) {
             if ($report->geohash7 && in_array($report->status, self::VISIBLE_STATUSES, true)) {
-                EvaluateCorroboration::dispatch($report->geohash7, $report->category)->afterCommit();
+                EvaluateCorroboration::dispatch($report->geohash7, $report->category, $report->trash_bin_id)->afterCommit();
             }
         });
 
@@ -173,7 +188,7 @@ class Report extends Model
         return $query->whereIn('status', self::VISIBLE_STATUSES);
     }
 
-    /** 官方尚未標記排除的災情 */
+    /** 尚未標記已處理 */
     public function scopeUnresolved($query)
     {
         return $query->whereNull('resolved_at');
@@ -184,7 +199,7 @@ class Report extends Model
         return $query->where('category', $category);
     }
 
-    /** 照片僅在內容審核通過後公開（spec §6.1-4） */
+    /** 照片僅在內容審核通過後公開 */
     public function publicImageUrl(): ?string
     {
         if ($this->image_path && $this->status === self::STATUS_APPROVED) {

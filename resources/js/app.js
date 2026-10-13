@@ -87,9 +87,9 @@ window.onPhotoChange = async function (input, wire) {
     wire.setLocationFromExif(loc.lat, loc.lng);
 };
 
-const MAP_THEME_KEY = 'hazdar_map_theme';
+const MAP_THEME_KEY = 'petmin_map_theme';
 
-// ── 災情分類視覺：由後台 report_categories 驅動（spec §11.7）──
+// ── 回報分類視覺：由後台 report_categories 驅動 ──
 const CATEGORY_META = {};
 {
     const el = document.getElementById('radar-map');
@@ -105,11 +105,10 @@ const VERIFICATION_LABEL = {
 };
 
 let radarMap = null;
-let reportsLayer = null;       // 目前顯示的點位/聚合圖層
-let sheltersLayer = null;      // 收容所圖層
-let radarEchoLayer = null;     // 雷達回波 ImageOverlay
-let radarEchoTimer = null;
-let floodLayer = null;         // 淹水潛勢 WMTS
+let reportsLayer = null;       // 目前顯示的回報點位/聚合圖層
+let binsLayer = null;          // 桶位圖層（清潔箱 / 狗便袋箱 / 消失的桶，bbox API）
+let gapsLayer = null;          // 有袋沒桶圖層（一次全撈）
+let demandLayer = null;        // 需求熱力圖（leaflet.heat，一次全撈）
 let currentTileLayer = null;   // 底圖圖層（MapLibre；隨主題換 style，沒有 WebGL 時為 null）
 // 含停用分類：停用只關新回報入口，既有點位不得消失（spec §11.7）
 let activeCategories = new Set(Object.keys(CATEGORY_META));
@@ -117,12 +116,17 @@ let showResolved = true;
 // 回報三態篩選（spec §12.8）：reported/notified 純前端過濾已下發點；
 // resolved 另由 showResolved 伺服端 gating（隱藏時根本不下發已排除點）。
 let activeStatuses = new Set(['reported', 'notified', 'resolved']);
-let sheltersVisible = false;
-let sheltersCache = null;      // 收容所清單快取（每次頁面生命週期抓一次）
+// 桶位圖層開關：kinds（清潔箱 / 狗便袋箱）+ 是否顯示消失的桶
+const binLayers = { bins: true, bag_boxes: true, missing_bins: false };
+let gapsVisible = false;
+let demandVisible = false;
+let gapsCache = null;
+let demandCache = null;
 let fetchController = null;
+let binsFetchController = null;
 let fetchTimer = null;
-// 讀 localStorage，預設 dark（災防情境的品牌主題）
-let currentTheme = (() => { try { return localStorage.getItem(MAP_THEME_KEY) || 'dark'; } catch (_) { return 'dark'; } })();
+// 讀 localStorage，預設 light（白天遛狗情境）
+let currentTheme = (() => { try { return localStorage.getItem(MAP_THEME_KEY) || 'light'; } catch (_) { return 'light'; } })();
 
 // ── 跑馬燈廣播（從 #radar-map data-ticker 讀取真實資料）───────
 // 跑馬燈（v0.3 三次回饋）：短訊息置中靜態顯示；量測到訊息寬度超出容器時，
@@ -204,7 +208,7 @@ function createPopupEl(p) {
     if (p.st) {
         const st = document.createElement('span');
         st.style.cssText = 'margin-left:6px;font-weight:600;font-size:11px;color:' + (p.st === 'resolved' ? '#94a3b8' : '#22d3ee');
-        st.textContent = p.st === 'resolved' ? (window.i18n?.stResolved ?? '✅ 已排除') : (window.i18n?.stNotified ?? '📣 已通報');
+        st.textContent = p.st === 'resolved' ? (window.i18n?.stResolved ?? '✅ 已處理') : (window.i18n?.stNotified ?? '📣 已通報');
         head.appendChild(st);
     }
     wrap.appendChild(head);
@@ -223,7 +227,7 @@ function createPopupEl(p) {
     return wrap;
 }
 
-// 分類色水滴 pin（spec §12.3；PM 回饋：20% 太淡改 60%）：中置分類 emoji；三態 reported=實色 / notified=60% / resolved=灰階
+// 分類色水滴 pin：中置分類 emoji；三態 reported=實色 / notified=60% / resolved=灰階
 function pinIcon(meta, status) {
     const color = meta?.color ?? '#94a3b8';
     const emoji = meta?.emoji ?? '📍';
@@ -320,104 +324,185 @@ async function fetchReports() {
     } catch (_) { /* abort 或離線：保留現有圖層 */ }
 }
 
-// ── 收容所圖層（綠）──────────────────────────────────────────
-async function renderShelters() {
+// ── 桶位圖層（bbox API；高 zoom 個別桶、低 zoom 聚合）──────────
+const BIN_STYLE = {
+    clean_box:   { color: '#22c55e', emoji: '🗑️', label: () => window.i18n?.binCleanBox ?? '行人專用清潔箱' },
+    dog_bag_box: { color: '#38bdf8', emoji: '🐕', label: () => window.i18n?.binBagBox ?? '狗便清潔袋箱' },
+};
+const BIN_STATUS_LABEL = {
+    active:     () => window.i18n?.binActive ?? '使用中',
+    missing:    () => window.i18n?.binMissing ?? '消失／已撤',
+    unverified: () => window.i18n?.binUnverified ?? '待驗證',
+};
+
+function binIcon(b) {
+    const style = BIN_STYLE[b.kind] ?? BIN_STYLE.clean_box;
+    const missing = b.status === 'missing';
+    const html =
+        `<div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;` +
+        `background:${missing ? '#a78bfa' : style.color};border:2px solid #fff;border-radius:8px;` +
+        `box-shadow:0 2px 6px rgba(0,0,0,0.4);opacity:${missing ? 0.75 : 1};${missing ? 'filter:grayscale(0.4)' : ''}">` +
+        `${missing ? '👻' : style.emoji}</div>`;
+    return L.divIcon({ html, className: '', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14] });
+}
+
+function createBinPopupEl(b) {
+    const style = BIN_STYLE[b.kind] ?? BIN_STYLE.clean_box;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'width:240px;font-size:13px;line-height:1.5;color:#1e293b';
+    const head = document.createElement('div');
+    head.style.cssText = 'font-weight:600;display:flex;align-items:center;gap:6px';
+    head.textContent = `${style.emoji} ${style.label()}`;
+    const st = document.createElement('span');
+    st.style.cssText = `margin-left:auto;font-size:11px;font-weight:500;color:${b.status === 'missing' ? '#7c3aed' : b.status === 'active' ? '#15803d' : '#b45309'}`;
+    st.textContent = BIN_STATUS_LABEL[b.status]?.() ?? b.status;
+    head.appendChild(st);
+    wrap.appendChild(head);
+    // 名稱/地址為 open data，用 textContent 組裝避免 XSS
+    const name = document.createElement('div');
+    name.textContent = [b.district, b.name].filter(Boolean).join(' ') + (b.n > 1 ? `（${b.n} 處）` : '');
+    wrap.appendChild(name);
+    const meta = document.createElement('small');
+    meta.style.color = '#64748b';
+    meta.textContent = (b.verified_at ? `${window.i18n?.binVerified ?? '最近驗證'} ${b.verified_at}` : (window.i18n?.binNeverVerified ?? '尚未有人驗證'))
+        + (b.reports ? `｜${b.reports} ${window.i18n?.binReports ?? '筆回報'}` : '');
+    wrap.appendChild(meta);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = window.i18n?.binReportThis ?? '🐾 回報這個桶';
+    btn.style.cssText = 'margin-top:8px;width:100%;padding:7px 10px;border:none;border-radius:8px;background:#f59e0b;color:#1c1917;font-weight:700;cursor:pointer';
+    btn.addEventListener('click', () => {
+        radarMap?.closePopup();
+        window.Livewire.dispatch('open-report-form', { binId: b.id });
+    });
+    wrap.appendChild(btn);
+    return wrap;
+}
+
+function renderBins(payload) {
     if (!radarMap) return;
-    if (!sheltersVisible) {
-        if (sheltersLayer) { radarMap.removeLayer(sheltersLayer); sheltersLayer = null; }
+    const layer = L.layerGroup();
+    if (payload.mode === 'points') {
+        (payload.points ?? []).forEach((b) => {
+            const marker = L.marker([b.lat, b.lng], { icon: binIcon(b) });
+            marker.bindPopup(createBinPopupEl(b), { maxWidth: 260 });
+            layer.addLayer(marker);
+        });
+    } else {
+        (payload.clusters ?? []).forEach((c) => {
+            const color = BIN_STYLE[c.kind]?.color ?? '#22c55e';
+            const size = c.count < 10 ? 30 : c.count < 100 ? 38 : 46;
+            const icon = L.divIcon({
+                html: `<div style="width:${size}px;height:${size}px;background:${color}b3;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;box-shadow:0 0 8px ${color}66">${c.count}</div>`,
+                className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+            });
+            const marker = L.marker([c.lat, c.lng], { icon });
+            marker.on('click', () => radarMap.setView([c.lat, c.lng], Math.min(radarMap.getZoom() + 2, 18)));
+            layer.addLayer(marker);
+        });
+    }
+    if (binsLayer) radarMap.removeLayer(binsLayer);
+    binsLayer = layer.addTo(radarMap);
+}
+
+async function fetchBins() {
+    if (!radarMap) return;
+    const el = document.getElementById('radar-map');
+    if (!el) return;
+
+    const kinds = [];
+    if (binLayers.bins) kinds.push('clean_box');
+    if (binLayers.bag_boxes) kinds.push('dog_bag_box');
+    if (kinds.length === 0) {
+        if (binsLayer) { radarMap.removeLayer(binsLayer); binsLayer = null; }
         return;
     }
+    const statuses = ['active', 'unverified'];
+    if (binLayers.missing_bins) statuses.push('missing');
 
-    if (!sheltersCache) {
-        const el = document.getElementById('radar-map');
-        try {
-            const res = await fetch(el.dataset.sheltersUrl, { headers: { Accept: 'application/json' } });
-            if (!res.ok) return;
-            sheltersCache = await res.json();
-        } catch (_) { return; }
-    }
-
-    const layer = L.layerGroup();
-    sheltersCache.forEach((s) => {
-        const icon = L.divIcon({
-            html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;background:#4ade80;border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(74,222,128,0.7);opacity:${s.open ? 1 : 0.6}">🏠</div>`,
-            className: '',
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
-        });
-        const marker = L.marker([s.lat, s.lng], { icon });
-        const openLabel = s.open
-            ? (window.i18n?.shelterOpen ?? '🟢 開設中')
-            : (window.i18n?.shelterClosed ?? '⚪ 未開設');
-        const capacity = s.capacity ? `｜${window.i18n?.shelterCapacity ?? '容量'} ${s.capacity}` : '';
-        // 名稱/地址為外部同步資料，用 textContent 組裝避免 XSS
-        const popup = document.createElement('div');
-        popup.style.cssText = 'font-size:13px;line-height:1.5';
-        const nameEl = document.createElement('b');
-        nameEl.textContent = s.name;
-        const statusEl = document.createElement('div');
-        statusEl.textContent = openLabel + capacity;
-        const addrEl = document.createElement('small');
-        addrEl.style.color = '#64748b';
-        addrEl.textContent = s.address ?? '';
-        popup.append(nameEl, statusEl, addrEl);
-        marker.bindPopup(popup, { maxWidth: 260 });
-        layer.addLayer(marker);
+    const b = radarMap.getBounds();
+    const params = new URLSearchParams({
+        bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((v) => v.toFixed(5)).join(','),
+        zoom: radarMap.getZoom(),
+        kinds: kinds.join(','),
+        statuses: statuses.join(','),
     });
 
-    if (sheltersLayer) radarMap.removeLayer(sheltersLayer);
-    sheltersLayer = layer.addTo(radarMap);
+    if (binsFetchController) binsFetchController.abort();
+    binsFetchController = new AbortController();
+    try {
+        const res = await fetch(`${el.dataset.binsUrl}?${params}`, { signal: binsFetchController.signal, headers: { Accept: 'application/json' } });
+        if (!res.ok) return;
+        renderBins(await res.json());
+    } catch (_) { /* abort 或離線：保留現有圖層 */ }
 }
 
-// ── 雷達回波 overlay（後端 proxy 圖檔；開啟時每 10 分鐘換新圖）────
-function toggleRadarEcho(on) {
-    const el = document.getElementById('radar-map');
-    if (!radarMap || !el) return;
-
-    if (!on) {
-        if (radarEchoLayer) { radarMap.removeLayer(radarEchoLayer); radarEchoLayer = null; }
-        if (radarEchoTimer) { clearInterval(radarEchoTimer); radarEchoTimer = null; }
+// ── 有袋沒桶（一次全撈，粉紅圈）─────────────────────────────
+async function renderGaps() {
+    if (!radarMap) return;
+    if (!gapsVisible) {
+        if (gapsLayer) { radarMap.removeLayer(gapsLayer); gapsLayer = null; }
         return;
     }
-
-    const bounds = JSON.parse(el.dataset.radarEchoBounds || '[[17.75,115.0],[29.25,126.5]]');
-    const freshUrl = () => `${el.dataset.radarEchoUrl}?t=${Date.now()}`;
-    radarEchoLayer = L.imageOverlay(freshUrl(), bounds, { opacity: 0.6 }).addTo(radarMap);
-    radarEchoTimer = setInterval(() => radarEchoLayer?.setUrl(freshUrl()), 10 * 60 * 1000);
+    if (!gapsCache) {
+        const el = document.getElementById('radar-map');
+        try {
+            const res = await fetch(el.dataset.gapsUrl, { headers: { Accept: 'application/json' } });
+            if (!res.ok) return;
+            gapsCache = await res.json();
+        } catch (_) { return; }
+    }
+    const layer = L.layerGroup();
+    gapsCache.forEach((g) => {
+        const circle = L.circleMarker([g.lat, g.lng], { radius: 11, color: '#f472b6', weight: 2, fillColor: '#f472b6', fillOpacity: 0.35 });
+        const popup = document.createElement('div');
+        popup.style.cssText = 'font-size:13px;line-height:1.5;color:#1e293b';
+        const b = document.createElement('b');
+        b.textContent = `🧷 ${g.district ?? ''} ${g.name}`;
+        const d = document.createElement('div');
+        d.textContent = `${window.i18n?.gapBoxes ?? '狗便袋箱'} ${g.box_count}｜${window.i18n?.gapNearest ?? '最近清潔箱'} ${g.nearest_m ? g.nearest_m + ' m' : (window.i18n?.gapNone ?? '300m 內沒有')}`;
+        popup.append(b, d);
+        circle.bindPopup(popup, { maxWidth: 240 });
+        layer.addLayer(circle);
+    });
+    if (gapsLayer) radarMap.removeLayer(gapsLayer);
+    gapsLayer = layer.addTo(radarMap);
 }
 
-// ── 淹水潛勢圖層（支援 XYZ 圖磚或標準 WMS；未設定則 chip 不渲染）──
-function toggleFloodPotential(on) {
-    const el = document.getElementById('radar-map');
-    if (!radarMap || !el?.dataset.floodPotential) return;
-
-    if (!on) {
-        if (floodLayer) { radarMap.removeLayer(floodLayer); floodLayer = null; }
+// ── 需求熱力圖（leaflet.heat 是掛在全域 L 上的舊式外掛：先確定 window.L 再動態載入）──
+async function renderDemand() {
+    if (!radarMap) return;
+    if (!demandVisible) {
+        if (demandLayer) { radarMap.removeLayer(demandLayer); demandLayer = null; }
         return;
     }
-
-    let cfg;
-    try { cfg = JSON.parse(el.dataset.floodPotential); } catch (_) { return; }
-
-    if (cfg.xyz) {
-        floodLayer = L.tileLayer(cfg.xyz, { opacity: 0.5, maxZoom: 19 }).addTo(radarMap);
-    } else if (cfg.wms_url && cfg.wms_layers) {
-        floodLayer = L.tileLayer.wms(cfg.wms_url, {
-            layers: cfg.wms_layers,
-            format: 'image/png',
-            transparent: true,
-            opacity: 0.5,
-        }).addTo(radarMap);
+    if (!L.heatLayer) {
+        try { await import('leaflet.heat'); } catch (error) { console.error('leaflet.heat failed', error); return; }
     }
+    if (!demandCache) {
+        const el = document.getElementById('radar-map');
+        try {
+            const res = await fetch(el.dataset.demandUrl, { headers: { Accept: 'application/json' } });
+            if (!res.ok) return;
+            demandCache = await res.json();
+        } catch (_) { return; }
+    }
+    const max = demandCache.reduce((m, c) => Math.max(m, c[2]), 1);
+    const points = demandCache.map((c) => [c[0], c[1], c[2] / max]);
+    if (demandLayer) radarMap.removeLayer(demandLayer);
+    demandLayer = L.heatLayer(points, { radius: 38, blur: 28, maxZoom: 15, minOpacity: 0.25,
+        gradient: { 0.2: '#fde68a', 0.5: '#fb923c', 0.8: '#ef4444', 1: '#991b1b' } }).addTo(radarMap);
 }
 
 // ── 分類篩選 chips（radar 頁 header 渲染，data-map-chip 綁定）──
 function initChips() {
     const setStatus = (key, on) => { on ? activeStatuses.add(key) : activeStatuses.delete(key); };
     const layerToggles = {
-        shelters: (on) => { sheltersVisible = on; renderShelters(); },
-        radar_echo: toggleRadarEcho,
-        flood_potential: toggleFloodPotential,
+        bins: (on) => { binLayers.bins = on; fetchBins(); },
+        bag_boxes: (on) => { binLayers.bag_boxes = on; fetchBins(); },
+        missing_bins: (on) => { binLayers.missing_bins = on; fetchBins(); },
+        gaps: (on) => { gapsVisible = on; renderGaps(); },
+        demand: (on) => { demandVisible = on; renderDemand(); },
         reported: (on) => { setStatus('reported', on); scheduleFetch(); },
         notified: (on) => { setStatus('notified', on); scheduleFetch(); },
         resolved: (on) => { showResolved = on; setStatus('resolved', on); scheduleFetch(); },
@@ -504,22 +589,16 @@ function initRadar() {
     }
     L.control.zoom({ position: 'topright' }).addTo(radarMap);
 
-    radarMap.on('moveend', scheduleFetch);
-    radarMap.on('zoomend', scheduleFetch);
+    const onMove = () => { scheduleFetch(); fetchBins(); };
+    radarMap.on('moveend', onMove);
+    radarMap.on('zoomend', onMove);
     fetchReports();
+    fetchBins();
 
-    // 行政區界疊層（EOC dashboard 用；data-districts-url 存在才載入）
-    if (el.dataset.districtsUrl) {
-        fetch(el.dataset.districtsUrl)
-            .then((r) => (r.ok ? r.json() : null))
-            .then((geojson) => {
-                if (!geojson || !radarMap) return;
-                L.geoJSON(geojson, {
-                    interactive: false,
-                    style: { color: '#38bdf8', weight: 1, opacity: 0.35, fillColor: '#38bdf8', fillOpacity: 0.04, dashArray: '4 3' },
-                }).addTo(radarMap);
-            })
-            .catch(() => {});
+    // /candidates 的「看地圖」深連結：#map=lat,lng,zoom
+    const hash = /^#map=(-?[\d.]+),(-?[\d.]+),(\d+)$/.exec(window.location.hash);
+    if (hash) {
+        radarMap.setView([parseFloat(hash[1]), parseFloat(hash[2])], parseInt(hash[3], 10));
     }
 
     new ThemeToggleControl().addTo(radarMap);
@@ -540,7 +619,7 @@ function initRadar() {
     })
     .addTo(radarMap);
 
-    if (navigator.geolocation) {
+    if (navigator.geolocation && !hash) {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 radarMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
@@ -562,6 +641,27 @@ window.initPinMap = function (el, wire) {
     const DEFAULT_LAT = 25.033;
     const DEFAULT_LNG = 121.5654;
     let skipNextMoveEnd = false;
+    // 從桶 popup「回報這個桶」進來：表單已帶位置，直接定位、不再抓 GPS
+    const presetLat = parseFloat(el.dataset.presetLat);
+    const presetLng = parseFloat(el.dataset.presetLng);
+    const hasPreset = Number.isFinite(presetLat) && Number.isFinite(presetLng);
+    const nearbyUrl = el.dataset.nearbyUrl;
+    let snapController = null;
+
+    // 位置定好後查最近的桶（snap 距離內），有就吸附；need_bin 類別由 Livewire 端忽略 trash_bin_id
+    const snapToBin = (lat, lng) => {
+        if (!nearbyUrl) return;
+        if (snapController) snapController.abort();
+        snapController = new AbortController();
+        fetch(`${nearbyUrl}?lat=${lat}&lng=${lng}`, { signal: snapController.signal, headers: { Accept: 'application/json' } })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                if (!data) return;
+                if (data.bin) wire.setSnappedBin(data.bin.id, data.bin.name ?? '', data.bin.kind, data.bin.distance_m);
+                else wire.clearSnappedBin();
+            })
+            .catch(() => {});
+    };
 
     const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: basemapMaxZoom() })
         .setView([DEFAULT_LAT, DEFAULT_LNG], 17);
@@ -642,6 +742,7 @@ window.initPinMap = function (el, wire) {
         const { lat, lng } = map.getCenter();
         wire.setLocation(lat, lng);
         reverseGeocode(lat, lng);
+        snapToBin(lat, lng);
     });
 
     const setPos = (lat, lng) => {
@@ -649,6 +750,7 @@ window.initPinMap = function (el, wire) {
         map.setView([lat, lng], 18);
         wire.setLocation(lat, lng);
         reverseGeocode(lat, lng);
+        snapToBin(lat, lng);
     };
 
     // 接收 EXIF 解析成功後的位置事件
@@ -660,7 +762,9 @@ window.initPinMap = function (el, wire) {
     // 否則每開一次表單就多留一個 WebGL context，累積超過瀏覽器上限時會擠掉主地圖的底圖
     el.__pinMap = map;
 
-    if (navigator.geolocation) {
+    if (hasPreset) {
+        setPos(presetLat, presetLng);
+    } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (pos) => setPos(pos.coords.latitude, pos.coords.longitude),
             () => setPos(DEFAULT_LAT, DEFAULT_LNG),
@@ -718,16 +822,16 @@ async function initLiff() {
 document.addEventListener('livewire:initialized', () => {
     initLiff();
     initRadar();
-    // v0.3 三次回饋：跑馬燈現在是全站共用 head nav 的一部分（partials/site-header.blade.php），
-    // 獨立於地圖之外呼叫，次要頁面（沒有 #radar-map、initRadar() 提早 return）才會跑得到。
+    // 跑馬燈是全站共用 head nav 的一部分，獨立於地圖之外呼叫，次要頁面也跑得到。
     initTicker();
 
-    window.addEventListener('hazdar:report-clicked', () => {
+    window.addEventListener('petmin:report-clicked', () => {
         window.Livewire.dispatch('open-report-form');
     });
 
-    // 回報送出或後端通知資料更新 → 重新向 bbox API 取點位
-    window.addEventListener('hazdar:reports-updated', () => {
+    // 回報送出或後端通知資料更新 → 重新向 bbox API 取點位（桶狀態也可能被核准回報改掉）
+    window.addEventListener('petmin:reports-updated', () => {
         scheduleFetch();
+        fetchBins();
     });
 });

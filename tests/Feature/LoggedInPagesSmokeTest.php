@@ -14,7 +14,7 @@ class LoggedInPagesSmokeTest extends TestCase
     public function test_authenticated_user_can_view_secondary_pages(): void
     {
         $user = User::factory()->create();
-        foreach (['/', '/profile', '/reports', '/news', '/contact'] as $path) {
+        foreach (['/', '/profile', '/reports', '/news', '/contact', '/candidates', '/leaderboard'] as $path) {
             $this->actingAs($user)->get($path)->assertOk();
         }
     }

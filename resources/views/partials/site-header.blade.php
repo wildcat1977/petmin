@@ -1,5 +1,5 @@
 {{--
-    全站共用 head nav（v0.3 三次回饋）：banner + 跑馬燈 + 選單，首頁（浮在地圖上）與
+    全站共用 head nav：logo + 跑馬燈 + 選單，首頁（浮在地圖上）與
     次要頁面（profile/reports/news...一般文件流）共用同一份，不再各自維護一份 header。
     首頁外層包在 pointer-events-none 浮層裡，這裡的 pointer-events-auto 才讓按鈕可點；
     次要頁面沒有那層外殼，pointer-events-auto 在一般文件流裡是無害的預設值。
@@ -8,9 +8,9 @@
         x-data="{ mobileNavOpen: false }" @keydown.escape.window="mobileNavOpen = false">
     <div class="flex items-center gap-3 px-4 py-2">
         <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-2">
-            <span class="inline-block h-2 w-2 animate-pulse rounded-full bg-cyan-400"></span>
-            <img src="{{ asset('Hazdar-Banner.png') }}" alt="Hazdar 全民災情回報地圖"
-                 class="h-10 w-auto" width="300" height="100">
+            <span class="text-2xl leading-none">🐾</span>
+            <span class="text-lg font-black tracking-tight text-amber-400">Petmin</span>
+            <span class="hidden text-[11px] text-slate-400 sm:inline">{{ __('找回消失的垃圾桶') }}</span>
         </a>
 
         {{-- 跑馬燈廣播：獨立 site-ticker 元件供應資料（不必掛整個地圖），
@@ -33,10 +33,6 @@
                     class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">
                 {{ __('聯絡管理員') }}
             </button>
-            <a href="https://join.puma.taipei/line/mgnqKwOm" class="flex items-center gap-2 rounded-full bg-white/10 px-2 py-1.5 hover:bg-white/20" target="_blank" rel="noopener">
-                <img src="/images/line.png" alt="" class="h-5 w-5 rounded-full object-cover">
-                <span class="hidden text-slate-200 sm:inline"></span>
-            </a>            
             @auth
                 <a href="{{ route('profile') }}"
                    class="rounded-full bg-white/10 px-3 py-2 text-slate-200 hover:bg-white/20">
@@ -86,9 +82,10 @@
          x-transition:leave-end="opacity-0 -translate-y-1"
          class="border-t border-white/10 px-4 py-3 lg:hidden">
         <nav class="flex flex-col gap-1 text-sm">
+            <a href="{{ route('candidates') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('候選復設點') }}</a>
+            <a href="{{ route('reports') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('回報清單') }}</a>
+            <a href="{{ route('leaderboard') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('皮克敏榜') }}</a>
             <a href="{{ route('news') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('最新消息') }}</a>
-            <a href="{{ route('reports') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('通報清單') }}</a>
-            <a href="{{ route('city-info') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('交通與清運資訊') }}</a>
             <button type="button"
                     @click="mobileNavOpen = false; window.dispatchEvent(new CustomEvent('open-contact-form'))"
                     class="rounded-lg px-3 py-2 text-left text-slate-300 hover:bg-white/10">{{ __('聯絡管理員') }}</button>

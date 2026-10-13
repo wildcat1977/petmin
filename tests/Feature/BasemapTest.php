@@ -22,7 +22,7 @@ class BasemapTest extends TestCase
         $html = $this->get('/')->assertOk()->getContent();
 
         // @js 把陣列輸出成 JSON.parse('…')，斜線多層跳脫，分段斷言
-        $this->assertStringContainsString('window.__HAZDAR_BASEMAP_CONFIG__', $html);
+        $this->assertStringContainsString('window.__PETMIN_BASEMAP_CONFIG__', $html);
         $this->assertStringContainsString('tiles.puma.taipei', $html);
         $this->assertStringContainsString('light.json', $html);
         $this->assertStringContainsString('dark.json', $html);
@@ -63,7 +63,7 @@ class BasemapTest extends TestCase
 
             $this->assertStringNotContainsString('tile.openstreetmap.org', $source, $page);
             $this->assertStringNotContainsString('invert(100%)', $source, $page);
-            $this->assertStringContainsString("__HAZDAR_BASEMAP__?.create('dark')", $source, $page);
+            $this->assertStringContainsString("__PETMIN_BASEMAP__?.create('dark')", $source, $page);
         }
     }
 
@@ -76,7 +76,7 @@ class BasemapTest extends TestCase
             ->assertOk()
             ->assertDontSee('tile.openstreetmap.org', false)
             ->assertDontSee('darkFilter', false)
-            ->assertSee("__HAZDAR_BASEMAP__?.create('dark')", false);
+            ->assertSee("__PETMIN_BASEMAP__?.create('dark')", false);
     }
 
     public function test_admin_map_picker_uses_the_self_hosted_basemap_with_the_frontend_maplibre_version(): void

@@ -14,15 +14,15 @@ class DynamicCategoryUiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_home_page_renders_six_seeded_category_chips(): void
+    public function test_home_page_renders_seeded_category_chips(): void
     {
         $html = $this->withHeader('Accept-Language', 'zh-TW')->get('/')->getContent();
 
-        foreach (['flood', 'water_outage', 'falling_object'] as $slug) {
+        foreach (['need_bin', 'full', 'bag_empty', 'hazard'] as $slug) {
             $this->assertStringContainsString('data-map-chip="'.$slug.'"', $html);
         }
-        $this->assertStringContainsString('停水', $html);
-        $this->assertStringContainsString('大型物品掉落', $html);
+        $this->assertStringContainsString('狗便袋箱沒袋了', $html);
+        $this->assertStringContainsString('毒餌／危險物', $html);
         $this->assertStringContainsString('data-categories', $html);
     }
 
@@ -40,12 +40,12 @@ class DynamicCategoryUiTest extends TestCase
 
     public function test_deactivated_category_chip_disappears_but_meta_retains_it(): void
     {
-        ReportCategory::where('slug', 'flood')->first()->update(['is_active' => false]);
+        ReportCategory::where('slug', 'hazard')->first()->update(['is_active' => false]);
 
         $html = $this->withHeader('Accept-Language', 'zh-TW')->get('/')->getContent();
 
-        $this->assertStringNotContainsString('data-map-chip="flood"', $html);
-        // data-categories 仍含 flood（既有點位要能上色/顯示標籤）
-        $this->assertMatchesRegularExpression('/data-categories=\'[^\']*flood/', $html);
+        $this->assertStringNotContainsString('data-map-chip="hazard"', $html);
+        // data-categories 仍含 hazard（既有點位要能上色/顯示標籤）
+        $this->assertMatchesRegularExpression('/data-categories=\'[^\']*hazard/', $html);
     }
 }

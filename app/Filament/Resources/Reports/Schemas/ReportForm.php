@@ -25,8 +25,14 @@ class ReportForm
                 View::make('filament.components.map-picker')
                     ->columnSpanFull(),
 
+                Select::make('trash_bin_id')
+                    ->label('對應桶位')
+                    ->relationship('trashBin', 'address')
+                    ->searchable()
+                    ->nullable(),
+
                 Select::make('category')
-                    ->label('災情分類')
+                    ->label('分類')
                     ->options(fn () => ReportCategory::labels())
                     ->live()
                     ->required(),
@@ -58,11 +64,11 @@ class ReportForm
                         Report::STATUS_APPROVED => '✅ 已核准（照片公開）',
                         Report::STATUS_REJECTED => '已拒絕',
                     ])
-                    ->helperText('內容適切性審核；與災情核實分離')
+                    ->helperText('內容適切性審核；與佐證層級分離')
                     ->required(),
 
                 Select::make('verification_level')
-                    ->label('災情核實')
+                    ->label('佐證層級')
                     ->options(Report::VERIFICATION_LABELS)
                     ->helperText('官方核實請用此欄位標記 official')
                     ->required(),
@@ -70,12 +76,12 @@ class ReportForm
                 DateTimePicker::make('notified_at')
                     ->label('已通報時間')
                     ->nullable()
-                    ->helperText('已通報市府/相關單位處理'),
+                    ->helperText('已通報環保局／清潔隊'),
 
                 DateTimePicker::make('resolved_at')
-                    ->label('已排除時間')
+                    ->label('已處理時間')
                     ->nullable()
-                    ->helperText('官方確認災情已排除'),
+                    ->helperText('清潔隊已處理／桶已復設'),
 
                 Select::make('rejection_reason')
                     ->label('拒絕原因')

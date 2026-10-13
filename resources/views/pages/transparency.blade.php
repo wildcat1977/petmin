@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '審核透明度報告 · Hazdar 災情回報')
+@section('title', '審核透明度報告 · Petmin')
 
 @section('content')
 @php
@@ -226,7 +226,7 @@
                     <div class="relative h-64">
                         <canvas x-ref="canvas"></canvas>
                     </div>
-                    <p class="mt-3 text-right text-xs text-slate-600">* 顏色越亮表示越近期，可觀察災情是否有擴散趨勢</p>
+                    <p class="mt-3 text-right text-xs text-slate-600">* 顏色越亮表示越近期，可觀察回報熱區的變化</p>
                 </div>
             @else
                 <div class="rounded-xl border border-dashed border-white/20 p-8 text-center text-sm text-slate-500">
@@ -266,12 +266,12 @@
 
                      initMap() {
                          if (this.map) return;
-                         this.map = L.map(this.$refs.mapel, { zoomControl: true, attributionControl: true, maxZoom: window.__HAZDAR_BASEMAP__?.maxZoom() ?? 19 })
+                         this.map = L.map(this.$refs.mapel, { zoomControl: true, attributionControl: true, maxZoom: window.__PETMIN_BASEMAP__?.maxZoom() ?? 19 })
                              .setView([25.045, 121.54], 12);
                          // 共用自架底圖的 dark 風格（resources/js/basemap.js）；原本直連 OSM 並以 CSS 反色做暗色。
                          // attribution 打開：ODbL 要求標示出處
                          try {
-                             window.__HAZDAR_BASEMAP__?.create('dark')?.addTo(this.map);
+                             window.__PETMIN_BASEMAP__?.create('dark')?.addTo(this.map);
                          } catch (error) {
                              console.error('basemap failed', error);
                          }
@@ -342,7 +342,7 @@
                      },
                  }"
                  x-init="$nextTick(() => initMap())">
-            <h2 class="mb-5 text-lg font-semibold text-slate-300">🗺️ 災情分佈時間軸</h2>
+            <h2 class="mb-5 text-lg font-semibold text-slate-300">🗺️ 回報分佈時間軸</h2>
             <div class="overflow-hidden rounded-xl border border-white/10 bg-white/5">
 
                 {{-- 地圖 --}}
@@ -375,10 +375,9 @@
                             ↺ 重置
                         </button>
                         <div class="ml-auto flex items-center gap-3 text-xs text-slate-500">
-                            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-sky-400 mr-1"></span>淹水</span>
-                            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-orange-400 mr-1"></span>道路中斷</span>
-                            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400 mr-1"></span>停電</span>
-                            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-red-400 mr-1"></span>結構受損</span>
+                            @foreach (\App\Models\ReportCategory::activeOrdered() as $legendCat)
+                                <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full" style="background: {{ $legendCat->color }}"></span>{{ __($legendCat->name) }}</span>
+                            @endforeach
                             <span class="text-slate-600">越亮 = 越近期</span>
                         </div>
                     </div>
@@ -419,7 +418,7 @@
             <div class="rounded-xl border border-white/10 bg-white/5 p-6">
                 <p class="mb-6 text-sm leading-relaxed text-slate-400">
                     每一筆回報的照片在公開顯示前，都需要經過雙重把關——AI 自動初篩加上人工複審。
-                    這樣的機制確保地圖上呈現的是真實、有效的災情資訊。
+                    這樣的機制確保地圖上呈現的是真實、有效的回報。
                 </p>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     @php
@@ -427,7 +426,7 @@
                             ['icon' => '📤', 'step' => '1', 'title' => '回報提交', 'desc' => '使用者上傳照片、標記位置並填寫說明'],
                             ['icon' => '🤖', 'step' => '2', 'title' => 'AI 初篩',  'desc' => 'Claude AI 分析照片，信心度 ≥ 80% 不符規範時自動退件'],
                             ['icon' => '🧑‍💻', 'step' => '3', 'title' => '人工複審', 'desc' => '志工逐筆審核，驗證照片、位置與說明的一致性'],
-                            ['icon' => '✅', 'step' => '4', 'title' => '狀態更新', 'desc' => '通過審核後照片公開顯示於地圖；災情核實與排除由官方另行標記'],
+                            ['icon' => '✅', 'step' => '4', 'title' => '狀態更新', 'desc' => '通過審核後照片公開顯示於地圖；佐證層級與處理狀態另行標記'],
                         ];
                     @endphp
                     @foreach ($sopSteps as $s)
@@ -503,10 +502,9 @@
                 </div>
 
                 <blockquote class="border-l-2 border-violet-500 pl-4 italic text-sm leading-relaxed text-slate-400">
-                    「Hazdar 災情回報是一個由市民自發的資訊公開計畫。我們相信透過科技和社群的力量，
-                    讓每個人在颱風、豪雨等災害期間都能即時掌握鄰里的災情狀況。每一筆經過審核的回報，
-                    都是對社區防災的一份貢獻。」
-                    <footer class="mt-2 text-xs text-slate-600 not-italic">— Hazdar 開發者</footer>
+                    「Petmin 是一個由市民自發的資訊公開計畫。環保局只看得到桶被亂丟的那一面，
+                    我們把『哪裡需要桶』這一面補上。每一筆經過審核的回報，都是市政決策少掉的那半份資料。」
+                    <footer class="mt-2 text-xs text-slate-600 not-italic">— Petmin 開發者</footer>
                 </blockquote>
 
                 <div class="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">

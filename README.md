@@ -1,163 +1,123 @@
-# Hazdar 全民韌性災害回報系統
+# Petmin 🐾 找回消失的垃圾桶
 
-> 颱風／豪雨災時，讓民眾以最低摩擦回報四類災情（淹水、道路中斷、停電、結構受損），
-> 經自動佐證與官方核實分層後，即時呈現在民眾地圖與 EOC 戰情室大屏上，
-> 並整合 CWA / NCDR / data.taipei 官方資料，形成台北市單一情勢圖。
+> 遛狗順手回報：垃圾桶滿了、消失了、這裡需要一個。
+> 把市民需求變成台北市垃圾桶復設的決策資料。
 
-本專案 fork 自 [ratdar（見鼠地圖）](https://github.com/wildcat1977/ratdar)，
-沿用其回報 pipeline、Socialite 登入、Leaflet 地圖基底與 Claude Vision 審核，
-domain 由「鼠患通報」改造為「災害回報」。完整技術規格見 [docs/hazdar-spec.md](docs/hazdar-spec.md)。
+市政 debug 松（2026-10-23 線上提案 / 10-24 現場）議題 #2「找回消失的垃圾桶」的 MVP。
+台北市行人專用清潔箱從約 2,000 組裁到 806 組，環保局的裁撤邏輯只有供給端訊號
+（被亂丟 → 撤、里長要求 → 撤），市民端「哪裡需要」完全沒有資料。Petmin 補上這一半。
+
+完整提案見 [docs/proposal.md](docs/proposal.md)；五分鐘 demo 腳本見 [docs/demo-script.md](docs/demo-script.md)。
+
+本專案 fork 自 [hazdar（災害回報）](https://github.com/wildcat1977/hazdar)，再往上是
+[ratdar（見鼠地圖）](https://github.com/wildcat1977/ratdar)；沿用回報 pipeline、Socialite 登入、
+Leaflet + 自架 Protomaps 底圖、Claude Vision 審核、Filament 後台。
+
+## 三層設計
+
+1. **找回**：環保局 open data 的清潔箱（681 組）與狗便清潔袋箱（124 站）上圖；市民回報「桶還在 / 桶消失了」，
+   核准後直接改桶的狀態（`TrashBin.status`）。
+2. **回報**：遛狗族 1 分鐘內完成——拍照 → EXIF 自動定位 → 吸附 30m 內最近的桶 → 選狀況
+   （需要桶 / 滿了 / 消失了 / 還在 / 袋箱沒袋 / 家戶垃圾 / 毒餌）。同桶 24h 內 2 個帳號 → 自動「多方佐證」。
+3. **決策**：`demand:recompute` 以 geohash6（~600m）為格算需求分數 =
+   人流 proxy（捷運、公車站牌）+ 遛狗 proxy（狗便袋箱、狗活動區）+ 市民回報（佐證加倍）− 現存清潔箱。
+   `/candidates` 列候選復設點 Top N（附證據明細、CSV）、撤除風險（家戶垃圾集中）、
+   **有袋沒桶**（狗便袋箱 100m 內無清潔箱：目前 98 / 124 站）。
+
+遊戲化：核准回報 +10 點、連續天數 streak、`/leaderboard` 皮克敏榜；獎勵提案為「點數換專用垃圾袋」。
 
 ## 技術堆疊
 
-| 領域       | 套件 / 版本                                            |
-| ---------- | ------------------------------------------------------ |
-| 後端框架   | Laravel 13 / PHP 8.5                                   |
-| 前端互動   | Livewire 4（SFC 格式）                                 |
-| CSS        | Tailwind CSS 4 + Vite 8                                |
-| 地圖       | Leaflet 1.9 + leaflet-control-geocoder                 |
-| 認證       | Laravel Socialite 5（Google OAuth + LINE LIFF）        |
-| 後台       | Filament 5                                             |
-| 佇列/排程  | Laravel Horizon 5（Redis）                             |
-| 資料庫     | PostgreSQL（`.env` 中 `DB_CONNECTION=pgsql`）          |
-| 圖片處理   | intervention/image 4（GdDriver）                       |
-| AI 審核    | Claude Vision API（Guzzle 呼叫，照片內容 + 分類吻合判斷）|
-
-## 核心設計
-
-- **佐證機制（非 AI）**：回報寫入以 `geohash7`（precision 7 ≈ 150m 網格）分桶。同一網格 + 同分類、
-  6 小時滑動窗內 ≥ 3 個不同帳號 → 該群自動升級 `corroborated`。純 deterministic SQL，見
-  `app/Jobs/EvaluateCorroboration.php`。
-- **兩個正交狀態**：`status`（內容適切性審核：pending/approved/rejected）與
-  `verification_level`（災情核實：unverified/corroborated/official）分離。內容審核 ≠ 災情核實。
-- **點位 API（取代前端全量模式）**：`GET /api/map/reports?bbox=&zoom=&categories=` 走 server-side
-  bbox query；高 zoom 回個別點位、低 zoom 依 geohash 聚合，回應有筆數/payload 上限並快取。
-- **外部整合層**：scheduled command 拉外部資料 → 落地（表或 Redis）→ 前端只讀落地資料。
-  任一 fetch 失敗記 log + 反映在 dashboard footer 健康燈（黃=延遲、紅=中斷），禁止默默跳過。
-- **寫入即回應**：回報寫入不含 AI 審核與地址反查（queue 後補），外部 API 全掛時回報仍可提交、地圖仍可看。
+| 領域       | 套件 / 版本                                              |
+| ---------- | -------------------------------------------------------- |
+| 後端框架   | Laravel 13 / PHP 8.3+（composer.json 寫 ^8.4，8.3 可 `--ignore-platform-req=php`） |
+| 前端互動   | Livewire 4（SFC）+ Alpine                                 |
+| CSS        | Tailwind CSS 4 + Vite 8                                   |
+| 地圖       | Leaflet 1.9 + MapLibre GL（自架 Protomaps 向量圖磚）+ leaflet.heat |
+| 認證       | Laravel Socialite 5（Google + LINE + LINE LIFF）          |
+| 後台       | Filament 5                                                |
+| 資料庫     | PostgreSQL（正式）/ SQLite（本機、測試）；無 PostGIS，geohash + Haversine |
+| AI 審核    | Claude Vision（照片適切性 + 分類吻合；fail-open 留人工）   |
 
 ## 快速啟動
 
 ```bash
-cd /var/www/html/civic_shield
-
-# 1. 環境變數
-cp .env.example .env   # 若無 .env.example 可參考本 README「環境變數說明」
+cp .env.example .env            # 本機可改 DB_CONNECTION=sqlite
 php artisan key:generate
-# 必填：DB_*
-# 選填：GOOGLE_* / LINE_* / LIFF_ID（災時主入口預期是 LINE）
-# 選填：CLAUDE_API_KEY（未填時照片 fail-open 直接通過，留待人工）
-# 選填：CWA_API_KEY（opendata.cwa.gov.tw 授權碼；未填時該源亮紅燈但不影響回報）
-
-# 2. 資料庫（含示範災情 seed，僅 local 環境產生）
-php artisan migrate --seed
-
-# 3. Filament 後台帳號
+composer install                # PHP 8.3 加 --ignore-platform-req=php
+npm install && npm run build
+php artisan migrate --seed      # local 環境會跑 DemoSeeder：匯入 open data + 假回報 + 需求分數
 php artisan make:filament-user
-
-# 4. 前端資產
-npm install
-npm run build                  # 或 npm run dev（本機開發）
-
-# 5. 啟動
 php artisan serve
-php artisan horizon            # 另一 terminal（處理 AI 審核與佐證 queue）
 ```
 
-開啟：
+- 地圖首頁      <http://localhost:8000>
+- 候選復設點    <http://localhost:8000/candidates>
+- 皮克敏榜      <http://localhost:8000/leaderboard>
+- 回報清單      <http://localhost:8000/reports>
+- 後台          <http://localhost:8000/admin>
 
-- 民眾地圖    <http://localhost:8000>
-- EOC 戰情室  <http://localhost:8000/dashboard>
-- 回報清單    <http://localhost:8000/reports>
-- 透明度報告  <http://localhost:8000/transparency>
-- 後台        <http://localhost:8000/admin>
-- 佇列監控    <http://localhost:8000/horizon>
+## Open data 與匯入
+
+資料快照放 `database/data/`（Big5 已轉 UTF-8），匯入指令讀本機檔、不依賴現場網路，重跑冪等：
+
+```bash
+php artisan bins:import-clean-boxes      # 行人專用清潔箱 681 組
+php artisan bins:import-dog-bag-boxes    # 狗便清潔袋箱 130 列（124 站）
+php artisan proxies:import-bus-stops     # 公車站牌 3,407
+php artisan proxies:import-dog-parks     # 狗活動區／公園（手刻 JSON，座標待勘誤）
+php artisan proxies:import-mrt [--od=月OD檔]   # 捷運站點（待補 mrt_stations.csv）
+php artisan demand:recompute             # 需求分數（排程每小時）
+php artisan bins:gap-report [--csv=path] # 有袋沒桶清單
+```
+
+已知限制：清潔箱 open data 是「現存」清單，不是裁撤前的 ~1,900 組，「消失的桶」只能靠回報累積；
+寵物登記沒有行政區層級 open data，遛狗密度靠 proxy。
 
 ## 目錄總覽
 
 ```
 app/
 ├── Console/Commands/
-│   ├── FetchCwaObservations.php      # CWA 測站即時觀測 → weather_observations + Redis
-│   ├── FetchNcdrAlerts.php           # NCDR CAP feed → external_alerts（涵蓋台北市判定）
-│   ├── FetchRadarEcho.php            # CWA 雷達回波整合圖 → 後端 proxy 快取圖檔
-│   ├── SyncShelters.php              # data.taipei 收容所清單同步（is_open 不覆寫）
-│   ├── PruneWeatherObservations.php  # 觀測歷史保留 7 天
-│   └── BackfillReportAddresses.php   # 對既有回報批次補跑 reverse geocode
-├── Filament/Resources/
-│   ├── Reports/                      # 災情回報後台（審核 + 核實 + 標記已排除）
-│   ├── Shelters/                     # 收容所後台（災時開設狀態即時切換）
-│   ├── DashboardResources/           # 物資看板後台（官方手動維護數量）
-│   ├── Contacts/                     # 聯絡訊息後台
-│   └── Users/
-├── Http/Controllers/
-│   ├── Api/MapPointsController.php    # 點位 API（bbox query + geohash 聚合）
-│   └── Auth/SocialiteController.php   # Google / LINE OAuth + LINE LIFF callback
-├── Jobs/
-│   ├── EvaluateCorroboration.php      # 佐證判定（deterministic SQL，queue 執行）
-│   └── ModerateReportImage.php        # AI 照片審核（queue 後補，不阻塞寫入）
-├── Models/
-│   ├── Report.php                     # category / verification_level / geohash7 hook
-│   ├── WeatherObservation.php · ExternalAlert.php · Shelter.php · DashboardResource.php
-│   └── User.php · Contact.php
+│   ├── ImportTrashBins.php (abstract) · ImportCleanBoxes · ImportDogBagBoxes
+│   ├── ImportBusStops · ImportMrtStations · ImportDogParks
+│   ├── BagBoxGapReport.php            # 有袋沒桶
+│   └── RecomputeDemand.php            # demand_cells 重算
+├── Http/Controllers/Api/
+│   ├── MapPointsController.php        # 回報點位（bbox + geohash 聚合）
+│   └── BinsController.php             # 桶位（bbox + 聚合）+ nearby 吸附
+├── Jobs/EvaluateCorroboration.php     # 同桶／同格 2 帳號 → corroborated
+├── Observers/ReportObserver.php       # 核准 → 桶狀態同步 + 加點 + streak
+├── Models/ TrashBin · DemandProxy · DemandCell · Report · ReportCategory · User
 ├── Services/
-│   ├── DataSourceHealth.php           # 外部源健康狀態燈（green/yellow/red）
-│   ├── ImageModerationService.php     # Claude Vision 審核（內容 + 分類吻合）
-│   └── GmailMailer.php                # Gmail API 郵件發送（聯絡回覆用）
-└── Support/Geohash.php                # 純 PHP geohash 編碼／解碼（無外部依賴）
+│   ├── DemandScoreService.php         # 需求分數（純程式，權重 config/petmin.php）
+│   ├── BagBoxGapService.php           # 有袋沒桶
+│   └── ImageModerationService.php     # Claude Vision
+└── Filament/Resources/ Reports · TrashBins · ReportCategories · Users · Announcements · Contacts
 
 resources/
-├── css/app.css                        # Tailwind 4 + 分類 chips + Leaflet 主題
-├── js/app.js                          # Leaflet / bbox 抓點 / 聚合 / 圖層切換 / LIFF
+├── js/app.js                          # 地圖：回報層 / 桶位層 / 有袋沒桶 / 需求熱力 / 表單吸附
 └── views/
-    ├── pages/radar.blade.php          # 民眾地圖頁（分類篩選 chips）
-    ├── pages/dashboard.blade.php       # EOC 戰情室大屏（雨量趨勢 Chart.js）
-    ├── livewire/radar-map.blade.php    # 地圖 SFC（點位改由前端向 bbox API 取）
-    ├── livewire/report-form.blade.php  # 回報表單（四類 + 淹水深度 + 照片選填）
-    └── livewire/eoc-dashboard.blade.php# 戰情室資料 SFC（統計/健康/物資）
+    ├── pages/radar.blade.php          # 地圖首頁（圖層 chips）
+    ├── pages/candidates.blade.php     # 候選復設點 / 撤除風險 / 有袋沒桶
+    ├── livewire/report-form.blade.php # 回報表單（吸附桶、從桶 popup 預帶）
+    └── livewire/leaderboard.blade.php
 
-config/
-├── hazdar.php                     # 地圖、反濫用、佐證、點位 API、外部源設定
-└── services.php                        # Google / LINE / LIFF / Claude 設定
-
-public/geo/taipei-districts.json        # 台北市 12 行政區界（EOC 疊層用）
-routes/console.php                      # 外部整合排程（CWA/NCDR/雷達/收容所）
+database/data/                         # open data 快照（見內附 README）
+config/petmin.php                      # 地圖、反濫用、佐證、吸附距離、需求權重、點數
 ```
 
-## 常用 Artisan 指令
+## 測試
 
 ```bash
-# 外部資料源可獨立手動執行（排程之外）
-php artisan hazdar:fetch-cwa-observations
-php artisan hazdar:fetch-ncdr-alerts
-php artisan hazdar:fetch-radar-echo
-php artisan hazdar:sync-shelters
-
-# 對缺少地址的回報批次補跑 reverse geocode（Nominatim，1 req/sec）
-php artisan reports:backfill-addresses
+php artisan test --compact
+vendor/bin/pint --dirty --format agent
 ```
 
-## 環境變數說明
+## 文件
 
-| 變數                          | 說明                                                 | 必填 |
-| ----------------------------- | ---------------------------------------------------- | ---- |
-| `DB_CONNECTION`               | `pgsql`（PostgreSQL）                                | ✓    |
-| `GOOGLE_CLIENT_ID/SECRET`     | Google OAuth（新網域需在 console 補 redirect URI）   |      |
-| `LINE_CLIENT_ID/SECRET`       | LINE Login Channel                                   |      |
-| `LIFF_ID`                     | LINE LIFF App ID（in-app 瀏覽器自動登入用）          |      |
-| `CLAUDE_API_KEY`              | Anthropic API Key（未填時照片 fail-open 通過）       |      |
-| `CWA_API_KEY`                 | CWA 開放資料平台授權碼（opendata.cwa.gov.tw）        |      |
-| `TAIPEI_SHELTER_RESOURCE_ID`  | data.taipei 收容所 dataset rid（預設帶台北市收容所 rid；此源無座標，同步時以機構名稱 geocode 補） |      |
-| `FLOOD_POTENTIAL_XYZ_URL` 或 `FLOOD_POTENTIAL_WMS_URL`+`_LAYERS` | 淹水潛勢圖層（XYZ 圖磚或 WMS；未填則前端不掛此圖層） |      |
-| `RADAR_AUTO_APPROVE`          | `true` 讓無照片回報跳過人工審核直接公開               |      |
-| `HAZDAR_REPORT_COOLDOWN` | 每帳號回報間隔秒數（預設 60）                         |      |
-| `HAZDAR_REPORT_HOURLY_LIMIT` | 每帳號每小時回報上限（預設 10）                  |      |
-
-## 文件索引
-
-- [docs/hazdar-spec.md](docs/hazdar-spec.md) — 技術規格與驗收標準
-- [docs/architecture.md](docs/architecture.md) — 系統架構與關鍵流程
-- [docs/database-schema.md](docs/database-schema.md) — 資料庫結構
-- [docs/features.md](docs/features.md) — 功能與 UI 動線
-- [docs/deployment.md](docs/deployment.md) — 部署與第三方設定
+- [docs/proposal.md](docs/proposal.md) — 提案計畫書
+- [docs/demo-script.md](docs/demo-script.md) — demo 腳本
+- [docs/deployment.md](docs/deployment.md) — 部署
 - [docs/development.md](docs/development.md) — 本地開發
+- [docs/basemap.md](docs/basemap.md) — 自架底圖

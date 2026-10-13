@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', '災情統計地圖 · Hazdar 災情回報')
+@section('title', '回報統計地圖 · Petmin')
 
 @section('content')
 @php
@@ -140,7 +140,7 @@
             @endif
         </section>
 
-        {{-- ── 災情分佈時間軸（全寬大地圖） ── --}}
+        {{-- ── 回報分佈時間軸（全寬大地圖） ── --}}
         @if ($hasMap)
         <section class="mb-12"
                  x-data="{
@@ -168,12 +168,12 @@
 
                      initMap() {
                          if (this.map) return;
-                         this.map = L.map(this.$refs.mapel, { zoomControl: true, attributionControl: true, maxZoom: window.__HAZDAR_BASEMAP__?.maxZoom() ?? 19 })
+                         this.map = L.map(this.$refs.mapel, { zoomControl: true, attributionControl: true, maxZoom: window.__PETMIN_BASEMAP__?.maxZoom() ?? 19 })
                              .setView([25.045, 121.54], 12);
                          // 共用自架底圖的 dark 風格（resources/js/basemap.js）；原本直連 OSM 並以 CSS 反色做暗色。
                          // attribution 打開：ODbL 要求標示出處
                          try {
-                             window.__HAZDAR_BASEMAP__?.create('dark')?.addTo(this.map);
+                             window.__PETMIN_BASEMAP__?.create('dark')?.addTo(this.map);
                          } catch (error) {
                              console.error('basemap failed', error);
                          }
@@ -247,7 +247,7 @@
                      },
                  }"
                  x-init="$nextTick(() => initMap())">
-            <h2 class="mb-4 text-lg font-semibold text-slate-300">🗺️ 災情分佈時間軸</h2>
+            <h2 class="mb-4 text-lg font-semibold text-slate-300">🗺️ 回報分佈時間軸</h2>
             <div class="overflow-hidden rounded-xl border border-white/10 bg-white/5">
 
                 {{-- 地圖（全高） --}}
@@ -296,10 +296,9 @@
                             ↺ 重置
                         </button>
                         <div class="ml-auto flex items-center gap-4 text-xs text-slate-500">
-                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-sky-400"></span>淹水</span>
-                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-orange-400"></span>道路中斷</span>
-                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-yellow-400"></span>停電</span>
-                            <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-red-400"></span>結構受損</span>
+                            @foreach (\App\Models\ReportCategory::activeOrdered() as $legendCat)
+                                <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full" style="background: {{ $legendCat->color }}"></span>{{ __($legendCat->name) }}</span>
+                            @endforeach
                             <span class="text-slate-600">越亮 = 越近期</span>
                         </div>
                     </div>

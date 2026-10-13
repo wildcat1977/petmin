@@ -17,7 +17,7 @@ class ReportCategory extends Model
     use HasFactory;
 
     // v2：快取只存純陣列（見 allOrdered），換版號避開 v1 的物件序列化 blob
-    private const CACHE_KEY = 'hazdar:report-categories:v2';
+    private const CACHE_KEY = 'petmin:report-categories:v2';
 
     protected $fillable = ['slug', 'name', 'emoji', 'color', 'sort_order', 'is_active', 'extra_field'];
 

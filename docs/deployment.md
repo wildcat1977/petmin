@@ -12,18 +12,20 @@
 ## 環境變數重點
 
 ```dotenv
-APP_URL=https://hazdar.example.com   # 必須含 https，影響 OAuth redirect
+APP_URL=https://petmin.example.com   # 必須含 https，影響 OAuth redirect
 
 DB_CONNECTION=pgsql
-DB_DATABASE=civic_shield
+DB_DATABASE=petmin
 DB_USERNAME=...
 DB_PASSWORD=...
 
-REDIS_HOST=127.0.0.1
-QUEUE_CONNECTION=redis
-CACHE_STORE=redis
+# hackathon 期間 queue/cache 走 database 即可；要用 Horizon 再改 redis + prefix 隔離
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+CACHE_PREFIX=petmin
+REDIS_PREFIX=petmin_
 
-# 認證（災時主入口預期是 LINE）
+# 認證（主入口預期是 LINE LIFF）
 GOOGLE_CLIENT_ID=...          # Google Cloud Console → OAuth 2.0 Client (Web)
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI="${APP_URL}/auth/google/callback"
@@ -35,16 +37,9 @@ LIFF_ID=...                   # LINE LIFF App ID
 # AI 照片審核（未填時 fail-open，照片留待人工）
 CLAUDE_API_KEY=...
 
-# 外部資料源
-CWA_API_KEY=...               # opendata.cwa.gov.tw 授權碼（未填時該源亮紅燈，不影響回報）
-TAIPEI_SHELTER_RESOURCE_ID=...# data.taipei 收容所 dataset rid（未填則不同步）
-# 淹水潛勢圖層（擇一；此圖資無公開即插即用圖磚，需自 TGOS/WRA 取得後填入）
-FLOOD_POTENTIAL_XYZ_URL=...    # XYZ 圖磚模板，含 {z}/{x}/{y}
-FLOOD_POTENTIAL_WMS_URL=...    # 或標準 WMS base URL
-FLOOD_POTENTIAL_WMS_LAYERS=... # 搭配 WMS 的 layer 名稱
 ```
 
-> **注意**：fork 自 ratdar，若沿用既有 Google/LINE OAuth app，需在各自 console 為新網域補上
+> **注意**：fork 自 hazdar，若沿用既有 Google/LINE OAuth app，需在各自 console 為新網域補上
 > redirect URI 才能登入。
 
 ## Socialite Provider 設定
@@ -100,7 +95,7 @@ sudo find storage bootstrap/cache -type d -exec chmod g+s {} \;   # 新建物繼
 
 ### 排程（Laravel Scheduler）
 
-外部資料整合 command 由 `routes/console.php` 排程（CWA/NCDR 5min、雷達 10min、收容所 daily）。
+需求分數由 `routes/console.php` 排程（`demand:recompute` 每小時）；open data 匯入指令手動跑（資料不常變）。
 需在 crontab 掛上 Laravel scheduler：
 
 ```cron
@@ -110,10 +105,10 @@ sudo find storage bootstrap/cache -type d -exec chmod g+s {} \;   # 新建物繼
 各 command 亦可獨立手動執行（除錯用）：
 
 ```bash
-php artisan hazdar:fetch-cwa-observations
-php artisan hazdar:fetch-ncdr-alerts
-php artisan hazdar:fetch-radar-echo
-php artisan hazdar:sync-shelters
+php artisan petmin:fetch-cwa-observations
+php artisan petmin:fetch-ncdr-alerts
+php artisan petmin:fetch-radar-echo
+php artisan petmin:sync-shelters
 ```
 
 ### Horizon (Supervisor)
@@ -121,14 +116,14 @@ php artisan hazdar:sync-shelters
 處理 AI 照片審核（`ModerateReportImage`）與佐證判定（`EvaluateCorroboration`）queue：
 
 ```ini
-[program:hazdar-horizon]
+[program:petmin-horizon]
 process_name=%(program_name)s
 command=php /var/www/html/civic_shield/artisan horizon
 autostart=true
 autorestart=true
 user=www-data
 redirect_stderr=true
-stdout_logfile=/var/log/hazdar-horizon.log
+stdout_logfile=/var/log/petmin-horizon.log
 stopwaitsecs=3600
 ```
 
@@ -137,7 +132,7 @@ stopwaitsecs=3600
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name hazdar.example.com;
+    server_name petmin.example.com;
     root /var/www/html/civic_shield/public;
 
     index index.php;
@@ -167,4 +162,3 @@ server {
 - 上傳檔案類型由 Livewire `image` 規則檢查，最大 20MB
 - 反濫用：帳號封禁 + cooldown（預設 60s）+ 每帳號每小時上限（預設 10）
 - Socialite redirect 受 `whereIn('provider', [...])` 限制；`(provider, provider_id)` 唯一鍵防帳戶綁架
-- 雷達回波經後端 proxy（`/api/radar-echo`）供圖，避免 CORS 與打爆來源

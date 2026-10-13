@@ -1,19 +1,18 @@
 @extends('layouts.app')
 
 @push('head')
-    {{-- 底圖 style 原本要等 app.js 執行完才開始抓，後面圖示、圖磚一路串起來會先灰一兩秒；
-         預先連線並依使用者上次選的主題預載 style（MapLibre 以 CORS 匿名 fetch，須帶 crossorigin） --}}
-    <link rel="preconnect" href="{{ parse_url(config('hazdar.map.basemap_styles.dark'), PHP_URL_SCHEME).'://'.parse_url(config('hazdar.map.basemap_styles.dark'), PHP_URL_HOST) }}" crossorigin>
+    {{-- 底圖 style 預先連線並依使用者上次選的主題預載（MapLibre 以 CORS 匿名 fetch，須帶 crossorigin） --}}
+    <link rel="preconnect" href="{{ parse_url(config('petmin.map.basemap_styles.dark'), PHP_URL_SCHEME).'://'.parse_url(config('petmin.map.basemap_styles.dark'), PHP_URL_HOST) }}" crossorigin>
     <script>
         (() => {
-            let theme = 'dark';
+            let theme = 'light';
             // 與 app.js 的 MAP_THEME_KEY 相同
-            try { theme = localStorage.getItem('hazdar_map_theme') || 'dark'; } catch (_) {}
+            try { theme = localStorage.getItem('petmin_map_theme') || 'light'; } catch (_) {}
             const link = document.createElement('link');
             link.rel = 'preload';
             link.as = 'fetch';
             link.crossOrigin = 'anonymous';
-            link.href = window.__HAZDAR_BASEMAP_CONFIG__.styles[theme] ?? window.__HAZDAR_BASEMAP_CONFIG__.styles.dark;
+            link.href = window.__PETMIN_BASEMAP_CONFIG__.styles[theme] ?? window.__PETMIN_BASEMAP_CONFIG__.styles.light;
             document.head.appendChild(link);
         })();
     </script>
@@ -25,47 +24,22 @@
     <livewire:radar-map />
     {{-- 沒有 WebGL 時 app.js 取消隱藏（docs/basemap.md）；點位與圖層照常 --}}
     <p data-basemap-unsupported class="pointer-events-none fixed inset-x-0 top-40 z-[501] mx-auto hidden w-fit max-w-[80%] rounded-lg bg-slate-900/90 px-3 py-1.5 text-center text-xs text-slate-200 shadow">
-        {{ __('此瀏覽器無法顯示地圖底圖，災情點位仍會照常顯示。') }}
+        {{ __('此瀏覽器無法顯示地圖底圖，桶位與回報仍會照常顯示。') }}
     </p>
-
-    {{-- EOC 戰情室浮動卡片層（自身已 fixed 定位，spec §11.1）--}}
-    <livewire:eoc-dashboard />
-
-    {{-- 戰術網格疊層（純 CSS，不干擾地圖互動）--}}
-    <div class="pointer-events-none fixed inset-0 z-[1] radar-tactical-grid"></div>
 
     {{-- 懸浮 UI --}}
     <div class="pointer-events-none fixed inset-0 z-[500] flex flex-col">
-        {{-- 頂帶：全站共用 head nav（v0.3 三次回饋，spec §12.2/12.4）--}}
+        {{-- 頂帶：全站共用 head nav --}}
         @include('partials.site-header')
 
-        {{-- 分類篩選 chips（對應圖例配色；收容所為獨立圖層開關） --}}
+        {{-- 桌機：圖層 chips（手機收進右側面板） --}}
         <div class="pointer-events-auto hidden gap-1.5 px-4 lg:flex lg:flex-wrap">
-            @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
-                <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
-                        class="map-chip chip-on">{{ $cat->emoji }} {{ __($cat->name) }}</button>
-            @endforeach
-            <button type="button" data-map-chip="shelters" style="--chip-color:#4ade80"
-                    class="map-chip">🏠 {{ __('收容所') }}</button>
-            <button type="button" data-map-chip="reported" style="--chip-color:#22d3ee"
-                    class="map-chip chip-on">📍 {{ __('回報') }}</button>
-            <button type="button" data-map-chip="notified" style="--chip-color:#818cf8"
-                    class="map-chip chip-on">📣 {{ __('已通報') }}</button>
-            <button type="button" data-map-chip="resolved" style="--chip-color:#94a3b8"
-                    class="map-chip chip-on">✅ {{ __('已排除') }}</button>
-            <button type="button" data-map-chip="radar_echo" style="--chip-color:#22d3ee"
-                    class="map-chip">🌀 {{ __('雷達回波') }}</button>
-            @if (config('hazdar.flood_potential.xyz') || config('hazdar.flood_potential.wms_url'))
-                <button type="button" data-map-chip="flood_potential" style="--chip-color:#818cf8"
-                        class="map-chip">🗺️ {{ __('淹水潛勢') }}</button>
-            @endif
+            @include('partials.map-layer-chips', ['cls' => 'map-chip'])
         </div>
 
         <div class="flex-1"></div>
 
-        {{-- 公告 / 我的回報狀態 / 立即回報鈕：浮在地圖上、各自半透明底（bg-[#111827]/90、backdrop-blur
-             等既有樣式），不再共用實色帶——PM 三次回饋：這幾個元件本來就有自己的半透明卡片樣式，
-             外面再包一層 #002923 實色帶等於把它們悶成不透明，且不必要地擴大覆蓋地圖的面積。 --}}
+        {{-- 公告 / 我的回報狀態 / 立即回報鈕 --}}
         <div class="pointer-events-auto mx-auto flex w-full max-w-md flex-col gap-3 px-4 pb-3">
             <livewire:announcement-banner />
 
@@ -74,23 +48,38 @@
             @endauth
 
             <button type="button"
-                    onclick="window.dispatchEvent(new CustomEvent('hazdar:report-clicked'))"
-                    class="flex items-center justify-center gap-2 rounded-2xl bg-cyan-600 px-6 py-4 text-base font-bold text-white shadow-[0_0_30px_rgba(8,145,178,0.6)] transition active:scale-95 hover:bg-cyan-500">
-                <span class="text-xl">⚠️</span>
-                <span>{{ __('立即回報災情') }}</span>
+                    onclick="window.dispatchEvent(new CustomEvent('petmin:report-clicked'))"
+                    class="flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-6 py-4 text-base font-bold text-stone-900 shadow-[0_0_30px_rgba(245,158,11,0.45)] transition active:scale-95 hover:bg-amber-400">
+                <span class="text-xl">🐾</span>
+                <span>{{ __('回報垃圾桶狀況') }}</span>
             </button>
         </div>
 
-        {{-- 底帶：只剩 footer 這行小字連結 + 燈號，實色帶壓到最薄，減少覆蓋地圖面積（PM 三次回饋）--}}
+        {{-- 底帶：footer 小字連結 + 底圖版權 --}}
         <div class="pointer-events-auto bg-radar-bg px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_10px_rgba(0,0,0,0.35)]">
             <div class="mx-auto w-full max-w-3xl">
                 @include('partials.footer-links')
             </div>
-            {{-- 底圖版權（ODbL 要求標示出處）：地圖是全螢幕 z-0，蓋在上面的 UI（這層 z-[500]）會遮住
-                 地圖容器內疊加的任何元素，所以 Leaflet 內建的 attribution 會被這條底帶蓋住看不到——
-                 改把版權文字放進這條保證可見的底帶。 --}}
             <div class="mx-auto mt-1 flex w-full max-w-3xl items-center gap-2 text-[10px] text-slate-500 [&_a]:underline [&_a]:hover:text-slate-300">
-                <span class="truncate">{!! config('hazdar.map.basemap_attribution') !!}</span>
+                <span class="truncate">{!! config('petmin.map.basemap_attribution') !!}</span>
+            </div>
+        </div>
+    </div>
+
+    {{-- 行動版右側圖層面板：checkbox 式圖層列，狀態由 app.js initChips 純前端管理 --}}
+    <div class="lg:hidden" x-data="{ panelOpen: false }">
+        <button type="button" @click="panelOpen = ! panelOpen"
+                class="pointer-events-auto fixed right-0 top-1/2 z-[510] flex -translate-y-1/2 flex-col items-center gap-1.5 rounded-l-lg bg-radar-bg px-1.5 py-3 text-slate-200 shadow-lg shadow-black/40"
+                :aria-expanded="panelOpen"
+                aria-label="{{ __('切換圖層') }}">
+            <span class="text-lg leading-none" x-text="panelOpen ? '›' : '‹'"></span>
+            <span class="text-xs tracking-[0.15em] [writing-mode:vertical-rl]" x-show="! panelOpen">{{ __('切換圖層') }}</span>
+        </button>
+        <div x-show="panelOpen" x-cloak x-transition.origin.right
+             class="pointer-events-auto fixed bottom-24 right-0 top-16 z-[505] flex w-64 flex-col gap-3 overflow-y-auto rounded-l-xl border-l border-white/10 bg-radar-bg/98 p-3 backdrop-blur">
+            <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('圖層') }}</p>
+            <div class="flex flex-col gap-1">
+                @include('partials.map-layer-chips', ['cls' => 'layer-check'])
             </div>
         </div>
     </div>
@@ -108,50 +97,4 @@
         });
     </script>
 @endif
-
-<script>
-    document.addEventListener('livewire:initialized', () => {
-        function buildRainChart(canvas) {
-            const trend = JSON.parse(canvas.dataset.trend || '[]');
-            return new window.Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: trend.map((t) => t.h),
-                    datasets: [{
-                        data: trend.map((t) => t.v),
-                        backgroundColor: trend.map((t) => t.v >= 40 ? '#f87171' : t.v >= 15 ? '#fb923c' : '#38bdf8'),
-                        borderRadius: 2,
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${c.parsed.y} mm` } } },
-                    scales: {
-                        x: { ticks: { color: '#475569', font: { size: 8 }, maxTicksLimit: 12 }, grid: { display: false } },
-                        y: { ticks: { color: '#475569', font: { size: 8 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                    },
-                },
-            });
-        }
-
-        // Chart.js 在容器 0 尺寸（卡片收合、modal 未開）時建圖會畫成空白，且容器之後
-        // 變可見也不會自動 resize——用 ResizeObserver 觀察容器實際版面大小：首次量到
-        // 非 0 尺寸才建圖，之後尺寸變動（卡片展開/modal 開啟）呼叫 resize()（v0.3 二次回饋 item 7）。
-        function watchRainChart(id) {
-            const canvas = document.getElementById(id);
-            if (! canvas || ! window.Chart) return;
-
-            let chart = null;
-            new ResizeObserver((entries) => {
-                const { width, height } = entries[0].contentRect;
-                if (width === 0 || height === 0) return;
-                chart ? chart.resize() : (chart = buildRainChart(canvas));
-            }).observe(canvas.parentElement);
-        }
-
-        watchRainChart('rain-trend-chart');
-        watchRainChart('rain-trend-chart-mobile');
-    });
-</script>
 @endsection

@@ -107,15 +107,15 @@ class ReportsApiTest extends TestCase
 
     public function test_filters_by_category(): void
     {
-        $flood = $this->approvedReport(['category' => Report::CATEGORY_FLOOD]);
-        $roadBlocked = $this->approvedReport(['category' => Report::CATEGORY_ROAD_BLOCKED]);
+        $flood = $this->approvedReport(['category' => Report::CATEGORY_FULL]);
+        $roadBlocked = $this->approvedReport(['category' => Report::CATEGORY_NEED_BIN]);
 
-        $this->getJson('/api/v1/reports?category=flood')
+        $this->getJson('/api/v1/reports?category=full')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $flood->id);
 
-        $this->getJson('/api/v1/reports?category=road_blocked')
+        $this->getJson('/api/v1/reports?category=need_bin')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $roadBlocked->id);
