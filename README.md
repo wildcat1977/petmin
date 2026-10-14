@@ -15,7 +15,7 @@ Leaflet + 自架 Protomaps 底圖、Claude Vision 審核、Filament 後台。
 
 ## 三層設計
 
-1. **找回**：環保局 open data 的清潔箱（681 組）與狗便清潔袋箱（124 站）上圖；市民回報「桶還在 / 桶消失了」，
+1. **找回**：環保局 open data 的清潔箱（681 組＋景點商圈 98 處）與狗便清潔袋箱（468 個）上圖（每天 04:00 自動同步）；市民回報「桶還在 / 桶消失了」，
    核准後直接改桶的狀態（`TrashBin.status`）。
 2. **回報**：遛狗族 1 分鐘內完成——拍照 → EXIF 自動定位 → 吸附 30m 內最近的桶 → 選狀況
    （需要桶 / 滿了 / 消失了 / 還在 / 袋箱沒袋 / 家戶垃圾 / 毒餌）。同桶 24h 內 2 個帳號 → 自動「多方佐證」。
@@ -24,7 +24,7 @@ Leaflet + 自架 Protomaps 底圖、Claude Vision 審核、Filament 後台。
    捷運從出口往外算（站內桶在閘門旁，出口旁不加權、100m 最高、500m 淡掉）；缺桶加成看格中心到最近清潔箱的距離：
    300m 內不加成、1000m 以上需求加倍。參數都在 `config/petmin.php` 的 `demand`。
    `/candidates` 列候選復設點 Top N（附證據明細、CSV）、撤除風險（家戶垃圾集中）、
-   **有袋沒桶**（狗便袋箱 100m 內無清潔箱：目前 98 / 124 站）。
+   **有袋沒桶**（狗便袋箱 100m 內無清潔箱：目前 268 / 468）。
 
 遊戲化：核准回報 +10 點、連續天數 streak、`/leaderboard` 巡桶英雄榜；獎勵提案為「點數換專用垃圾袋」。
 
@@ -64,8 +64,7 @@ php artisan serve
 資料快照放 `database/data/`（Big5 已轉 UTF-8），匯入指令讀本機檔、不依賴現場網路，重跑冪等：
 
 ```bash
-php artisan bins:import-clean-boxes      # 行人專用清潔箱 681 組
-php artisan bins:import-dog-bag-boxes    # 狗便清潔袋箱 130 列（124 站）
+php artisan bins:sync-open-data         # 官方桶位：清潔箱 681、景點商圈清潔箱 98 處、狗便清潔袋箱 468（排程每天 04:00；--offline 讀快照）
 php artisan proxies:import-bus-stops     # 公車站牌 3,407
 php artisan proxies:import-dog-parks     # 狗活動區／公園（手刻 JSON，座標待勘誤）
 php artisan proxies:import-mrt                # 捷運站點 119 站（weight 已由 OD 出站量換算，見 database/data/README.md）
