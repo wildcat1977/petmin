@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** 提案產出頁：候選復設點（含證據、CSV）、有袋沒桶、皮克敏榜。 */
+/** 提案產出頁：候選復設點（含證據、CSV）、有袋沒桶、巡桶英雄榜。 */
 class CandidatesAndLeaderboardPagesTest extends TestCase
 {
     use RefreshDatabase;
@@ -60,11 +60,23 @@ class CandidatesAndLeaderboardPagesTest extends TestCase
         $html = $this->withHeader('Accept-Language', 'zh-TW')->get('/leaderboard')->assertOk()->getContent();
 
         $this->assertStringContainsString('遛狗王', $html);
-        $this->assertStringContainsString('匿名皮克敏', $html);
+        $this->assertStringContainsString('匿名巡桶員', $html);
         $this->assertStringNotContainsString('低調人', $html);
         $this->assertStringNotContainsString('零點', $html);
         // 前三名頒獎台是 2nd/1st/3rd 排版，改比完整榜單（最後一次出現）的順序
-        $this->assertTrue(strrpos($html, '遛狗王') < strrpos($html, '匿名皮克敏'));
+        $this->assertTrue(strrpos($html, '遛狗王') < strrpos($html, '匿名巡桶員'));
         $this->assertStringContainsString('🔥 3', $html);
+    }
+
+    /** 榜名與匿名稱呼不可用「皮克敏」：Pikmin 是任天堂的註冊商標，公開提案與上線頁面都不能沾到 */
+    public function test_leaderboard_avoids_trademarked_pikmin_naming(): void
+    {
+        User::factory()->create(['name' => '低調人', 'points' => 20, 'is_private' => true]);
+
+        foreach (['zh-TW', 'en'] as $locale) {
+            $html = $this->withHeader('Accept-Language', $locale)->get('/leaderboard')->assertOk()->getContent();
+            $this->assertStringNotContainsString('皮克敏', $html);
+            $this->assertStringNotContainsStringIgnoringCase('pikmin', $html);
+        }
     }
 }

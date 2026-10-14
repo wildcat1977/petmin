@@ -84,7 +84,7 @@
         <nav class="flex flex-col gap-1 text-sm">
             <a href="{{ route('candidates') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('候選復設點') }}</a>
             <a href="{{ route('reports') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('回報清單') }}</a>
-            <a href="{{ route('leaderboard') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('皮克敏榜') }}</a>
+            <a href="{{ route('leaderboard') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('巡桶英雄榜') }}</a>
             <a href="{{ route('news') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('最新消息') }}</a>
             <button type="button"
                     @click="mobileNavOpen = false; window.dispatchEvent(new CustomEvent('open-contact-form'))"

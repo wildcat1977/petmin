@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', __('皮克敏榜 · Petmin'))
+@section('title', __('巡桶英雄榜 · Petmin'))
 
 @section('content')
 <div class="min-h-dvh bg-radar-bg">

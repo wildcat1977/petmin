@@ -7,5 +7,5 @@
 
 <a href="{{ route('candidates') }}" class="{{ $navPageLinkCls('candidates') }}">{{ __('候選復設點') }}</a>
 <a href="{{ route('reports') }}" class="{{ $navPageLinkCls('reports') }}">{{ __('回報清單') }}</a>
-<a href="{{ route('leaderboard') }}" class="{{ $navPageLinkCls('leaderboard') }}">{{ __('皮克敏榜') }}</a>
+<a href="{{ route('leaderboard') }}" class="{{ $navPageLinkCls('leaderboard') }}">{{ __('巡桶英雄榜') }}</a>
 <a href="{{ route('news') }}" class="{{ $navPageLinkCls('news') }}">{{ __('最新消息') }}</a>

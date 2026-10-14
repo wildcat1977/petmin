@@ -26,7 +26,7 @@ Leaflet + 自架 Protomaps 底圖、Claude Vision 審核、Filament 後台。
    `/candidates` 列候選復設點 Top N（附證據明細、CSV）、撤除風險（家戶垃圾集中）、
    **有袋沒桶**（狗便袋箱 100m 內無清潔箱：目前 98 / 124 站）。
 
-遊戲化：核准回報 +10 點、連續天數 streak、`/leaderboard` 皮克敏榜；獎勵提案為「點數換專用垃圾袋」。
+遊戲化：核准回報 +10 點、連續天數 streak、`/leaderboard` 巡桶英雄榜；獎勵提案為「點數換專用垃圾袋」。
 
 ## 技術堆疊
 
@@ -55,7 +55,7 @@ php artisan serve
 
 - 地圖首頁      <http://localhost:8000>
 - 候選復設點    <http://localhost:8000/candidates>
-- 皮克敏榜      <http://localhost:8000/leaderboard>
+- 巡桶英雄榜      <http://localhost:8000/leaderboard>
 - 回報清單      <http://localhost:8000/reports>
 - 後台          <http://localhost:8000/admin>
 

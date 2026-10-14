@@ -51,7 +51,7 @@ new class extends Component
                     </li>
                     <li class="flex gap-3">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600/20 text-red-400">3</span>
-                        <span>{{ __('送出回報，地圖即時更新；核准後加點，累積上皮克敏榜。') }}</span>
+                        <span>{{ __('送出回報，地圖即時更新；核准後加點，累積上巡桶英雄榜。') }}</span>
                     </li>
                 </ol>
 

@@ -81,7 +81,7 @@ Day 1 線上提案 2026-10-23 ｜ Day 2 現場 2026-10-24
 
 ## 4. 遊戲化（劭筠的點子，收斂版）
 
-核准回報 +10 點、連續天數 streak、行政區皮克敏榜。獎勵提案：**點數換台北市專用垃圾袋**——市府本來就在賣、成本可控、政策上說得通。不做抽獎與虛擬寵物。
+核准回報 +10 點、連續天數 streak、行政區巡桶英雄榜。獎勵提案：**點數換台北市專用垃圾袋**——市府本來就在賣、成本可控、政策上說得通。不做抽獎與虛擬寵物。
 
 ## 5. 模擬資料（題目明示可用）
 
@@ -105,7 +105,7 @@ Day 1 線上提案 2026-10-23 ｜ Day 2 現場 2026-10-24
 
 ## 8. 技術
 
-從 hazdar（災害回報）fork：回報 pipeline、Socialite（Google / LINE / LIFF）、Leaflet + 自架 Protomaps、Claude Vision 審核、Filament 後台、bbox + geohash 聚合 API 全部沿用；新增 TrashBin / DemandProxy / DemandCell、匯入指令、需求分數服務、吸附、觀察者、皮克敏榜。238 支自動測試。
+從 hazdar（災害回報）fork：回報 pipeline、Socialite（Google / LINE / LIFF）、Leaflet + 自架 Protomaps、Claude Vision 審核、Filament 後台、bbox + geohash 聚合 API 全部沿用；新增 TrashBin / DemandProxy / DemandCell、匯入指令、需求分數服務、吸附、觀察者、巡桶英雄榜。238 支自動測試。
 
 ## 9. 時程
 

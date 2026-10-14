@@ -4,7 +4,7 @@ use App\Models\Report;
 use App\Models\User;
 use Livewire\Component;
 
-/** 皮克敏榜：點數（核准回報 × points_per_approved_report）+ 連續天數；隱私模式以匿名顯示。 */
+/** 巡桶英雄榜：點數（核准回報 × points_per_approved_report）+ 連續天數；隱私模式以匿名顯示。 */
 new class extends Component
 {
     public function getLeaderboardProperty(): \Illuminate\Support\Collection
@@ -28,7 +28,7 @@ new class extends Component
 
     <div class="mb-8 text-center">
         <div class="inline-flex items-center justify-center rounded-full bg-amber-500/20 p-4 text-4xl">🐾</div>
-        <h1 class="mt-3 text-2xl font-bold">{{ __('皮克敏榜') }}</h1>
+        <h1 class="mt-3 text-2xl font-bold">{{ __('巡桶英雄榜') }}</h1>
         <p class="mt-1 text-sm text-slate-400">
             {{ __('全平台已核准回報 :count 筆', ['count' => $this->totalApproved]) }}
         </p>
@@ -54,7 +54,7 @@ new class extends Component
                         @else
                             <div class="mt-1 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-xl ring-2 {{ $rank === 1 ? 'ring-yellow-400' : 'ring-white/20' }}">🐶</div>
                         @endif
-                        <p class="mt-2 max-w-full truncate px-1 text-center text-xs font-semibold text-slate-200">{{ $user->is_private ? __('匿名皮克敏') : $user->name }}</p>
+                        <p class="mt-2 max-w-full truncate px-1 text-center text-xs font-semibold text-slate-200">{{ $user->is_private ? __('匿名巡桶員') : $user->name }}</p>
                         <p class="text-[11px] font-bold text-amber-400">{{ $user->points }} {{ __('點') }}</p>
                     </div>
                 @endif
@@ -77,7 +77,7 @@ new class extends Component
                     <div class="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-base">🐶</div>
                 @endif
 
-                <span class="flex-1 truncate text-sm font-medium text-slate-200">{{ $user->is_private ? __('匿名皮克敏') : $user->name }}</span>
+                <span class="flex-1 truncate text-sm font-medium text-slate-200">{{ $user->is_private ? __('匿名巡桶員') : $user->name }}</span>
 
                 @if ($user->streak_days > 1)
                     <span class="rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-semibold text-orange-300">🔥 {{ $user->streak_days }} {{ __('天') }}</span>

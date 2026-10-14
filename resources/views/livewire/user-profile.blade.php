@@ -108,7 +108,7 @@ new class extends Component
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="text-sm font-medium text-slate-200">{{ __('隱私模式') }}</p>
-                    <p class="mt-0.5 text-xs text-slate-500">{{ __('開啟後，皮克敏榜將以「匿名皮克敏」顯示，隱藏你的名稱與頭像') }}</p>
+                    <p class="mt-0.5 text-xs text-slate-500">{{ __('開啟後，巡桶英雄榜將以「匿名巡桶員」顯示，隱藏你的名稱與頭像') }}</p>
                 </div>
                 <button wire:click="togglePrivate"
                         type="button"
