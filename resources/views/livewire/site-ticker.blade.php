@@ -18,10 +18,12 @@ new class extends Component
         return Cache::remember('petmin:site-ticker', 30, function () {
             $messages = [];
 
-            $active = TrashBin::query()->active()->kind(TrashBin::KIND_CLEAN_BOX)->count();
-            $missing = TrashBin::query()->where('status', TrashBin::STATUS_MISSING)->count();
+            // 「登記」只算環保局逐點清單：景點商圈清單一筆是一個地點（N 處），混著加沒有意義
+            $active = TrashBin::query()->active()->where('source', TrashBin::SOURCE_OFFICIAL_CLEAN_BOX)->count();
+            // 消失＝民眾回報核准確認＋官方清單撤除
+            $missing = TrashBin::query()->kind(TrashBin::KIND_CLEAN_BOX)->where('status', TrashBin::STATUS_MISSING)->count();
             if ($active > 0) {
-                $messages[] = "🗑️ 台北市目前登記 {$active} 組行人專用清潔箱".($missing > 0 ? "，市民回報已有 {$missing} 組消失" : '');
+                $messages[] = "🗑️ 台北市目前登記 {$active} 組行人專用清潔箱".($missing > 0 ? "，已確認消失 {$missing} 組" : '');
             }
 
             // 近 24h 各分類統計
