@@ -110,4 +110,16 @@ class DemandCellDetailApiTest extends TestCase
         $this->assertEqualsWithDelta(4.0, $cells[$this->grid->id($this->ix, $this->iy)][2], 0.01);
         $this->assertTrue($cells->every(fn ($c) => $c[2] > 0), '分數 0 的格子不下發');
     }
+
+    /** 新北格子的明細要說清楚：街頭已撤桶、這裡只有捷運資料、不列入候選排行 */
+    public function test_new_taipei_cell_detail_is_flagged_as_outside_ranking(): void
+    {
+        DemandProxy::factory()->count(8)->create(['latitude' => 25.0230, 'longitude' => 121.4683]);
+        app(DemandScoreService::class)->recompute();
+
+        $cell = $this->withHeader('Accept-Language', 'zh-TW')->getJson('/api/map/demand/at?lat=25.0230&lng=121.4683')->assertOk()->json('cell');
+
+        $this->assertTrue($cell['outside_taipei']);
+        $this->assertStringContainsString('不列入候選排行', $cell['outside_note']);
+    }
 }

@@ -605,6 +605,12 @@ async function showDemandDetail(latlng) {
     place.style.cssText = 'font-size:11px;color:#64748b;margin-bottom:4px';
     place.textContent = cell.title;
     box.append(title, place);
+    if (cell.outside_taipei && cell.outside_note) {
+        const note = document.createElement('div');
+        note.style.cssText = 'font-size:11px;color:#9a3412;background:#ffedd5;border-radius:6px;padding:4px 6px;margin-bottom:4px';
+        note.textContent = cell.outside_note;
+        box.append(note);
+    }
     cell.items.forEach((item) => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e2e8f0;padding:2px 0';

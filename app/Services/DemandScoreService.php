@@ -50,11 +50,8 @@ class DemandScoreService
         $rows = [];
         foreach ($this->touchedCells($grid, [...$signals, ...$dumping], $radius, (float) $donut['outer_m']) as [$ix, $iy]) {
             $center = $grid->center($ix, $iy);
-            // 垃圾桶資料只有臺北市：市界外的格子沒資料就不能宣稱缺桶（市界外的訊號仍可影響界內格子）
+            // 市界外（新北）district 為 null：街頭已全面撤除行人清潔箱，地圖照畫；但只有捷運資料，不排名次
             $district = TaipeiBoundary::districtAt($center['lat'], $center['lng']);
-            if ($district === null) {
-                continue;
-            }
             [$cx, $cy] = $grid->toMeters($center['lat'], $center['lng']);
 
             $breakdown = [];
@@ -357,8 +354,10 @@ class DemandScoreService
     {
         $spacing = (float) config('petmin.demand.candidate_spacing_m');
         $index = [];
+        // 只在臺北市格子之間比：新北只有捷運資料、資料不對等；新北高分格也不能壓掉市界旁的臺北格
+        $ranked = fn (array $r) => $r['score'] > 0 && $r['district'] !== null;
         foreach ($rows as $i => $r) {
-            if ($r['score'] > 0) {
+            if ($ranked($r)) {
                 $index[(int) floor($r['_x'] / self::BUCKET_M).':'.(int) floor($r['_y'] / self::BUCKET_M)][] = [$r['_x'], $r['_y'], $i];
             }
         }
@@ -368,7 +367,7 @@ class DemandScoreService
 
         $peaks = [];
         foreach ($rows as $i => $r) {
-            if ($r['score'] <= 0) {
+            if (! $ranked($r)) {
                 continue;
             }
             foreach ($this->near($index, $r['_x'], $r['_y']) as [$p, $d]) {

@@ -170,19 +170,25 @@ class DemandScoreServiceTest extends TestCase
     }
 
     /**
-     * 垃圾桶資料只有臺北市：新北市的格子一律「離桶很遠」、缺桶加成拉滿，新埔站、板橋站會被算成熱點。
-     * 沒有資料就不能宣稱缺桶——格子中心在臺北市界外的不計分；市界外的訊號仍可影響界內的格子。
+     * 新北市街頭已全面撤除行人清潔箱（只剩捷運站內桶）：地圖照畫，缺桶是事實。
+     * 但公車、狗便袋箱資料只有臺北市，新北只有捷運訊號——資料不對等，不排進候選名次，
+     * 否則新埔、板橋會擠進前幾名、扭曲臺北市的會勘名單。
      */
-    public function test_cells_outside_taipei_city_are_not_scored(): void
+    public function test_new_taipei_cells_are_scored_for_the_map_but_never_ranked(): void
     {
         config(['petmin.demand.bin_gap.max_multiplier' => 1.0]);
-        DemandProxy::factory()->count(8)->create(['latitude' => 25.0230, 'longitude' => 121.4683]); // 新北市板橋（新埔站）
+        DemandProxy::factory()->count(8)->create(['latitude' => 25.0230, 'longitude' => 121.4683]); // 新北・新埔站
+        DemandProxy::factory()->count(2)->create($this->at());                                      // 臺北：低分
 
         $this->recompute();
 
         [$ix, $iy] = $this->grid->cellAt(25.0230, 121.4683);
-        $this->assertNull(DemandCell::where('cell', $this->grid->id($ix, $iy))->first());
-        $this->assertSame(0, DemandCell::count());
+        $newTaipei = DemandCell::where('cell', $this->grid->id($ix, $iy))->first();
+        $this->assertNotNull($newTaipei);
+        $this->assertNull($newTaipei->district);
+        $this->assertNull($newTaipei->candidate_rank);
+        $this->assertTrue($newTaipei->score > $this->cell()->score, '新北分數比臺北高，但不能排在前面');
+        $this->assertSame($this->cell()->cell, app(DemandScoreService::class)->topCandidates(10)->first()->cell);
     }
 
     public function test_only_approved_unresolved_reports_count_and_corroborated_count_double(): void

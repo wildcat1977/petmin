@@ -59,7 +59,7 @@ class DemandCell extends Model
     /**
      * 地圖點熱力圖的明細：分數由哪些來源組成（家戶垃圾不計入需求分數，不列）。
      *
-     * @return array{cell: string, score: float, title: string, bounds: array{south: float, west: float, north: float, east: float}, items: list<array{key: string, label: string, count: int, score: float, note: string}>}
+     * @return array{cell: string, score: float, title: string, bounds: array{south: float, west: float, north: float, east: float}, outside_taipei: bool, outside_note: ?string, items: list<array{key: string, label: string, count: int, score: float, note: string}>}
      */
     public function explanation(): array
     {
@@ -70,6 +70,8 @@ class DemandCell extends Model
             'score' => $this->score,
             'title' => collect(self::TITLE_SOURCES)->flatMap(fn (string $key) => $breakdown[$key]['samples'] ?? [])->unique()->take(2)->implode('、') ?: $this->cell,
             'bounds' => DemandGrid::fromConfig()->bounds($this->ix, $this->iy),
+            'outside_taipei' => $this->district === null,
+            'outside_note' => $this->district === null ? __('新北市：街頭已全面撤除行人清潔箱，這裡只有捷運資料（沒有公車站牌、狗便袋箱），不列入候選排行') : null,
             'items' => $breakdown->except('report_dumping')->map(fn (array $b, string $key) => [
                 'key' => $key,
                 'label' => __(self::BREAKDOWN_LABELS[$key] ?? $key),
