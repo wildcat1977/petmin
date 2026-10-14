@@ -47,6 +47,25 @@ class BinsApiTest extends TestCase
         $this->assertSame(5, collect($res->json('clusters'))->sum('count'));
     }
 
+    /**
+     * 點群要落在桶的實際重心，不是 geohash 格中心：放格中心會排成棋盤，
+     * 桶都擠在格子一角時，點群位置跟放大後看到的桶差好幾條街，使用者點下去找不到桶。
+     */
+    public function test_cluster_sits_at_bins_centroid_not_geohash_cell_center(): void
+    {
+        TrashBin::factory()->create(['latitude' => 25.0330, 'longitude' => 121.5654]);
+        TrashBin::factory()->create(['latitude' => 25.0340, 'longitude' => 121.5664]);
+        TrashBin::factory()->dogBagBox()->create(['latitude' => 25.0350, 'longitude' => 121.5674]);
+
+        $clusters = $this->getJson('/api/map/bins?bbox='.self::BBOX.'&zoom=12&kinds=clean_box,dog_bag_box')
+            ->assertOk()->json('clusters');
+
+        $this->assertCount(1, $clusters);
+        $this->assertSame(3, $clusters[0]['count']);
+        $this->assertEqualsWithDelta(25.0340, $clusters[0]['lat'], 0.00001);
+        $this->assertEqualsWithDelta(121.5664, $clusters[0]['lng'], 0.00001);
+    }
+
     public function test_nearby_snaps_to_closest_bin_within_snap_distance_only(): void
     {
         config(['petmin.bin_snap_meters' => 30]);

@@ -478,6 +478,7 @@ async function renderDemand() {
     }
     if (!L.heatLayer) {
         try { await import('leaflet.heat'); } catch (error) { console.error('leaflet.heat failed', error); return; }
+        patchSimpleheatRadius();
     }
     if (!demandCache) {
         const el = document.getElementById('radar-map');
@@ -490,8 +491,39 @@ async function renderDemand() {
     const max = demandCache.reduce((m, c) => Math.max(m, c[2]), 1);
     const points = demandCache.map((c) => [c[0], c[1], c[2] / max]);
     if (demandLayer) radarMap.removeLayer(demandLayer);
-    demandLayer = L.heatLayer(points, { radius: 38, blur: 28, maxZoom: 15, minOpacity: 0.25,
+    demandLayer = L.heatLayer(points, { ...demandHeatScale(), minOpacity: 0.25,
         gradient: { 0.2: '#fde68a', 0.5: '#fb923c', 0.8: '#ef4444', 1: '#991b1b' } }).addTo(radarMap);
+}
+
+// 需求網格是 geohash6（約 1.2km × 0.6km）。半徑若固定像素，放大後各格相距數百像素、互不重疊就變淡
+// （實測同一區域 z12 → z15 濃度掉到 1/25）。改成以 z12 為基準：每放大一級半徑加倍、maxZoom 跟著推，
+// 放大後看起來就像把 z12 的熱力圖放大。半徑上限 400px：再大 canvas 太吃效能，街道層級熱力也非重點。
+function demandHeatScale() {
+    const zoom = radarMap.getZoom();
+    const radius = Math.min(400, 38 * Math.pow(2, Math.max(0, zoom - 12)));
+    return { radius, blur: radius * 28 / 38, maxZoom: Math.max(15, zoom + 3) };
+}
+
+// leaflet.heat 0.2.0 內附的 simpleheat 把陰影位移寫死 200px：radius + blur 超過 200 時實心圓會畫進模板、
+// 被模板邊緣切成直角（熱力變一塊塊方形）。換成上游 simpleheat 的寫法：位移跟著模板大小走。
+function patchSimpleheatRadius() {
+    const proto = window.simpleheat?.prototype;
+    if (!proto) return;
+    proto.radius = function (r, blur) {
+        blur = blur || 15;
+        const circle = this._circle = document.createElement('canvas');
+        const ctx = circle.getContext('2d');
+        const r2 = this._r = r + blur;
+        circle.width = circle.height = r2 * 2;
+        ctx.shadowOffsetX = ctx.shadowOffsetY = r2 * 2;
+        ctx.shadowBlur = blur;
+        ctx.shadowColor = 'black';
+        ctx.beginPath();
+        ctx.arc(-r2, -r2, r, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.fill();
+        return this;
+    };
 }
 
 // ── 分類篩選 chips（radar 頁 header 渲染，data-map-chip 綁定）──
@@ -592,6 +624,7 @@ function initRadar() {
     const onMove = () => { scheduleFetch(); fetchBins(); };
     radarMap.on('moveend', onMove);
     radarMap.on('zoomend', onMove);
+    radarMap.on('zoomend', () => demandLayer?.setOptions(demandHeatScale()));
     fetchReports();
     fetchBins();
 

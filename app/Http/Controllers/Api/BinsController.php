@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\TrashBin;
 use App\Support\Geo;
-use App\Support\Geohash;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -79,19 +78,20 @@ class BinsController extends Controller
                 $zoom <= 12 => 5,
                 default => 6,
             };
-            $rows = $base->selectRaw("substr(geohash7, 1, {$precision}) as cell, kind, count(*) as n")
+            $rows = $base->selectRaw("substr(geohash7, 1, {$precision}) as cell, kind, count(*) as n, avg(latitude) as lat, avg(longitude) as lng")
                 ->groupBy('cell', 'kind')->get();
 
             return [
                 'mode' => 'clusters',
                 'truncated' => false,
-                'clusters' => $rows->groupBy('cell')->map(function ($group, $cell) {
-                    $center = Geohash::decodeCenter($cell);
+                // 點群放在桶的實際重心（各 kind 依筆數加權），不放格中心——格中心會排成棋盤、放大後位置對不上
+                'clusters' => $rows->groupBy('cell')->map(function ($group) {
+                    $count = (int) $group->sum('n');
 
                     return [
-                        'lat' => round($center['lat'], 5),
-                        'lng' => round($center['lng'], 5),
-                        'count' => (int) $group->sum('n'),
+                        'lat' => round($group->sum(fn ($row) => (float) $row->lat * $row->n) / $count, 5),
+                        'lng' => round($group->sum(fn ($row) => (float) $row->lng * $row->n) / $count, 5),
+                        'count' => $count,
                         'kind' => $group->sortByDesc('n')->first()->kind,
                     ];
                 })->values()->all(),
