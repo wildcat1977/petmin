@@ -19,9 +19,10 @@ Leaflet + 自架 Protomaps 底圖、Claude Vision 審核、Filament 後台。
    核准後直接改桶的狀態（`TrashBin.status`）。
 2. **回報**：遛狗族 1 分鐘內完成——拍照 → EXIF 自動定位 → 吸附 30m 內最近的桶 → 選狀況
    （需要桶 / 滿了 / 消失了 / 還在 / 袋箱沒袋 / 家戶垃圾 / 毒餌）。同桶 24h 內 2 個帳號 → 自動「多方佐證」。
-3. **決策**：`demand:recompute` 以 geohash6（~600m）為格算需求分數 =
-   （人流 proxy（捷運、公車站牌）+ 遛狗 proxy（狗便袋箱、狗活動區）+ 市民回報（佐證加倍））× 缺桶加成 − 現存清潔箱。
-   缺桶加成看格中心到最近清潔箱的距離：300m 內不加成、1000m 以上需求加倍（`petmin.demand.bin_gap` 可調）。
+3. **決策**：`demand:recompute` 以 150m 方格算需求分數，每格看格中心附近的訊號（越近越重，不看落在哪一格）=
+   （人流 proxy（捷運出入口、公車站牌）+ 遛狗 proxy（狗便袋箱、狗活動區）+ 市民回報（佐證加倍））× 缺桶加成 − 附近現存清潔箱。
+   捷運從出口往外算（站內桶在閘門旁，出口旁不加權、100m 最高、500m 淡掉）；缺桶加成看格中心到最近清潔箱的距離：
+   300m 內不加成、1000m 以上需求加倍。參數都在 `config/petmin.php` 的 `demand`。
    `/candidates` 列候選復設點 Top N（附證據明細、CSV）、撤除風險（家戶垃圾集中）、
    **有袋沒桶**（狗便袋箱 100m 內無清潔箱：目前 98 / 124 站）。
 
@@ -68,6 +69,7 @@ php artisan bins:import-dog-bag-boxes    # 狗便清潔袋箱 130 列（124 站�
 php artisan proxies:import-bus-stops     # 公車站牌 3,407
 php artisan proxies:import-dog-parks     # 狗活動區／公園（手刻 JSON，座標待勘誤）
 php artisan proxies:import-mrt                # 捷運站點 119 站（weight 已由 OD 出站量換算，見 database/data/README.md）
+php artisan proxies:import-mrt-exits          # 捷運出入口 390 個（站權重平分給各出口；需求分數用這個）
 php artisan demand:recompute             # 需求分數（排程每小時）
 php artisan bins:gap-report [--csv=path] # 有袋沒桶清單
 ```

@@ -58,13 +58,13 @@
                                 <span class="w-6 text-center font-bold {{ $i < 3 ? 'text-amber-400' : 'text-slate-500' }}">{{ $i + 1 }}</span>
                                 <span class="flex-1 truncate text-slate-200">
                                     @php $samples = collect($cell->breakdown)->except('existing_bin')->flatMap(fn ($b) => $b['samples'] ?? [])->unique()->take(3); @endphp
-                                    {{ $samples->isNotEmpty() ? $samples->implode('、') : $cell->geohash6 }}
+                                    {{ $samples->isNotEmpty() ? $samples->implode('、') : $cell->cell }}
                                 </span>
                                 <a href="{{ route('home') }}#map={{ $cell->latitude }},{{ $cell->longitude }},16" class="text-[11px] text-cyan-300 hover:underline">{{ __('看地圖') }}</a>
                                 <span class="rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-bold text-orange-300">{{ $cell->score }}</span>
                             </summary>
                             <div class="border-t border-white/10 px-4 py-3 text-xs text-slate-400">
-                                <p class="text-slate-500">{{ __('網格 :g（中心 :lat, :lng）', ['g' => $cell->geohash6, 'lat' => number_format($cell->latitude, 5), 'lng' => number_format($cell->longitude, 5)]) }}</p>
+                                <p class="text-slate-500">{{ __('網格 :g（中心 :lat, :lng）', ['g' => $cell->cell, 'lat' => number_format($cell->latitude, 5), 'lng' => number_format($cell->longitude, 5)]) }}</p>
                                 <ul class="mt-2 space-y-1">
                                     @foreach ($cell->breakdown as $key => $b)
                                         <li class="flex items-center justify-between gap-2">
@@ -90,7 +90,7 @@
                 <div class="mt-3 grid gap-2 sm:grid-cols-2">
                     @foreach ($dumping as $cell)
                         <div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm">
-                            <span class="text-slate-300">{{ collect($cell->breakdown)->flatMap(fn ($b) => $b['samples'] ?? [])->unique()->take(2)->implode('、') ?: $cell->geohash6 }}</span>
+                            <span class="text-slate-300">{{ collect($cell->breakdown)->flatMap(fn ($b) => $b['samples'] ?? [])->unique()->take(2)->implode('、') ?: $cell->cell }}</span>
                             <span class="text-xs font-bold text-rose-300">{{ $cell->dumping_score }}</span>
                         </div>
                     @endforeach

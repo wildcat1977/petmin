@@ -75,4 +75,44 @@ class ImportProxiesTest extends TestCase
         $this->assertSame(DemandProxy::KIND_PARK, DemandProxy::where('name', '大安森林公園')->sole()->kind);
         $this->assertTrue(DemandProxy::where('name', '華山公園狗活動區')->sole()->meta['approx']);
     }
+
+    private function mrtExitFiles(string $exits, string $stations): array
+    {
+        $e = tempnam(sys_get_temp_dir(), 'exits');
+        $s = tempnam(sys_get_temp_dir(), 'stations');
+        file_put_contents($e, "項次,出入口名稱,出入口編號,經度,緯度,是否為無障礙用\n".$exits);
+        file_put_contents($s, "name,lng,lat,weight,exits\n".$stations);
+
+        return ['--exits' => $e, '--stations' => $s];
+    }
+
+    /**
+     * 捷運人流要從出口往外算（站內垃圾桶在閘門旁，出站往外走的人不會回頭丟）：
+     * 一站的權重平分給各出口，大站不會因為出口多就被重複放大。
+     */
+    public function test_mrt_exits_split_station_weight_evenly_and_reimport_replaces(): void
+    {
+        $args = $this->mrtExitFiles(
+            "1,台北車站M1,M1,121.518193,25.048232,否\n2,台北車站M2,M2,121.5175,25.0475,是\n3,劍潭站出口1,1,121.5249,25.0847,是\n",
+            "台北車站,121.5177,25.0478,1.000,2\n劍潭站,121.5249,25.0847,0.250,1\n",
+        );
+
+        $this->artisan('proxies:import-mrt-exits', $args)->expectsOutputToContain('3 個出入口（2 站）')->assertSuccessful();
+        $this->artisan('proxies:import-mrt-exits', $args)->assertSuccessful();
+
+        $exits = DemandProxy::where('kind', DemandProxy::KIND_MRT_EXIT)->get()->keyBy('name');
+        $this->assertCount(3, $exits);
+        $this->assertEqualsWithDelta(0.5, $exits['台北車站M1']->weight, 0.001);
+        $this->assertEqualsWithDelta(0.25, $exits['劍潭站出口1']->weight, 0.001);
+        $this->assertSame('台北車站', $exits['台北車站M1']->meta['station']);
+    }
+
+    /** 出口對不到站點權重就大聲失敗：靜默給 1.0 等於跟台北車站一樣重 */
+    public function test_mrt_exit_without_station_weight_fails_loudly(): void
+    {
+        $args = $this->mrtExitFiles("1,新站出口1,1,121.5,25.0,是\n", "台北車站,121.5177,25.0478,1.000,1\n");
+
+        $this->artisan('proxies:import-mrt-exits', $args)->expectsOutputToContain('新站')->assertFailed();
+        $this->assertSame(0, DemandProxy::where('kind', DemandProxy::KIND_MRT_EXIT)->count());
+    }
 }

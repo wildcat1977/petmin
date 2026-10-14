@@ -6,129 +6,93 @@ use App\Models\DemandCell;
 use App\Models\DemandProxy;
 use App\Models\Report;
 use App\Models\TrashBin;
-use App\Support\Geo;
-use App\Support\Geohash;
+use App\Support\DemandGrid;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 需求分數（純程式，無 AI）：以 geohash6（~600m）為格，
- *   score = (Σ proxy 權重 + 狗便袋箱 + 眾包回報（need_bin / full，已核准）× 佐證倍率) × (1 + 缺桶加成)
- *           − 現存 active 清潔箱 × penalty（缺桶加成依格中心到最近清潔箱的距離，見 config petmin.demand.bin_gap）
- *   dumping_score = 家戶垃圾亂丟（已核准）回報數 × 佐證倍率（撤除風險）
- * 每格保留 breakdown 作為證據明細，/candidates 直接顯示。
+ * 需求分數（純程式，無 AI）：以 DemandGrid 方格（預設 150m）為單位，每格看「格中心半徑內」的訊號——
+ * 不看訊號落在哪一格，隔壁馬路的站牌、桶照樣算（舊版 geohash6 分桶會因格線不同而漏算）。
+ *
+ *   score = (Σ 訊號 × 距離衰減) × (1 + 缺桶加成) − Σ 半徑內現存清潔箱 × penalty × 距離衰減
+ *   dumping_score = Σ 家戶垃圾亂丟（已核准）回報 × 佐證倍率 × 距離衰減（撤除風險）
+ *
+ * - 一般訊號（公車、袋箱、狗活動區、公園、陳情、回報）：radius_m 內線性衰減
+ * - 捷運出口：甜甜圈（config petmin.demand.mrt_exit）——站內垃圾桶在閘門旁，需求出現在出站往外走的路上
+ * - 缺桶加成：格中心到最近現存清潔箱的距離（config petmin.demand.bin_gap）；乘在訊號上，山區弱訊號不會被放大成熱區
+ * 每格保留 breakdown 作為證據明細，/candidates 與地圖點擊明細直接顯示。
  */
 class DemandScoreService
 {
+    /** 空間索引的桶大小（公尺）：要不小於最大的影響半徑，查詢只需掃鄰近 3×3 桶 */
+    private const BUCKET_M = 500;
+
     /** @return int 重算後的格數 */
     public function recompute(): int
     {
+        $grid = DemandGrid::fromConfig();
         $w = config('petmin.demand.weights');
-        $cells = [];
+        $radius = (float) config('petmin.demand.radius_m');
+        $donut = config('petmin.demand.mrt_exit');
 
-        $touch = function (string $geohash7, string $key, float $value, ?string $label = null) use (&$cells): void {
-            $cell = substr($geohash7, 0, 6);
-            $cells[$cell] ??= ['score' => 0.0, 'dumping' => 0.0, 'breakdown' => []];
-            $cells[$cell]['score'] += $value;
-            $cells[$cell]['breakdown'][$key] ??= ['count' => 0, 'score' => 0.0, 'samples' => []];
-            $cells[$cell]['breakdown'][$key]['count']++;
-            $cells[$cell]['breakdown'][$key]['score'] += $value;
-            if ($label && count($cells[$cell]['breakdown'][$key]['samples']) < 3) {
-                $cells[$cell]['breakdown'][$key]['samples'][] = $label;
-            }
-        };
-
-        DemandProxy::query()->select(['kind', 'name', 'geohash7', 'weight'])->lazy()->each(function (DemandProxy $p) use ($w, $touch) {
-            $base = match ($p->kind) {
-                DemandProxy::KIND_MRT => $w['mrt'],
-                DemandProxy::KIND_BUS_STOP => $w['bus_stop'],
-                DemandProxy::KIND_DOG_PARK => $w['dog_park'],
-                DemandProxy::KIND_PARK => $w['park'],
-                DemandProxy::KIND_PETITION => $w['petition'],
-                default => 0.0,
-            };
-            $touch($p->geohash7, $p->kind, $base * (float) $p->weight, $p->name);
-        });
-
-        Report::query()
-            ->where('status', Report::STATUS_APPROVED)
-            ->whereNull('resolved_at')
-            ->whereIn('category', [Report::CATEGORY_NEED_BIN, Report::CATEGORY_FULL, Report::CATEGORY_DUMPING])
-            ->whereNotNull('geohash7')
-            ->select(['category', 'geohash7', 'verification_level', 'address'])
-            ->lazy()
-            ->each(function (Report $r) use ($w, $touch, &$cells) {
-                $mult = $r->verification_level === Report::VERIFICATION_UNVERIFIED ? 1.0 : $w['corroborated_multiplier'];
-                if ($r->category === Report::CATEGORY_DUMPING) {
-                    $cell = substr($r->geohash7, 0, 6);
-                    $cells[$cell] ??= ['score' => 0.0, 'dumping' => 0.0, 'breakdown' => []];
-                    $cells[$cell]['dumping'] += $mult;
-                    $cells[$cell]['breakdown']['report_dumping'] ??= ['count' => 0, 'score' => 0.0, 'samples' => []];
-                    $cells[$cell]['breakdown']['report_dumping']['count']++;
-                    $cells[$cell]['breakdown']['report_dumping']['score'] += $mult;
-
-                    return;
-                }
-                $base = $r->category === Report::CATEGORY_NEED_BIN ? $w['report_need_bin'] : $w['report_full'];
-                $touch($r->geohash7, 'report_'.$r->category, $base * $mult, $r->address);
-            });
-
-        // 狗便袋箱＝遛狗族聚集的證據（提案公式「狗便袋箱 ×2」）
-        TrashBin::query()->active()->kind(TrashBin::KIND_DOG_BAG_BOX)
-            ->select(['geohash7', 'address'])
-            ->lazy()
-            ->each(fn (TrashBin $b) => $touch($b->geohash7, TrashBin::KIND_DOG_BAG_BOX, $w['dog_bag_box'], $b->address));
-
+        [$signals, $dumping] = $this->collectSignals($grid, $w);
         $cleanBoxes = TrashBin::query()->active()->kind(TrashBin::KIND_CLEAN_BOX)
-            ->get(['geohash7', 'box_count', 'address', 'latitude', 'longitude']);
-        $cleanBoxes->each(fn (TrashBin $b) => $touch($b->geohash7, 'existing_bin', -$w['existing_bin_penalty'] * max(1, $b->box_count), $b->address));
+            ->get(['box_count', 'address', 'latitude', 'longitude'])
+            ->map(fn (TrashBin $b) => [...$grid->toMeters((float) $b->latitude, (float) $b->longitude), max(1, (int) $b->box_count), $b->address])
+            ->all();
 
-        // 單一來源上限：超過的部分從總分扣回
-        $caps = config('petmin.demand.caps', []);
-        foreach ($cells as &$cell) {
-            foreach ($caps as $key => $cap) {
-                if (isset($cell['breakdown'][$key]) && $cell['breakdown'][$key]['score'] > $cap) {
-                    $cell['score'] -= $cell['breakdown'][$key]['score'] - $cap;
-                    $cell['breakdown'][$key]['score'] = (float) $cap;
-                    $cell['breakdown'][$key]['capped'] = true;
-                }
-            }
-        }
-        unset($cell);
-
-        // 缺桶加成：格中心離最近現存清潔箱越遠，需求訊號（不含扣分）加成越多——人多又沒桶的地方才該排前面。
-        // 用乘的不用加的：山區零星站牌離桶再遠，訊號弱就還是弱。
-        $gap = config('petmin.demand.bin_gap');
-        if ($gap['max_multiplier'] > 0) {
-            foreach ($cells as $geohash6 => &$cell) {
-                $signal = collect($cell['breakdown'])->except(['existing_bin', 'report_dumping'])->sum('score');
-                if ($signal <= 0) {
-                    continue;
-                }
-                $center = Geohash::decodeCenter($geohash6);
-                $nearest = $cleanBoxes->min(fn (TrashBin $b) => Geo::distanceMeters($center['lat'], $center['lng'], (float) $b->latitude, (float) $b->longitude)) ?? INF;
-                $ratio = min(1.0, max(0.0, ($nearest - $gap['start_m']) / ($gap['full_m'] - $gap['start_m'])));
-                if ($ratio <= 0) {
-                    continue;
-                }
-                $bonus = $signal * $ratio * $gap['max_multiplier'];
-                $cell['score'] += $bonus;
-                $cell['breakdown']['bin_gap'] = ['count' => 1, 'score' => $bonus, 'samples' => [], 'nearest_m' => is_finite($nearest) ? (int) round($nearest) : null];
-            }
-            unset($cell);
-        }
+        $signalIndex = $this->index($signals);
+        $dumpingIndex = $this->index($dumping);
+        $binIndex = $this->index($cleanBoxes);
 
         $now = now();
         $rows = [];
-        foreach ($cells as $geohash6 => $cell) {
-            $center = Geohash::decodeCenter($geohash6);
+        foreach ($this->touchedCells($grid, [...$signals, ...$dumping], $radius, (float) $donut['outer_m']) as [$ix, $iy]) {
+            $center = $grid->center($ix, $iy);
+            [$cx, $cy] = $grid->toMeters($center['lat'], $center['lng']);
+
+            $breakdown = [];
+            foreach ($this->near($signalIndex, $cx, $cy) as [$point, $d]) {
+                [, , $key, $value, $label, $isDonut] = $point;
+                $k = $isDonut ? $this->donut($d, (float) $donut['inner_m'], (float) $donut['outer_m']) : $this->linear($d, $radius);
+                if ($k > 0) {
+                    $this->addPart($breakdown, $key, $value * $k, $label);
+                }
+            }
+            $dumpingScore = 0.0;
+            foreach ($this->near($dumpingIndex, $cx, $cy) as [$point, $d]) {
+                $k = $this->linear($d, $radius);
+                if ($k > 0) {
+                    $dumpingScore += $point[3] * $k;
+                    $this->addPart($breakdown, 'report_dumping', $point[3] * $k, $point[4]);
+                }
+            }
+
+            $this->applyCaps($breakdown);
+            $signal = collect($breakdown)->except('report_dumping')->sum('score');
+            if (round($signal, 2) <= 0 && round($dumpingScore, 2) <= 0) { // 甜甜圈內緣等浮點殘值不算訊號
+                continue;
+            }
+
+            $score = $signal + $this->binGapBonus($breakdown, $signal, $this->nearestDistance($binIndex, $cx, $cy));
+            foreach ($this->near($binIndex, $cx, $cy) as [$bin, $d]) {
+                $k = $this->linear($d, $radius);
+                if ($k > 0) {
+                    $penalty = $w['existing_bin_penalty'] * $bin[2] * $k;
+                    $score -= $penalty;
+                    $this->addPart($breakdown, 'existing_bin', -$penalty, $bin[3]);
+                }
+            }
+
             $rows[] = [
-                'geohash6' => $geohash6,
+                'cell' => $grid->id($ix, $iy),
+                'ix' => $ix,
+                'iy' => $iy,
                 'latitude' => round($center['lat'], 7),
                 'longitude' => round($center['lng'], 7),
-                'score' => round(max(0.0, $cell['score']), 2),
-                'dumping_score' => round($cell['dumping'], 2),
-                'breakdown' => json_encode($cell['breakdown'], JSON_UNESCAPED_UNICODE),
+                'score' => round(max(0.0, $score), 2),
+                'dumping_score' => round($dumpingScore, 2),
+                'breakdown' => json_encode($this->finalizeBreakdown($breakdown), JSON_UNESCAPED_UNICODE),
                 'computed_at' => $now,
             ];
         }
@@ -143,23 +107,229 @@ class DemandScoreService
         return count($rows);
     }
 
-    /** @return Collection<int, DemandCell> 候選復設點（分數高且格內沒有現存桶優先） */
+    /**
+     * 訊號點 [x, y, key, value, label, isDonut]；家戶垃圾回報另成一組（撤除風險，不計入需求）。
+     *
+     * @return array{0: list<array>, 1: list<array>}
+     */
+    private function collectSignals(DemandGrid $grid, array $w): array
+    {
+        $signals = [];
+        $point = fn (float $lat, float $lng, string $key, float $value, ?string $label, bool $isDonut = false) => [...$grid->toMeters($lat, $lng), $key, $value, $label, $isDonut];
+
+        // KIND_MRT 站點列只是出口匯入的權重來源，計分只看出口
+        DemandProxy::query()
+            ->whereIn('kind', [DemandProxy::KIND_MRT_EXIT, DemandProxy::KIND_BUS_STOP, DemandProxy::KIND_DOG_PARK, DemandProxy::KIND_PARK, DemandProxy::KIND_PETITION])
+            ->select(['kind', 'name', 'latitude', 'longitude', 'weight', 'meta'])
+            ->lazy()
+            ->each(function (DemandProxy $p) use (&$signals, $point, $w) {
+                $isExit = $p->kind === DemandProxy::KIND_MRT_EXIT;
+                $key = $isExit ? 'mrt' : $p->kind;
+                $signals[] = $point((float) $p->latitude, (float) $p->longitude, $key, $w[$key] * (float) $p->weight,
+                    $isExit ? ($p->meta['station'] ?? $p->name) : $p->name, $isExit);
+            });
+
+        // 狗便袋箱＝遛狗族聚集的證據（提案公式「狗便袋箱 ×2」）
+        TrashBin::query()->active()->kind(TrashBin::KIND_DOG_BAG_BOX)
+            ->select(['address', 'latitude', 'longitude'])
+            ->lazy()
+            ->each(function (TrashBin $b) use (&$signals, $point, $w) {
+                $signals[] = $point((float) $b->latitude, (float) $b->longitude, TrashBin::KIND_DOG_BAG_BOX, $w['dog_bag_box'], $b->address);
+            });
+
+        $dumping = [];
+        Report::query()
+            ->where('status', Report::STATUS_APPROVED)
+            ->whereNull('resolved_at')
+            ->whereIn('category', [Report::CATEGORY_NEED_BIN, Report::CATEGORY_FULL, Report::CATEGORY_DUMPING])
+            ->select(['category', 'latitude', 'longitude', 'verification_level', 'address'])
+            ->lazy()
+            ->each(function (Report $r) use (&$signals, &$dumping, $point, $w) {
+                $mult = $r->verification_level === Report::VERIFICATION_UNVERIFIED ? 1.0 : $w['corroborated_multiplier'];
+                if ($r->category === Report::CATEGORY_DUMPING) {
+                    $dumping[] = $point((float) $r->latitude, (float) $r->longitude, 'report_dumping', $mult, $r->address);
+
+                    return;
+                }
+                $base = $r->category === Report::CATEGORY_NEED_BIN ? $w['report_need_bin'] : $w['report_full'];
+                $signals[] = $point((float) $r->latitude, (float) $r->longitude, 'report_'.$r->category, $base * $mult, $r->address);
+            });
+
+        return [$signals, $dumping];
+    }
+
+    /**
+     * 每個訊號點影響半徑內的格子（格中心在半徑內）。
+     *
+     * @return list<array{0: int, 1: int}>
+     */
+    private function touchedCells(DemandGrid $grid, array $points, float $radius, float $donutOuter): array
+    {
+        $cells = [];
+        foreach ($points as [$x, $y, , , , $isDonut]) {
+            $reach = $isDonut ? $donutOuter : $radius;
+            for ($ix = (int) floor(($x - $reach) / $grid->size); $ix <= (int) floor(($x + $reach) / $grid->size); $ix++) {
+                for ($iy = (int) floor(($y - $reach) / $grid->size); $iy <= (int) floor(($y + $reach) / $grid->size); $iy++) {
+                    if (hypot(($ix + 0.5) * $grid->size - $x, ($iy + 0.5) * $grid->size - $y) <= $reach) {
+                        $cells["{$ix}:{$iy}"] = [$ix, $iy];
+                    }
+                }
+            }
+        }
+
+        return array_values($cells);
+    }
+
+    /** 缺桶加成寫進 breakdown 並回傳加成分數 */
+    private function binGapBonus(array &$breakdown, float $signal, float $nearest): float
+    {
+        $gap = config('petmin.demand.bin_gap');
+        if ($gap['max_multiplier'] <= 0 || $signal <= 0) {
+            return 0.0;
+        }
+        $ratio = min(1.0, max(0.0, ($nearest - $gap['start_m']) / ($gap['full_m'] - $gap['start_m'])));
+        if ($ratio <= 0) {
+            return 0.0;
+        }
+        $bonus = $signal * $ratio * $gap['max_multiplier'];
+        $breakdown['bin_gap'] = ['count' => 1, 'score' => $bonus, 'contrib' => [], 'nearest_m' => is_finite($nearest) ? (int) round($nearest) : null];
+
+        return $bonus;
+    }
+
+    private function addPart(array &$breakdown, string $key, float $value, ?string $label): void
+    {
+        $breakdown[$key] ??= ['count' => 0, 'score' => 0.0, 'contrib' => []];
+        $breakdown[$key]['count']++;
+        $breakdown[$key]['score'] += $value;
+        if ($label !== null && $label !== '') {
+            $breakdown[$key]['contrib'][$label] = ($breakdown[$key]['contrib'][$label] ?? 0) + abs($value);
+        }
+    }
+
+    /** 單一來源上限：超過的部分扣回（半徑內公車站牌可能 20+ 個，不加上限會淹掉其他訊號） */
+    private function applyCaps(array &$breakdown): void
+    {
+        foreach (config('petmin.demand.caps', []) as $key => $cap) {
+            if (isset($breakdown[$key]) && $breakdown[$key]['score'] > $cap) {
+                $breakdown[$key]['score'] = (float) $cap;
+                $breakdown[$key]['capped'] = true;
+            }
+        }
+    }
+
+    /** 樣本取貢獻最大的 3 個（同站多個出口合併成一個站名） */
+    private function finalizeBreakdown(array $breakdown): array
+    {
+        foreach ($breakdown as &$part) {
+            arsort($part['contrib']);
+            $part['samples'] = array_slice(array_keys($part['contrib']), 0, 3);
+            $part['score'] = round($part['score'], 2);
+            unset($part['contrib']);
+        }
+
+        return $breakdown;
+    }
+
+    private function linear(float $d, float $radius): float
+    {
+        return $d >= $radius ? 0.0 : 1 - $d / $radius;
+    }
+
+    private function donut(float $d, float $inner, float $outer): float
+    {
+        if ($d >= $outer) {
+            return 0.0;
+        }
+
+        return $d < $inner ? $d / $inner : 1 - ($d - $inner) / ($outer - $inner);
+    }
+
+    /** @return array<string, list<array>> 以 BUCKET_M 分桶的點（每點 [0]=x、[1]=y） */
+    private function index(array $points): array
+    {
+        $index = [];
+        foreach ($points as $p) {
+            $index[(int) floor($p[0] / self::BUCKET_M).':'.(int) floor($p[1] / self::BUCKET_M)][] = $p;
+        }
+
+        return $index;
+    }
+
+    /** 鄰近 3×3 桶內的點與距離（半徑皆 ≤ BUCKET_M，不會漏） @return \Generator<array{0: array, 1: float}> */
+    private function near(array $index, float $x, float $y): \Generator
+    {
+        $bx = (int) floor($x / self::BUCKET_M);
+        $by = (int) floor($y / self::BUCKET_M);
+        for ($i = $bx - 1; $i <= $bx + 1; $i++) {
+            for ($j = $by - 1; $j <= $by + 1; $j++) {
+                foreach ($index["{$i}:{$j}"] ?? [] as $p) {
+                    yield [$p, hypot($p[0] - $x, $p[1] - $y)];
+                }
+            }
+        }
+    }
+
+    /** 最近一點的距離：由內往外一圈圈掃桶，最近候選已比下一圈的最短可能距離還近就停 */
+    private function nearestDistance(array $index, float $x, float $y): float
+    {
+        if (! $index) {
+            return INF;
+        }
+        $bx = (int) floor($x / self::BUCKET_M);
+        $by = (int) floor($y / self::BUCKET_M);
+        $best = INF;
+        for ($ring = 0; $ring <= 200; $ring++) {
+            if ($best <= ($ring - 1) * self::BUCKET_M) {
+                break;
+            }
+            for ($i = $bx - $ring; $i <= $bx + $ring; $i++) {
+                for ($j = $by - $ring; $j <= $by + $ring; $j++) {
+                    if (max(abs($i - $bx), abs($j - $by)) !== $ring) {
+                        continue;
+                    }
+                    foreach ($index["{$i}:{$j}"] ?? [] as $p) {
+                        $best = min($best, hypot($p[0] - $x, $p[1] - $y));
+                    }
+                }
+            }
+        }
+
+        return $best;
+    }
+
+    /** @return Collection<int, DemandCell> 候選復設點：分數高者優先，candidate_spacing_m 內只留一格 */
     public function topCandidates(?int $limit = null): Collection
     {
-        return DemandCell::query()
-            ->where('score', '>', 0)
-            ->orderByDesc('score')
-            ->limit($limit ?? (int) config('petmin.demand.top_n'))
-            ->get();
+        return $this->spacedTop('score', $limit ?? (int) config('petmin.demand.top_n'));
     }
 
     /** @return Collection<int, DemandCell> 撤除風險：家戶垃圾亂丟回報集中格 */
     public function dumpingRisk(int $limit = 20): Collection
     {
-        return DemandCell::query()
-            ->where('dumping_score', '>', 0)
-            ->orderByDesc('dumping_score')
-            ->limit($limit)
-            ->get();
+        return $this->spacedTop('dumping_score', $limit);
+    }
+
+    /** 依欄位排序取前 N，相距 candidate_spacing_m 內的格子只留最高的一格（同一熱點不重複佔名額） */
+    private function spacedTop(string $column, int $limit): Collection
+    {
+        $grid = DemandGrid::fromConfig();
+        $spacing = (float) config('petmin.demand.candidate_spacing_m');
+        $picked = [];
+        foreach (DemandCell::query()->where($column, '>', 0)->orderByDesc($column)->get(['id', 'latitude', 'longitude'])->all() as $cell) {
+            [$x, $y] = $grid->toMeters((float) $cell->latitude, (float) $cell->longitude);
+            foreach ($picked as [$px, $py]) {
+                if (hypot($x - $px, $y - $py) < $spacing) {
+                    continue 2;
+                }
+            }
+            $picked[$cell->id] = [$x, $y];
+            if (count($picked) >= $limit) {
+                break;
+            }
+        }
+        $order = array_flip(array_keys($picked));
+
+        return DemandCell::query()->whereKey(array_keys($picked))->get()->sortBy(fn (DemandCell $c) => $order[$c->id])->values();
     }
 }

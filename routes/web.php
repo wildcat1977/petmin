@@ -10,7 +10,7 @@ use App\Models\DemandCell;
 use App\Models\Report;
 use App\Services\BagBoxGapService;
 use App\Services\DemandScoreService;
-use App\Support\Geohash;
+use App\Support\DemandGrid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +53,7 @@ Route::get('/candidates/export', function (DemandScoreService $demand) {
         fputcsv($h, ['排名', '網格', '緯度', '經度', '需求分數', '撤除風險分數', '證據明細']);
         foreach ($rows as $i => $cell) {
             $evidence = collect($cell->breakdown)->map(fn ($b, $k) => "{$k}×{$b['count']}".(! empty($b['samples']) ? '（'.implode('、', $b['samples']).'）' : ''))->implode('；');
-            fputcsv($h, [$i + 1, $cell->geohash6, $cell->latitude, $cell->longitude, $cell->score, $cell->dumping_score, $evidence]);
+            fputcsv($h, [$i + 1, $cell->cell, $cell->latitude, $cell->longitude, $cell->score, $cell->dumping_score, $evidence]);
         }
         fclose($h);
     }, 200, $headers);
@@ -83,22 +83,27 @@ Route::get('/api/map/reports', MapPointsController::class)->name('api.map.report
 Route::get('/api/map/bins', [BinsController::class, 'index'])->name('api.map.bins');
 Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api.map.bins.nearby');
 
-// 需求熱力圖：geohash6 格中心 + 分數（leaflet.heat 直接吃）
+// 需求色塊：只傳格子編號＋分數，前端用 grid 參數自己畫格（8,000 格也只有百來 KB）
 Route::get('/api/map/demand', function () {
-    return response()->json(Cache::remember('map.demand', 300, fn () => DemandCell::query()
-        ->where('score', '>', 0)
-        ->get(['latitude', 'longitude', 'score', 'geohash6'])
-        ->map(fn (DemandCell $c) => [(float) $c->latitude, (float) $c->longitude, (float) $c->score, $c->geohash6])
-        ->all()));
+    return response()->json(Cache::remember('map.demand', 300, fn () => [
+        'grid' => DemandGrid::fromConfig()->toArray(),
+        'cells' => DemandCell::query()
+            ->where('score', '>', 0)
+            ->get(['ix', 'iy', 'score'])
+            ->map(fn (DemandCell $c) => [$c->ix, $c->iy, (float) $c->score])
+            ->all(),
+    ]));
 })->name('api.map.demand');
 
-// 點熱力圖看明細：點擊位置所在 geohash6 格的分數組成（分數 0 的格子也回，說明被現存桶扣掉）
+// 點色塊看明細：點擊位置所在格的分數組成（分數 0 的格子也回，說明被附近現存桶扣掉）
 Route::get('/api/map/demand/at', function (Request $request) {
     $validated = $request->validate([
         'lat' => ['required', 'numeric', 'between:-90,90'],
         'lng' => ['required', 'numeric', 'between:-180,180'],
     ]);
-    $cell = DemandCell::where('geohash6', Geohash::encode((float) $validated['lat'], (float) $validated['lng'], 6))->first();
+    $grid = DemandGrid::fromConfig();
+    [$ix, $iy] = $grid->cellAt((float) $validated['lat'], (float) $validated['lng']);
+    $cell = DemandCell::where('cell', $grid->id($ix, $iy))->first();
 
     return response()->json(['cell' => $cell?->explanation()]);
 })->name('api.map.demand.at');

@@ -108,7 +108,7 @@ let radarMap = null;
 let reportsLayer = null;       // 目前顯示的回報點位/聚合圖層
 let binsLayer = null;          // 桶位圖層（清潔箱 / 狗便袋箱 / 消失的桶，bbox API）
 let gapsLayer = null;          // 有袋沒桶圖層（一次全撈）
-let demandLayer = null;        // 需求熱力圖（leaflet.heat，一次全撈）
+let demandLayer = null;        // 需求色塊（DemandGrid 方格，一次全撈）
 let currentTileLayer = null;   // 底圖圖層（MapLibre；隨主題換 style，沒有 WebGL 時為 null）
 // 含停用分類：停用只關新回報入口，既有點位不得消失（spec §11.7）
 let activeCategories = new Set(Object.keys(CATEGORY_META));
@@ -469,7 +469,63 @@ async function renderGaps() {
     gapsLayer = layer.addTo(radarMap);
 }
 
-// ── 需求熱力圖（leaflet.heat 是掛在全域 L 上的舊式外掛：先確定 window.L 再動態載入）──
+// ── 需求色塊：DemandGrid 方格（預設 150m），API 只給 [ix, iy, 分數] + grid 參數，前端自己畫格 ──
+// 色階以前 2% 分數為滿色（避免單一極端格把其他格都壓淡）；分數 0 的格子不下發、不畫
+const DEMAND_COLOR_STOPS = [[0, [253, 230, 138]], [0.4, [251, 146, 60]], [0.75, [239, 68, 68]], [1, [153, 27, 27]]];
+function demandColor(t) {
+    for (let i = 1; i < DEMAND_COLOR_STOPS.length; i++) {
+        const [t1, c1] = DEMAND_COLOR_STOPS[i];
+        if (t <= t1) {
+            const [t0, c0] = DEMAND_COLOR_STOPS[i - 1];
+            const f = (t - t0) / (t1 - t0);
+            return `rgb(${c0.map((v, k) => Math.round(v + (c1[k] - v) * f)).join(',')})`;
+        }
+    }
+    return 'rgb(153,27,27)';
+}
+
+// 載入提示：資料約百來 KB，慢速網路要看得到「有在跑」；邊讀邊顯示已下載量（壓縮傳輸拿不到總量，不做百分比）
+function setDemandLoading(text) {
+    const el = document.getElementById('radar-map');
+    let box = el?.querySelector('.demand-loading');
+    if (text === null) { box?.remove(); return; }
+    if (!box) {
+        box = document.createElement('div');
+        box.className = 'demand-loading';
+        box.innerHTML = '<span></span><div class="demand-loading-track"><div class="demand-loading-bar"></div></div>';
+        el.append(box);
+    }
+    box.querySelector('span').textContent = text;
+}
+
+async function loadDemand() {
+    const el = document.getElementById('radar-map');
+    const label = window.i18n?.demandLoading ?? '需求熱力載入中…';
+    setDemandLoading(label);
+    try {
+        const res = await fetch(el.dataset.demandUrl, { headers: { Accept: 'application/json' } });
+        if (!res.ok || !res.body) return null;
+        const reader = res.body.getReader();
+        const chunks = [];
+        let received = 0;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.length;
+            setDemandLoading(`${label} ${Math.round(received / 1024)} KB`);
+        }
+        const payload = JSON.parse(new TextDecoder().decode(await new Blob(chunks).arrayBuffer()));
+        const scores = new Map(payload.cells.map(([ix, iy, score]) => [`${ix}:${iy}`, score]));
+        const sorted = payload.cells.map((c) => c[2]).sort((a, b) => a - b);
+        return { grid: payload.grid, cells: payload.cells, scores, p98: sorted[Math.floor(sorted.length * 0.98)] || 1 };
+    } catch (_) {
+        return null;
+    } finally {
+        setDemandLoading(null);
+    }
+}
+
 async function renderDemand() {
     if (!radarMap) return;
     syncDemandHint();
@@ -478,26 +534,34 @@ async function renderDemand() {
         if (demandPopup) { radarMap.closePopup(demandPopup); demandPopup = null; }
         return;
     }
-    if (!L.heatLayer) {
-        try { await import('leaflet.heat'); } catch (error) { console.error('leaflet.heat failed', error); return; }
-        patchSimpleheatRadius();
-    }
-    if (!demandCache) {
-        const el = document.getElementById('radar-map');
-        try {
-            const res = await fetch(el.dataset.demandUrl, { headers: { Accept: 'application/json' } });
-            if (!res.ok) return;
-            demandCache = await res.json();
-        } catch (_) { return; }
-    }
-    const max = demandCache.reduce((m, c) => Math.max(m, c[2]), 1);
-    const points = demandCache.map((c) => [c[0], c[1], c[2] / max]);
+    demandCache ??= await loadDemand();
+    if (!demandCache || !demandVisible) return;
+    const { grid, cells, p98 } = demandCache;
+    const renderer = L.canvas({ padding: 0.5 });
+    const layer = L.layerGroup();
+    cells.forEach(([ix, iy, score]) => {
+        const t = Math.min(1, score / p98);
+        const south = grid.lat0 + iy * grid.dlat;
+        const west = grid.lng0 + ix * grid.dlng;
+        layer.addLayer(L.rectangle([[south, west], [south + grid.dlat, west + grid.dlng]], {
+            renderer, interactive: false, weight: 0.5, color: '#9a3412', opacity: 0.2,
+            fillColor: demandColor(t), fillOpacity: 0.15 + 0.55 * t,
+        }));
+    });
     if (demandLayer) radarMap.removeLayer(demandLayer);
-    demandLayer = L.heatLayer(points, { ...demandHeatScale(), minOpacity: 0.25,
-        gradient: { 0.2: '#fde68a', 0.5: '#fb923c', 0.8: '#ef4444', 1: '#991b1b' } }).addTo(radarMap);
+    demandLayer = layer.addTo(radarMap);
 }
 
-// ── 點熱力圖看明細：點擊位置所在網格的分數組成，並以虛線框出該格（一塊紅要說得出為什麼紅）──
+/** 經緯度所在格的分數（沒色塊回 0）；與後端 DemandGrid::cellAt 同一套換算 */
+function demandScoreAt(latlng) {
+    if (!demandVisible || !demandCache) return 0;
+    const { grid, scores } = demandCache;
+    const ix = Math.floor((latlng.lng - grid.lng0) / grid.dlng);
+    const iy = Math.floor((latlng.lat - grid.lat0) / grid.dlat);
+    return scores.get(`${ix}:${iy}`) ?? 0;
+}
+
+// ── 點色塊看明細：點擊位置所在格的分數組成，並以虛線框出該格（一塊紅要說得出為什麼紅）──
 let demandPopup = null;
 async function showDemandDetail(latlng) {
     const el = document.getElementById('radar-map');
@@ -585,60 +649,11 @@ function syncDemandHint() {
     }
 }
 
-// 電腦版：滑到有熱力的地方游標變手指——讀熱力畫布在滑鼠位置的透明度，沒紅的地方不變
+// 電腦版：滑到有色塊的格子游標變手指（直接算滑鼠在哪一格，不用 hit-test 8,000 個方格）
 function initDemandCursor() {
     const container = radarMap.getContainer();
-    let frame = null;
-    let last = null;
-    container.addEventListener('mousemove', (e) => {
-        last = e;
-        if (frame) return;
-        frame = requestAnimationFrame(() => {
-            frame = null;
-            const canvas = demandLayer?._canvas;
-            let hot = false;
-            if (demandVisible && canvas) {
-                const rect = canvas.getBoundingClientRect();
-                const x = Math.round(last.clientX - rect.left);
-                const y = Math.round(last.clientY - rect.top);
-                if (x >= 0 && y >= 0 && x < canvas.width && y < canvas.height) {
-                    hot = canvas.getContext('2d').getImageData(x, y, 1, 1).data[3] > 60;
-                }
-            }
-            container.classList.toggle('demand-hot', hot);
-        });
-    });
-}
-
-// 需求網格是 geohash6（約 1.2km × 0.6km）。半徑若固定像素，放大後各格相距數百像素、互不重疊就變淡
-// （實測同一區域 z12 → z15 濃度掉到 1/25）。改成以 z12 為基準：每放大一級半徑加倍、maxZoom 跟著推，
-// 放大後看起來就像把 z12 的熱力圖放大。半徑上限 400px：再大 canvas 太吃效能，街道層級熱力也非重點。
-function demandHeatScale() {
-    const zoom = radarMap.getZoom();
-    const radius = Math.min(400, 38 * Math.pow(2, Math.max(0, zoom - 12)));
-    return { radius, blur: radius * 28 / 38, maxZoom: Math.max(15, zoom + 3) };
-}
-
-// leaflet.heat 0.2.0 內附的 simpleheat 把陰影位移寫死 200px：radius + blur 超過 200 時實心圓會畫進模板、
-// 被模板邊緣切成直角（熱力變一塊塊方形）。換成上游 simpleheat 的寫法：位移跟著模板大小走。
-function patchSimpleheatRadius() {
-    const proto = window.simpleheat?.prototype;
-    if (!proto) return;
-    proto.radius = function (r, blur) {
-        blur = blur || 15;
-        const circle = this._circle = document.createElement('canvas');
-        const ctx = circle.getContext('2d');
-        const r2 = this._r = r + blur;
-        circle.width = circle.height = r2 * 2;
-        ctx.shadowOffsetX = ctx.shadowOffsetY = r2 * 2;
-        ctx.shadowBlur = blur;
-        ctx.shadowColor = 'black';
-        ctx.beginPath();
-        ctx.arc(-r2, -r2, r, 0, Math.PI * 2, true);
-        ctx.closePath();
-        ctx.fill();
-        return this;
-    };
+    radarMap.on('mousemove', (e) => container.classList.toggle('demand-hot', demandScoreAt(e.latlng) > 0));
+    radarMap.on('mouseout', () => container.classList.remove('demand-hot'));
 }
 
 // ── 分類篩選 chips（radar 頁 header 渲染，data-map-chip 綁定）──
@@ -739,8 +754,7 @@ function initRadar() {
     const onMove = () => { scheduleFetch(); fetchBins(); };
     radarMap.on('moveend', onMove);
     radarMap.on('zoomend', onMove);
-    radarMap.on('zoomend', () => demandLayer?.setOptions(demandHeatScale()));
-    radarMap.on('click', (e) => { if (demandVisible) showDemandDetail(e.latlng); });
+    radarMap.on('click', (e) => { if (demandScoreAt(e.latlng) > 0) showDemandDetail(e.latlng); });
     fetchReports();
     fetchBins();
 

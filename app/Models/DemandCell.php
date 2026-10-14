@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use App\Support\Geohash;
+use App\Support\DemandGrid;
 use Illuminate\Database\Eloquent\Model;
 
-/** geohash6（~600m）網格需求分數快取；由 demand:recompute 整批重算。 */
+/** DemandGrid 方格（預設 150m）需求分數快取；由 demand:recompute 整批重算。 */
 class DemandCell extends Model
 {
     public $timestamps = false;
@@ -20,11 +20,13 @@ class DemandCell extends Model
     /** 明細標題取地名的來源順序：越像地標越前面（捷運站名比公車站牌好認） */
     private const TITLE_SOURCES = ['mrt', 'dog_park', 'park', 'dog_bag_box', 'petition', 'report_need_bin', 'report_full', 'bus_stop'];
 
-    protected $fillable = ['geohash6', 'latitude', 'longitude', 'score', 'dumping_score', 'breakdown', 'computed_at'];
+    protected $fillable = ['cell', 'ix', 'iy', 'latitude', 'longitude', 'score', 'dumping_score', 'breakdown', 'computed_at'];
 
     protected function casts(): array
     {
         return [
+            'ix' => 'integer',
+            'iy' => 'integer',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'score' => 'float',
@@ -37,17 +39,17 @@ class DemandCell extends Model
     /**
      * 地圖點熱力圖的明細：分數由哪些來源組成（家戶垃圾不計入需求分數，不列）。
      *
-     * @return array{geohash6: string, score: float, title: string, bounds: array{south: float, west: float, north: float, east: float}, items: list<array{key: string, label: string, count: int, score: float, note: string}>}
+     * @return array{cell: string, score: float, title: string, bounds: array{south: float, west: float, north: float, east: float}, items: list<array{key: string, label: string, count: int, score: float, note: string}>}
      */
     public function explanation(): array
     {
         $breakdown = collect($this->breakdown);
 
         return [
-            'geohash6' => $this->geohash6,
+            'cell' => $this->cell,
             'score' => $this->score,
-            'title' => collect(self::TITLE_SOURCES)->flatMap(fn (string $key) => $breakdown[$key]['samples'] ?? [])->unique()->take(2)->implode('、') ?: $this->geohash6,
-            'bounds' => Geohash::bounds($this->geohash6),
+            'title' => collect(self::TITLE_SOURCES)->flatMap(fn (string $key) => $breakdown[$key]['samples'] ?? [])->unique()->take(2)->implode('、') ?: $this->cell,
+            'bounds' => DemandGrid::fromConfig()->bounds($this->ix, $this->iy),
             'items' => $breakdown->except('report_dumping')->map(fn (array $b, string $key) => [
                 'key' => $key,
                 'label' => __(self::BREAKDOWN_LABELS[$key] ?? $key),

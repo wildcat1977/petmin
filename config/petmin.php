@@ -60,13 +60,27 @@ return [
     ],
 
     /*
-     * 需求分數權重（DemandScoreService）。以 geohash6（~600m）為格：
-     *   score = Σ proxy 權重 + 眾包回報（need_bin / full，已核准）× 佐證倍率 − 現存 active 清潔箱 × penalty
+     * 需求分數（DemandScoreService）。以 grid.size_m 方格為單位，每格看「格中心半徑內」的訊號（越近越重）：
+     *   score = (Σ 訊號 × 距離衰減) × (1 + 缺桶加成) − Σ 半徑內現存清潔箱 × penalty × 距離衰減
      * 權重可調，demand:recompute 重算。
      */
     'demand' => [
+        // 固定原點的正方格（DemandGrid）；改 size_m 或原點後要重算
+        'grid' => [
+            'size_m' => (int) env('PETMIN_DEMAND_GRID_M', 150),
+            'origin_lat' => 25.05,
+            'origin_lng' => 121.5,
+        ],
+        // 一般訊號（公車、袋箱、公園、回報）與現存桶扣分：格中心 radius_m 內線性衰減
+        'radius_m' => (int) env('PETMIN_DEMAND_RADIUS_M', 300),
+        // 捷運出口「甜甜圈」：出口旁不加權（站內垃圾桶在閘門附近，剛出站／要進站的人可用），
+        // inner_m 處升到滿、outer_m 遞減到 0（出站往外走的人找不到桶也不會回站內丟）
+        'mrt_exit' => [
+            'inner_m' => (int) env('PETMIN_DEMAND_MRT_INNER_M', 100),
+            'outer_m' => (int) env('PETMIN_DEMAND_MRT_OUTER_M', 500),
+        ],
         'weights' => [
-            'mrt' => (float) env('PETMIN_DEMAND_W_MRT', 3.0),          // 每站正規化後 0~1 × 3
+            'mrt' => (float) env('PETMIN_DEMAND_W_MRT', 8.0),          // 每站權重 √(出站量/台北車站) × 8，平分給各出口
             'bus_stop' => (float) env('PETMIN_DEMAND_W_BUS', 0.5),     // 每個站牌
             'dog_bag_box' => (float) env('PETMIN_DEMAND_W_BAG', 2.0),  // 每個狗便袋箱
             'dog_park' => (float) env('PETMIN_DEMAND_W_DOG_PARK', 3.0), // 每個狗活動區
@@ -77,10 +91,10 @@ return [
             'corroborated_multiplier' => (float) env('PETMIN_DEMAND_CORROBORATED_X', 2.0),
             'existing_bin_penalty' => (float) env('PETMIN_DEMAND_BIN_PENALTY', 2.5),
         ],
-        // 單一來源在一格內的分數上限（公車站牌一格可能 20+ 個，不加上限會淹掉其他訊號）
+        // 單一來源在一格的分數上限（半徑內公車站牌可能 20+ 個，不加上限會淹掉其他訊號）
         'caps' => [
             'bus_stop' => (float) env('PETMIN_DEMAND_CAP_BUS', 4.0),
-            'mrt' => (float) env('PETMIN_DEMAND_CAP_MRT', 6.0),
+            'mrt' => (float) env('PETMIN_DEMAND_CAP_MRT', 10.0),
         ],
         // 缺桶加成：格中心到最近現存清潔箱 start_m 內不加成，到 full_m 線性升到需求訊號 × max_multiplier
         // （台北各格最近清潔箱距離中位數約 700m；1000m 以上約 4 成的格子）
@@ -90,6 +104,8 @@ return [
             'max_multiplier' => (float) env('PETMIN_DEMAND_GAP_MAX_X', 1.0),
         ],
         'top_n' => (int) env('PETMIN_DEMAND_TOP_N', 30),
+        // 候選清單去重：格子只有 150m，同一熱點會佔好幾格；這個距離內只留分數最高的一格
+        'candidate_spacing_m' => (int) env('PETMIN_DEMAND_CANDIDATE_SPACING_M', 300),
     ],
 
     // 遊戲化：核准一筆回報得幾點
