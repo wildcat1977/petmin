@@ -7,6 +7,7 @@ use App\Models\DemandProxy;
 use App\Models\Report;
 use App\Models\TrashBin;
 use App\Support\DemandGrid;
+use App\Support\TaipeiBoundary;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -49,6 +50,10 @@ class DemandScoreService
         $rows = [];
         foreach ($this->touchedCells($grid, [...$signals, ...$dumping], $radius, (float) $donut['outer_m']) as [$ix, $iy]) {
             $center = $grid->center($ix, $iy);
+            // 垃圾桶資料只有臺北市：市界外的格子沒資料就不能宣稱缺桶（市界外的訊號仍可影響界內格子）
+            if (! TaipeiBoundary::contains($center['lat'], $center['lng'])) {
+                continue;
+            }
             [$cx, $cy] = $grid->toMeters($center['lat'], $center['lng']);
 
             $breakdown = [];

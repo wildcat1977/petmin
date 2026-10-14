@@ -169,6 +169,22 @@ class DemandScoreServiceTest extends TestCase
         $this->assertNotNull($this->cell(0, 7)); // 1km 外那一處自己點亮
     }
 
+    /**
+     * 垃圾桶資料只有臺北市：新北市的格子一律「離桶很遠」、缺桶加成拉滿，新埔站、板橋站會被算成熱點。
+     * 沒有資料就不能宣稱缺桶——格子中心在臺北市界外的不計分；市界外的訊號仍可影響界內的格子。
+     */
+    public function test_cells_outside_taipei_city_are_not_scored(): void
+    {
+        config(['petmin.demand.bin_gap.max_multiplier' => 1.0]);
+        DemandProxy::factory()->count(8)->create(['latitude' => 25.0230, 'longitude' => 121.4683]); // 新北市板橋（新埔站）
+
+        $this->recompute();
+
+        [$ix, $iy] = $this->grid->cellAt(25.0230, 121.4683);
+        $this->assertNull(DemandCell::where('cell', $this->grid->id($ix, $iy))->first());
+        $this->assertSame(0, DemandCell::count());
+    }
+
     public function test_only_approved_unresolved_reports_count_and_corroborated_count_double(): void
     {
         Report::factory()->create(['category' => Report::CATEGORY_NEED_BIN, 'status' => Report::STATUS_PENDING, ...$this->at()]);
