@@ -11,7 +11,7 @@
             <div>
                 <h1 class="text-xl font-bold text-slate-100">📋 {{ __('候選復設點') }}</h1>
                 <p class="mt-1 text-xs text-slate-500">
-                    {{ __('需求分數 = 人流（捷運、公車站牌）+ 遛狗（狗便袋箱、狗活動區）+ 市民回報 − 現存清潔箱。純資料計算，可對照環保局「設置／拆除／遷移評估表」送會勘。') }}
+                    {{ __('需求分數 =（人流（捷運、公車站牌）+ 遛狗（狗便袋箱、狗活動區）+ 市民回報）× 缺桶加成 − 現存清潔箱；離最近清潔箱 :start 公尺起加成，:full 公尺以上需求加倍。純資料計算，可對照環保局「設置／拆除／遷移評估表」送會勘。', ['start' => config('petmin.demand.bin_gap.start_m'), 'full' => config('petmin.demand.bin_gap.full_m')]) }}
                     @if ($computedAt)
                         <span class="text-slate-600">{{ __('最近重算：:at', ['at' => \Illuminate\Support\Carbon::parse($computedAt)->timezone('Asia/Taipei')->format('m/d H:i')]) }}</span>
                     @endif
@@ -24,7 +24,8 @@
         @php
             $kindLabels = [
                 'mrt' => '捷運', 'bus_stop' => '公車站牌', 'dog_park' => '狗活動區', 'park' => '公園', 'petition' => '陳情',
-                'report_need_bin' => '市民：需要桶', 'report_full' => '市民：桶滿了', 'report_dumping' => '市民：家戶垃圾', 'existing_bin' => '現存清潔箱',
+                'dog_bag_box' => '狗便袋箱', 'report_need_bin' => '市民：需要桶', 'report_full' => '市民：桶滿了', 'report_dumping' => '市民：家戶垃圾', 'existing_bin' => '現存清潔箱',
+                'bin_gap' => '缺桶加成',
             ];
         @endphp
 
@@ -71,7 +72,7 @@
                                 <ul class="mt-2 space-y-1">
                                     @foreach ($cell->breakdown as $key => $b)
                                         <li class="flex items-center justify-between gap-2">
-                                            <span>{{ $kindLabels[$key] ?? $key }} × {{ $b['count'] }}@if (! empty($b['samples']))<span class="text-slate-600">（{{ implode('、', $b['samples']) }}）</span>@endif @if (! empty($b['capped']))<span class="text-slate-600">{{ __('已上限') }}</span>@endif</span>
+                                            <span>{{ $kindLabels[$key] ?? $key }} × {{ $b['count'] }}@if (! empty($b['samples']))<span class="text-slate-600">（{{ implode('、', $b['samples']) }}）</span>@endif @if (! empty($b['capped']))<span class="text-slate-600">{{ __('已上限') }}</span>@endif @if (array_key_exists('nearest_m', $b))<span class="text-slate-600">{{ $b['nearest_m'] !== null ? __('（最近清潔箱 :m 公尺）', ['m' => number_format($b['nearest_m'])]) : __('（附近沒有清潔箱）') }}</span>@endif</span>
                                             <span class="{{ $b['score'] < 0 ? 'text-rose-300' : 'text-emerald-300' }}">{{ $b['score'] > 0 ? '+' : '' }}{{ round($b['score'], 1) }}</span>
                                         </li>
                                     @endforeach

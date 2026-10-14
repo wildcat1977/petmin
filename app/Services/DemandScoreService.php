@@ -6,13 +6,15 @@ use App\Models\DemandCell;
 use App\Models\DemandProxy;
 use App\Models\Report;
 use App\Models\TrashBin;
+use App\Support\Geo;
 use App\Support\Geohash;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
  * 需求分數（純程式，無 AI）：以 geohash6（~600m）為格，
- *   score = Σ proxy 權重 + 眾包回報（need_bin / full，已核准）× 佐證倍率 − 現存 active 清潔箱 × penalty
+ *   score = (Σ proxy 權重 + 狗便袋箱 + 眾包回報（need_bin / full，已核准）× 佐證倍率) × (1 + 缺桶加成)
+ *           − 現存 active 清潔箱 × penalty（缺桶加成依格中心到最近清潔箱的距離，見 config petmin.demand.bin_gap）
  *   dumping_score = 家戶垃圾亂丟（已核准）回報數 × 佐證倍率（撤除風險）
  * 每格保留 breakdown 作為證據明細，/candidates 直接顯示。
  */
@@ -71,10 +73,15 @@ class DemandScoreService
                 $touch($r->geohash7, 'report_'.$r->category, $base * $mult, $r->address);
             });
 
-        TrashBin::query()->active()->kind(TrashBin::KIND_CLEAN_BOX)
-            ->select(['geohash7', 'box_count', 'address'])
+        // 狗便袋箱＝遛狗族聚集的證據（提案公式「狗便袋箱 ×2」）
+        TrashBin::query()->active()->kind(TrashBin::KIND_DOG_BAG_BOX)
+            ->select(['geohash7', 'address'])
             ->lazy()
-            ->each(fn (TrashBin $b) => $touch($b->geohash7, 'existing_bin', -$w['existing_bin_penalty'] * max(1, $b->box_count), $b->address));
+            ->each(fn (TrashBin $b) => $touch($b->geohash7, TrashBin::KIND_DOG_BAG_BOX, $w['dog_bag_box'], $b->address));
+
+        $cleanBoxes = TrashBin::query()->active()->kind(TrashBin::KIND_CLEAN_BOX)
+            ->get(['geohash7', 'box_count', 'address', 'latitude', 'longitude']);
+        $cleanBoxes->each(fn (TrashBin $b) => $touch($b->geohash7, 'existing_bin', -$w['existing_bin_penalty'] * max(1, $b->box_count), $b->address));
 
         // 單一來源上限：超過的部分從總分扣回
         $caps = config('petmin.demand.caps', []);
@@ -88,6 +95,28 @@ class DemandScoreService
             }
         }
         unset($cell);
+
+        // 缺桶加成：格中心離最近現存清潔箱越遠，需求訊號（不含扣分）加成越多——人多又沒桶的地方才該排前面。
+        // 用乘的不用加的：山區零星站牌離桶再遠，訊號弱就還是弱。
+        $gap = config('petmin.demand.bin_gap');
+        if ($gap['max_multiplier'] > 0) {
+            foreach ($cells as $geohash6 => &$cell) {
+                $signal = collect($cell['breakdown'])->except(['existing_bin', 'report_dumping'])->sum('score');
+                if ($signal <= 0) {
+                    continue;
+                }
+                $center = Geohash::decodeCenter($geohash6);
+                $nearest = $cleanBoxes->min(fn (TrashBin $b) => Geo::distanceMeters($center['lat'], $center['lng'], (float) $b->latitude, (float) $b->longitude)) ?? INF;
+                $ratio = min(1.0, max(0.0, ($nearest - $gap['start_m']) / ($gap['full_m'] - $gap['start_m'])));
+                if ($ratio <= 0) {
+                    continue;
+                }
+                $bonus = $signal * $ratio * $gap['max_multiplier'];
+                $cell['score'] += $bonus;
+                $cell['breakdown']['bin_gap'] = ['count' => 1, 'score' => $bonus, 'samples' => [], 'nearest_m' => is_finite($nearest) ? (int) round($nearest) : null];
+            }
+            unset($cell);
+        }
 
         $now = now();
         $rows = [];

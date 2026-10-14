@@ -43,7 +43,8 @@ class CandidatesAndLeaderboardPagesTest extends TestCase
         TrashBin::factory()->dogBagBox()->create(['latitude' => 25.1000, 'longitude' => 121.5000]);
         $this->artisan('demand:recompute');
 
-        $this->getJson('/api/map/demand')->assertOk()->assertJsonCount(1);
+        // 狗活動區一格 + 狗便袋箱一格（袋箱也算遛狗需求）
+        $this->getJson('/api/map/demand')->assertOk()->assertJsonCount(2);
         $this->getJson('/api/map/gaps')->assertOk()->assertJsonCount(1);
     }
 

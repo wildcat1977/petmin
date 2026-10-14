@@ -82,6 +82,13 @@ return [
             'bus_stop' => (float) env('PETMIN_DEMAND_CAP_BUS', 4.0),
             'mrt' => (float) env('PETMIN_DEMAND_CAP_MRT', 6.0),
         ],
+        // 缺桶加成：格中心到最近現存清潔箱 start_m 內不加成，到 full_m 線性升到需求訊號 × max_multiplier
+        // （台北各格最近清潔箱距離中位數約 700m；1000m 以上約 4 成的格子）
+        'bin_gap' => [
+            'start_m' => (int) env('PETMIN_DEMAND_GAP_START_M', 300),
+            'full_m' => (int) env('PETMIN_DEMAND_GAP_FULL_M', 1000),
+            'max_multiplier' => (float) env('PETMIN_DEMAND_GAP_MAX_X', 1.0),
+        ],
         'top_n' => (int) env('PETMIN_DEMAND_TOP_N', 30),
     ],
 
