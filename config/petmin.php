@@ -106,6 +106,8 @@ return [
         // 同一公園一整排狗便袋箱（如迎風狗運動公園 01～06）是一個遛狗地點：這個距離內的袋箱併成一處只算一次
         'dog_bag_box_site_m' => (int) env('PETMIN_DEMAND_BAG_SITE_M', 150),
         'top_n' => (int) env('PETMIN_DEMAND_TOP_N', 30),
+        // 行政區排行的「缺桶熱點」門檻：候選地點需求分數 ≥ 這個值（約全市前 2% 的格子）
+        'hotspot_min_score' => (float) env('PETMIN_DEMAND_HOTSPOT_MIN', 5.0),
         // 候選清單去重：格子只有 150m，同一熱點會佔好幾格；這個距離內只留分數最高的一格
         'candidate_spacing_m' => (int) env('PETMIN_DEMAND_CANDIDATE_SPACING_M', 300),
     ],

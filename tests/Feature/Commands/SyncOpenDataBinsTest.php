@@ -4,6 +4,7 @@ namespace Tests\Feature\Commands;
 
 use App\Models\DemandCell;
 use App\Models\TrashBin;
+use App\Services\BagBoxGapService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -67,6 +68,17 @@ class SyncOpenDataBinsTest extends TestCase
 
         // 有異動就重算需求分數（袋箱是遛狗需求訊號）
         $this->assertGreaterThan(0, DemandCell::count());
+    }
+
+    /** 同步後「有袋沒桶」要立刻反映新桶位，不能拿到同步前的快取（候選頁與行政區排行都讀它） */
+    public function test_sync_refreshes_cached_bag_box_gaps(): void
+    {
+        $this->assertCount(0, app(BagBoxGapService::class)->gaps()); // 先把空結果放進快取
+        $this->useSnapshots();
+
+        $this->artisan('bins:sync-open-data', ['--offline' => true])->assertSuccessful();
+
+        $this->assertNotEmpty(app(BagBoxGapService::class)->gaps());
     }
 
     /** 每天重跑不能多出重複的桶，也不能把民眾回報確認消失的桶洗回「使用中」 */

@@ -259,6 +259,46 @@ class DemandScoreServiceTest extends TestCase
         $this->assertSame($this->cell()->cell, $top->first()->cell);
     }
 
+    /**
+     * 報表要能依行政區篩選、依各來源排序：重算時就把行政區、各來源分數、最近清潔箱距離
+     * 拆成欄位存下來，不必每次開頁面去解 breakdown JSON。
+     */
+    public function test_cells_store_district_component_scores_and_nearest_bin(): void
+    {
+        DemandProxy::factory()->count(8)->create($this->at());                               // 公車 4.0（上限）
+        DemandProxy::factory()->create(['kind' => DemandProxy::KIND_DOG_PARK, ...$this->at()]); // 狗活動區 3.0
+        TrashBin::factory()->create($this->at(0, 800));
+
+        $this->recompute();
+
+        $cell = $this->cell();
+        $this->assertSame('信義區', $cell->district);
+        $this->assertEqualsWithDelta(4.0, $cell->bus_score, 0.01);
+        $this->assertEqualsWithDelta(3.0, $cell->dog_score, 0.01);
+        $this->assertEqualsWithDelta(0.0, $cell->mrt_score, 0.01);
+        $this->assertEqualsWithDelta(800, $cell->nearest_bin_m, 5);
+    }
+
+    /**
+     * 候選名次在重算時就決定：候選＝300m 內分數最高的格子（局部最高點），依分數排。
+     * 熱點外圍一圈的低分格子旁邊一定有更高分的格子，不會被列成另一個候選（否則名單塞滿熱點邊緣的雜訊）。
+     */
+    public function test_recompute_ranks_spaced_candidates_once(): void
+    {
+        DemandProxy::factory()->count(8)->create($this->at());
+        TrashBin::factory()->dogBagBox()->create($this->at());               // 這個熱點較高（6.0）
+        DemandProxy::factory()->count(8)->create($this->at(2100, 0));         // 2km 外另一熱點（4.0）
+        // 熱點放在格子角落：外圍格子離最高格可超過 300m，仍不能自成候選
+        DemandProxy::factory()->count(8)->create($this->at(4000 + 70, 70));
+
+        $this->recompute();
+
+        $ranked = DemandCell::whereNotNull('candidate_rank')->orderBy('candidate_rank')->get();
+        $this->assertSame([1, 2, 3], $ranked->pluck('candidate_rank')->all());
+        $this->assertSame($this->cell()->cell, $ranked->first()->cell);
+        $this->assertSame($ranked->pluck('cell')->all(), app(DemandScoreService::class)->topCandidates(10)->pluck('cell')->all());
+    }
+
     public function test_recompute_replaces_previous_cells_and_command_reports_count(): void
     {
         DemandProxy::factory()->create($this->at());

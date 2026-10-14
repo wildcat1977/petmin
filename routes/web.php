@@ -30,30 +30,35 @@ Route::view('/reports', 'pages.reports')->name('reports');
 
 Route::view('/leaderboard', 'pages.leaderboard')->name('leaderboard');
 
-// 候選復設點 + 撤除風險 + 有袋沒桶（需求分數由 demand:recompute 落地到 demand_cells）
+// 候選復設點：有袋沒桶、行政區缺桶排行＋候選地點明細（livewire:demand-report）、撤除風險
 Route::get('/candidates', function (DemandScoreService $demand, BagBoxGapService $gaps) {
     return view('pages.candidates', [
-        'candidates' => $demand->topCandidates(),
         'dumping' => $demand->dumpingRisk(),
         'gaps' => $gaps->gaps(),
         'computedAt' => DemandCell::max('computed_at'),
     ]);
 })->name('candidates');
 
-Route::get('/candidates/export', function (DemandScoreService $demand) {
-    $rows = $demand->topCandidates(200);
+// 候選地點 CSV：全部候選，照報表目前的行政區篩選與排序（與 demand-report 共用 candidateList）
+Route::get('/candidates/export', function (Request $request) {
+    $rows = DemandCell::query()
+        ->candidateList($request->query('district') ?: null, (string) $request->query('sort', 'score'), (string) $request->query('dir', 'desc'))
+        ->get();
+    $suffix = $request->query('district') ? '_'.$request->query('district') : '';
     $headers = [
         'Content-Type' => 'text/csv; charset=UTF-8',
-        'Content-Disposition' => 'attachment; filename="petmin_候選復設點_'.now()->format('Ymd_His').'.csv"',
+        'Content-Disposition' => 'attachment; filename="petmin_候選復設點'.$suffix.'_'.now()->format('Ymd_His').'.csv"',
     ];
 
     return response()->stream(function () use ($rows) {
         $h = fopen('php://output', 'w');
         fwrite($h, "\xEF\xBB\xBF");
-        fputcsv($h, ['排名', '網格', '緯度', '經度', '需求分數', '撤除風險分數', '證據明細']);
-        foreach ($rows as $i => $cell) {
-            $evidence = collect($cell->breakdown)->map(fn ($b, $k) => "{$k}×{$b['count']}".(! empty($b['samples']) ? '（'.implode('、', $b['samples']).'）' : ''))->implode('；');
-            fputcsv($h, [$i + 1, $cell->cell, $cell->latitude, $cell->longitude, $cell->score, $cell->dumping_score, $evidence]);
+        fputcsv($h, ['名次', '行政區', '地點', '需求分數', '最近清潔箱(m)', '遛狗', '捷運', '公車', '市民回報', '撤除風險分數', '網格', '緯度', '經度', '證據明細']);
+        foreach ($rows as $cell) {
+            $explain = $cell->explanation();
+            $evidence = collect($explain['items'])->map(fn ($i) => "{$i['label']} {$i['score']}".($i['note'] ? "（{$i['note']}）" : ''))->implode('；');
+            fputcsv($h, [$cell->candidate_rank, $cell->district, $explain['title'], $cell->score, $cell->nearest_bin_m, $cell->dog_score, $cell->mrt_score,
+                $cell->bus_score, $cell->report_score, $cell->dumping_score, $cell->cell, $cell->latitude, $cell->longitude, $evidence]);
         }
         fclose($h);
     }, 200, $headers);

@@ -51,7 +51,8 @@ class DemandScoreService
         foreach ($this->touchedCells($grid, [...$signals, ...$dumping], $radius, (float) $donut['outer_m']) as [$ix, $iy]) {
             $center = $grid->center($ix, $iy);
             // 垃圾桶資料只有臺北市：市界外的格子沒資料就不能宣稱缺桶（市界外的訊號仍可影響界內格子）
-            if (! TaipeiBoundary::contains($center['lat'], $center['lng'])) {
+            $district = TaipeiBoundary::districtAt($center['lat'], $center['lng']);
+            if ($district === null) {
                 continue;
             }
             [$cx, $cy] = $grid->toMeters($center['lat'], $center['lng']);
@@ -79,7 +80,8 @@ class DemandScoreService
                 continue;
             }
 
-            $score = $signal + $this->binGapBonus($breakdown, $signal, $this->nearestDistance($binIndex, $cx, $cy));
+            $nearest = $this->nearestDistance($binIndex, $cx, $cy);
+            $score = $signal + $this->binGapBonus($breakdown, $signal, $nearest);
             foreach ($this->near($binIndex, $cx, $cy) as [$bin, $d]) {
                 $k = $this->linear($d, $radius);
                 if ($k > 0) {
@@ -99,8 +101,20 @@ class DemandScoreService
                 'dumping_score' => round($dumpingScore, 2),
                 'breakdown' => json_encode($this->finalizeBreakdown($breakdown), JSON_UNESCAPED_UNICODE),
                 'computed_at' => $now,
+                // 報表用：行政區與各來源分數拆欄，篩選排序不必解 JSON
+                'district' => $district,
+                'nearest_bin_m' => is_finite($nearest) ? (int) round($nearest) : null,
+                'dog_score' => round(($breakdown['dog_bag_box']['score'] ?? 0) + ($breakdown[DemandProxy::KIND_DOG_PARK]['score'] ?? 0), 2),
+                'mrt_score' => round($breakdown['mrt']['score'] ?? 0, 2),
+                'bus_score' => round($breakdown[DemandProxy::KIND_BUS_STOP]['score'] ?? 0, 2),
+                'report_score' => round(($breakdown['report_need_bin']['score'] ?? 0) + ($breakdown['report_full']['score'] ?? 0), 2),
+                'candidate_rank' => null,
+                '_x' => $cx,
+                '_y' => $cy,
             ];
         }
+
+        $rows = $this->rankCandidates($rows);
 
         DB::transaction(function () use ($rows) {
             DemandCell::query()->delete();
@@ -334,10 +348,85 @@ class DemandScoreService
         return $best;
     }
 
-    /** @return Collection<int, DemandCell> 候選復設點：分數高者優先，candidate_spacing_m 內只留一格 */
+    /**
+     * 候選名次：候選＝candidate_spacing_m 內分數最高的格子（局部最高點），依分數排名。
+     * 熱點外圍的低分格子旁邊一定有更高分的格子，不會自成候選；兩個候選彼此必然相距超過 spacing。
+     * 重算時做一次存進 candidate_rank，報表翻頁、篩選、匯出都直接查欄位。
+     */
+    private function rankCandidates(array $rows): array
+    {
+        $spacing = (float) config('petmin.demand.candidate_spacing_m');
+        $index = [];
+        foreach ($rows as $i => $r) {
+            if ($r['score'] > 0) {
+                $index[(int) floor($r['_x'] / self::BUCKET_M).':'.(int) floor($r['_y'] / self::BUCKET_M)][] = [$r['_x'], $r['_y'], $i];
+            }
+        }
+        // 同分以格號定先後，避免兩個等高的相鄰格互相讓位都落選
+        $outranks = fn (int $a, int $b) => $rows[$a]['score'] > $rows[$b]['score']
+            || ($rows[$a]['score'] === $rows[$b]['score'] && strcmp($rows[$a]['cell'], $rows[$b]['cell']) < 0);
+
+        $peaks = [];
+        foreach ($rows as $i => $r) {
+            if ($r['score'] <= 0) {
+                continue;
+            }
+            foreach ($this->near($index, $r['_x'], $r['_y']) as [$p, $d]) {
+                if ($p[2] !== $i && $d < $spacing && $outranks($p[2], $i)) {
+                    continue 2;
+                }
+            }
+            $peaks[] = $i;
+        }
+        usort($peaks, fn ($a, $b) => $outranks($a, $b) ? -1 : 1);
+        foreach ($peaks as $rank => $i) {
+            $rows[$i]['candidate_rank'] = $rank + 1;
+        }
+
+        return array_map(function ($r) {
+            unset($r['_x'], $r['_y']);
+
+            return $r;
+        }, $rows);
+    }
+
+    /** @return Collection<int, DemandCell> 候選復設點前 N 名（名次由 recompute 決定） */
     public function topCandidates(?int $limit = null): Collection
     {
-        return $this->spacedTop('score', $limit ?? (int) config('petmin.demand.top_n'));
+        return DemandCell::query()->whereNotNull('candidate_rank')->orderBy('candidate_rank')
+            ->limit($limit ?? (int) config('petmin.demand.top_n'))->get();
+    }
+
+    /**
+     * 行政區缺桶排行：缺桶熱點數（候選地點分數 ≥ hotspot_min_score）、清潔箱組數、狗便袋箱數、
+     * 有袋沒桶數與比例、區內最高分地點。依熱點數、有袋沒桶比例排序。
+     *
+     * @return list<array{district: string, hotspots: int, candidates: int, clean_boxes: int, bag_boxes: int, bag_gaps: int, bag_gap_pct: ?int, top: ?DemandCell}>
+     */
+    public function districtRanking(): array
+    {
+        $min = (float) config('petmin.demand.hotspot_min_score');
+        $cells = DemandCell::query()->whereNotNull('candidate_rank')->get(['id', 'cell', 'ix', 'iy', 'district', 'score', 'breakdown', 'candidate_rank']);
+        $cleanBoxes = TrashBin::query()->active()->kind(TrashBin::KIND_CLEAN_BOX)->selectRaw('district, sum(box_count) as n')->groupBy('district')->pluck('n', 'district');
+        $bagBoxes = TrashBin::query()->active()->kind(TrashBin::KIND_DOG_BAG_BOX)->selectRaw('district, count(*) as n')->groupBy('district')->pluck('n', 'district');
+        $bagGaps = app(BagBoxGapService::class)->gaps()->countBy('district');
+
+        return collect(TaipeiBoundary::names())->map(function (string $district) use ($cells, $min, $cleanBoxes, $bagBoxes, $bagGaps) {
+            $mine = $cells->where('district', $district);
+            $bags = (int) ($bagBoxes[$district] ?? 0);
+            $gaps = (int) ($bagGaps[$district] ?? 0);
+
+            return [
+                'district' => $district,
+                'hotspots' => $mine->where('score', '>=', $min)->count(),
+                'candidates' => $mine->count(),
+                'clean_boxes' => (int) ($cleanBoxes[$district] ?? 0),
+                'bag_boxes' => $bags,
+                'bag_gaps' => $gaps,
+                'bag_gap_pct' => $bags > 0 ? (int) round(100 * $gaps / $bags) : null,
+                'top' => $mine->sortBy('candidate_rank')->first(),
+            ];
+        })->sortBy([['hotspots', 'desc'], ['bag_gap_pct', 'desc']])->values()->all();
     }
 
     /** @return Collection<int, DemandCell> 撤除風險：家戶垃圾亂丟回報集中格 */

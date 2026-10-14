@@ -17,15 +17,35 @@ class DemandCell extends Model
         'bin_gap' => '缺桶加成',
     ];
 
+    /** 報表明細可排序的欄位（白名單：排序欄位來自網址參數） */
+    public const SORTABLE = ['score', 'nearest_bin_m', 'dog_score', 'mrt_score', 'bus_score', 'report_score'];
+
+    /** 候選地點清單（300m 去重後的名次）：報表與 CSV 匯出共用，篩選排序規則一致 */
+    public function scopeCandidateList($query, ?string $district = null, string $sort = 'score', string $dir = 'desc')
+    {
+        $sort = in_array($sort, self::SORTABLE, true) ? $sort : 'score';
+
+        return $query->whereNotNull('candidate_rank')
+            ->when($district, fn ($q) => $q->where('district', $district))
+            ->orderBy($sort, $dir === 'asc' ? 'asc' : 'desc')
+            ->orderBy('candidate_rank');
+    }
+
     /** 明細標題取地名的來源順序：越像地標越前面（捷運站名比公車站牌好認） */
     private const TITLE_SOURCES = ['mrt', 'dog_park', 'park', 'dog_bag_box', 'petition', 'report_need_bin', 'report_full', 'bus_stop'];
 
-    protected $fillable = ['cell', 'ix', 'iy', 'latitude', 'longitude', 'score', 'dumping_score', 'breakdown', 'computed_at'];
+    protected $fillable = ['cell', 'ix', 'iy', 'district', 'candidate_rank', 'nearest_bin_m', 'dog_score', 'mrt_score', 'bus_score', 'report_score', 'latitude', 'longitude', 'score', 'dumping_score', 'breakdown', 'computed_at'];
 
     protected function casts(): array
     {
         return [
             'ix' => 'integer',
+            'candidate_rank' => 'integer',
+            'nearest_bin_m' => 'integer',
+            'dog_score' => 'float',
+            'mrt_score' => 'float',
+            'bus_score' => 'float',
+            'report_score' => 'float',
             'iy' => 'integer',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\BagBoxGapService;
 use App\Services\DemandScoreService;
 use App\Services\OpenDataBinSync;
 use Illuminate\Console\Command;
@@ -29,7 +30,7 @@ class SyncOpenDataBins extends Command
         if (collect($report)->contains('changed', true)) {
             $cells = $demand->recompute();
             Cache::forget('map.demand');
-            Cache::forget('demand.gaps');
+            BagBoxGapService::forgetCache();
             $this->info("桶位有異動，需求分數已重算：{$cells} 格");
         }
 

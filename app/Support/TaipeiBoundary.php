@@ -18,6 +18,12 @@ final class TaipeiBoundary
         return self::districtAt($lat, $lng) !== null;
     }
 
+    /** @return list<string> 12 個行政區名 */
+    public static function names(): array
+    {
+        return array_column(self::districts(), 'name');
+    }
+
     public static function districtAt(float $lat, float $lng): ?string
     {
         foreach (self::districts() as $district) {

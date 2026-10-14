@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BagBoxGapService;
 use App\Support\Geohash;
 use Database\Factories\TrashBinFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -74,8 +75,10 @@ class TrashBin extends Model
                 $bin->geohash7 = Geohash::encode((float) $bin->latitude, (float) $bin->longitude, 7);
             }
         });
-        static::saved(fn () => Cache::flush());
-        static::deleted(fn () => Cache::flush());
+        // 只清跟桶位有關的鍵：Cache::flush() 在 Redis 上是 FLUSHDB，正式機 7 個站共用快取 DB，會清掉別站資料。
+        // 桶位 API 的 bbox 快取只有幾十秒，不另外清
+        static::saved(fn () => BagBoxGapService::forgetCache());
+        static::deleted(fn () => BagBoxGapService::forgetCache());
     }
 
     public function reports(): HasMany

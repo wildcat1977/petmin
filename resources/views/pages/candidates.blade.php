@@ -17,8 +17,6 @@
                     @endif
                 </p>
             </div>
-            <a href="{{ route('candidates.export') }}"
-               class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500">{{ __('↓ 匯出 CSV') }}</a>
         </div>
 
         @php
@@ -45,40 +43,8 @@
             @endif
         </section>
 
-        {{-- 候選復設點 Top N --}}
-        <section class="mt-10">
-            <h2 class="text-base font-bold text-slate-100">🔥 {{ __('需求最高的 :n 個網格', ['n' => $candidates->count()]) }}</h2>
-            @if ($candidates->isEmpty())
-                <p class="mt-3 rounded-xl bg-white/5 p-6 text-center text-sm text-slate-500">{{ __('尚未計算。請執行 php artisan demand:recompute。') }}</p>
-            @else
-                <div class="mt-3 space-y-2">
-                    @foreach ($candidates as $i => $cell)
-                        <details class="group rounded-xl border border-white/10 bg-white/5">
-                            <summary class="flex cursor-pointer items-center gap-3 px-4 py-3 text-sm">
-                                <span class="w-6 text-center font-bold {{ $i < 3 ? 'text-amber-400' : 'text-slate-500' }}">{{ $i + 1 }}</span>
-                                <span class="flex-1 truncate text-slate-200">
-                                    @php $samples = collect($cell->breakdown)->except('existing_bin')->flatMap(fn ($b) => $b['samples'] ?? [])->unique()->take(3); @endphp
-                                    {{ $samples->isNotEmpty() ? $samples->implode('、') : $cell->cell }}
-                                </span>
-                                <a href="{{ route('home') }}#map={{ $cell->latitude }},{{ $cell->longitude }},16" class="text-[11px] text-cyan-300 hover:underline">{{ __('看地圖') }}</a>
-                                <span class="rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-bold text-orange-300">{{ $cell->score }}</span>
-                            </summary>
-                            <div class="border-t border-white/10 px-4 py-3 text-xs text-slate-400">
-                                <p class="text-slate-500">{{ __('網格 :g（中心 :lat, :lng）', ['g' => $cell->cell, 'lat' => number_format($cell->latitude, 5), 'lng' => number_format($cell->longitude, 5)]) }}</p>
-                                <ul class="mt-2 space-y-1">
-                                    @foreach ($cell->breakdown as $key => $b)
-                                        <li class="flex items-center justify-between gap-2">
-                                            <span>{{ $kindLabels[$key] ?? $key }} × {{ $b['count'] }}@if (! empty($b['samples']))<span class="text-slate-600">（{{ implode('、', $b['samples']) }}）</span>@endif @if (! empty($b['capped']))<span class="text-slate-600">{{ __('已上限') }}</span>@endif @if (array_key_exists('nearest_m', $b))<span class="text-slate-600">{{ $b['nearest_m'] !== null ? __('（最近清潔箱 :m 公尺）', ['m' => number_format($b['nearest_m'])]) : __('（附近沒有清潔箱）') }}</span>@endif</span>
-                                            <span class="{{ $b['score'] < 0 ? 'text-rose-300' : 'text-emerald-300' }}">{{ $b['score'] > 0 ? '+' : '' }}{{ round($b['score'], 1) }}</span>
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        </details>
-                    @endforeach
-                </div>
-            @endif
-        </section>
+        {{-- 行政區缺桶排行＋候選地點明細（可篩選排序、CSV 照篩選匯出） --}}
+        <livewire:demand-report />
 
         {{-- 撤除風險 --}}
         <section class="mt-10">

@@ -4,7 +4,7 @@ namespace App\Observers;
 
 use App\Models\Report;
 use App\Models\TrashBin;
-use Illuminate\Support\Facades\Cache;
+use App\Services\BagBoxGapService;
 
 /**
  * 回報核准後的連動（純程式，無 AI）：
@@ -39,7 +39,7 @@ class ReportObserver
     {
         $this->syncBin($report);
         $this->awardPoints($report);
-        Cache::forget('demand.gaps');
+        BagBoxGapService::forgetCache();
     }
 
     private function syncBin(Report $report): void
