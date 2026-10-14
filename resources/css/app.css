@@ -85,6 +85,15 @@
 .radar-page #radar-map button.leaflet-theme-toggle.leaflet-control {
     margin-top: 6px !important;
 }
+/* 桌機 chips 會依寬度換成 1～3 排：app.js 量 chips 底部寫進 --map-controls-top，左上／右上控制項跟著往下推 */
+@media (min-width: 1024px) {
+    .radar-page #radar-map .leaflet-top.leaflet-left {
+        margin-top: var(--map-controls-top, 96px);
+    }
+    .radar-page #radar-map .leaflet-top.leaflet-right .leaflet-control-zoom {
+        margin-top: var(--map-controls-top, 108px);
+    }
+}
 @media (max-width: 640px) {
     /* v0.3：手機頂部 chips 已移入右側面板，控制項只需避開 ~56px 頂帶 */
     .radar-page #radar-map .leaflet-top.leaflet-left {

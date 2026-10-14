@@ -33,7 +33,7 @@
         @include('partials.site-header')
 
         {{-- 桌機：圖層 chips（手機收進右側面板） --}}
-        <div class="pointer-events-auto hidden gap-1.5 px-4 lg:flex lg:flex-wrap">
+        <div data-map-chip-bar class="pointer-events-auto hidden gap-1.5 px-4 lg:flex lg:flex-wrap">
             @include('partials.map-layer-chips', ['cls' => 'map-chip'])
         </div>
 
