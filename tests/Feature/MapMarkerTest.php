@@ -35,4 +35,20 @@ class MapMarkerTest extends TestCase
             ->assertSee('data-map-chip="notified"', false)
             ->assertSee('data-map-chip="resolved"', false);
     }
+
+    /**
+     * 需求熱力是提案的核心產出：一進站就要看到，不能藏在 chip 裡等人發現；
+     * 熱力開著卻看不出能點，所以要附「點紅色區塊看為什麼」的提示。
+     */
+    public function test_demand_heat_is_on_by_default_with_click_hint(): void
+    {
+        $html = $this->withHeader('Accept-Language', 'zh-TW')->get('/')->assertOk()->getContent();
+
+        preg_match_all('/<button[^>]*data-map-chip="demand"[^>]*>/', $html, $chips);
+        $this->assertCount(2, $chips[0]); // 桌機 chip + 手機圖層面板
+        foreach ($chips[0] as $chip) {
+            $this->assertStringContainsString('chip-on', $chip);
+        }
+        $this->assertStringContainsString('點紅色區塊，看為什麼需要桶', $html);
+    }
 }

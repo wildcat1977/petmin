@@ -119,7 +119,7 @@ let activeStatuses = new Set(['reported', 'notified', 'resolved']);
 // 桶位圖層開關：kinds（清潔箱 / 狗便袋箱）+ 是否顯示消失的桶
 const binLayers = { bins: true, bag_boxes: true, missing_bins: false };
 let gapsVisible = false;
-let demandVisible = false;
+let demandVisible = true;      // 提案核心產出：一進站就顯示
 let gapsCache = null;
 let demandCache = null;
 let fetchController = null;
@@ -472,6 +472,7 @@ async function renderGaps() {
 // ── 需求熱力圖（leaflet.heat 是掛在全域 L 上的舊式外掛：先確定 window.L 再動態載入）──
 async function renderDemand() {
     if (!radarMap) return;
+    syncDemandHint();
     if (!demandVisible) {
         if (demandLayer) { radarMap.removeLayer(demandLayer); demandLayer = null; }
         if (demandPopup) { radarMap.closePopup(demandPopup); demandPopup = null; }
@@ -507,6 +508,7 @@ async function showDemandDetail(latlng) {
         ({ cell } = await res.json());
     } catch (_) { return; }
     if (!demandVisible) return;
+    dismissDemandHint(); // 點過一次就知道能點了
 
     const box = document.createElement('div');
     box.style.cssText = 'font-size:13px;line-height:1.5;color:#1e293b;min-width:210px';
@@ -547,6 +549,65 @@ async function showDemandDetail(latlng) {
         { color: '#ea580c', weight: 2, dashArray: '6 4', fill: false, interactive: false }).addTo(radarMap);
     popup.on('remove', () => radarMap.removeLayer(outline));
     demandPopup = popup.setContent(box).openOn(radarMap);
+}
+
+// ── 熱力可點提示：熱力預設開著，但看不出紅色區塊能點。按 ✕ 或點過一次後不再出現（記在本機）──
+const DEMAND_HINT_KEY = 'petmin.demandHintDismissed';
+let demandHint = null;
+function demandHintDismissed() {
+    try { return localStorage.getItem(DEMAND_HINT_KEY) === '1'; } catch (_) { return false; }
+}
+function dismissDemandHint() {
+    try { localStorage.setItem(DEMAND_HINT_KEY, '1'); } catch (_) {}
+    if (demandHint) { demandHint.remove(); demandHint = null; }
+}
+function syncDemandHint() {
+    const show = demandVisible && !demandHintDismissed();
+    if (show && !demandHint) {
+        demandHint = L.control({ position: 'topleft' });
+        demandHint.onAdd = () => {
+            const box = L.DomUtil.create('div', 'leaflet-demand-hint');
+            const text = document.createElement('span');
+            text.textContent = window.i18n?.demandHint ?? '🔥 點紅色區塊，看為什麼需要桶';
+            const close = document.createElement('button');
+            close.type = 'button';
+            close.textContent = '✕';
+            close.setAttribute('aria-label', window.i18n?.demandHintClose ?? '不再提示');
+            close.addEventListener('click', dismissDemandHint);
+            box.append(text, close);
+            L.DomEvent.disableClickPropagation(box);
+            return box;
+        };
+        demandHint.addTo(radarMap);
+    } else if (!show && demandHint) {
+        demandHint.remove();
+        demandHint = null;
+    }
+}
+
+// 電腦版：滑到有熱力的地方游標變手指——讀熱力畫布在滑鼠位置的透明度，沒紅的地方不變
+function initDemandCursor() {
+    const container = radarMap.getContainer();
+    let frame = null;
+    let last = null;
+    container.addEventListener('mousemove', (e) => {
+        last = e;
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+            frame = null;
+            const canvas = demandLayer?._canvas;
+            let hot = false;
+            if (demandVisible && canvas) {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.round(last.clientX - rect.left);
+                const y = Math.round(last.clientY - rect.top);
+                if (x >= 0 && y >= 0 && x < canvas.width && y < canvas.height) {
+                    hot = canvas.getContext('2d').getImageData(x, y, 1, 1).data[3] > 60;
+                }
+            }
+            container.classList.toggle('demand-hot', hot);
+        });
+    });
 }
 
 // 需求網格是 geohash6（約 1.2km × 0.6km）。半徑若固定像素，放大後各格相距數百像素、互不重疊就變淡
@@ -706,6 +767,10 @@ function initRadar() {
         radarMap.setView(e.geocode.center, 15);
     })
     .addTo(radarMap);
+
+    // 熱力預設開啟；放在搜尋鈕之後，提示才會排在左上控制項最下面
+    renderDemand();
+    initDemandCursor();
 
     if (navigator.geolocation && !hash) {
         navigator.geolocation.getCurrentPosition(

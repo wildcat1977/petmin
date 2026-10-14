@@ -197,6 +197,34 @@ button.leaflet-theme-toggle.leaflet-control {
     margin-top: 64px !important;
     margin-left: 18px !important;
 }
+/* 熱力可點提示（左上，接在搜尋鈕下方）；按 ✕ 或點過一次熱力後不再出現 */
+.leaflet-demand-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #7c2d12;
+    background: #ffedd5;
+    border: 1px solid #fb923c;
+    border-radius: 9999px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    white-space: nowrap;
+}
+.leaflet-demand-hint button {
+    border: none;
+    background: transparent;
+    color: #9a3412;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+    cursor: pointer;
+}
+/* 電腦版：滑到有熱力的地方游標變手指（app.js 讀熱力畫布透明度切換 demand-hot） */
+.leaflet-container.demand-hot:not(.leaflet-dragging) {
+    cursor: pointer;
+}
 .leaflet-theme-toggle {
     display: block;
     padding: 6px 12px;

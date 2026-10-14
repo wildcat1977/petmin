@@ -45,6 +45,8 @@
             gapNone:                @js(__('300m 內沒有')),
             demandScore:            @js(__('需求分數')),
             demandEmpty:            @js(__('這一格目前沒有需求訊號')),
+            demandHint:             @js(__('🔥 點紅色區塊，看為什麼需要桶')),
+            demandHintClose:        @js(__('不再提示')),
             reportPhoto:            @js(__('回報照片')),
             searchPlaceholderRadar: @js(__('搜尋地標或路名…(尚不支援詳細地址)')),
             searchPlaceholderPin:   @js(__('搜尋地標或路名…(暫不支援門牌號碼)')),

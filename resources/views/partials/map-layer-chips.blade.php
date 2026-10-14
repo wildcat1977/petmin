@@ -8,7 +8,7 @@
 <button type="button" data-map-chip="bag_boxes" style="--chip-color:#38bdf8" class="{{ $cls }} chip-on">🐕 {{ __('狗便袋箱') }}</button>
 <button type="button" data-map-chip="missing_bins" style="--chip-color:#a78bfa" class="{{ $cls }}">👻 {{ __('消失的桶') }}</button>
 <button type="button" data-map-chip="gaps" style="--chip-color:#f472b6" class="{{ $cls }}">🧷 {{ __('有袋沒桶') }}</button>
-<button type="button" data-map-chip="demand" style="--chip-color:#f97316" class="{{ $cls }}">🔥 {{ __('需求熱力') }}</button>
+<button type="button" data-map-chip="demand" style="--chip-color:#f97316" class="{{ $cls }} chip-on">🔥 {{ __('需求熱力') }}</button>
 {{-- 回報分類（對應圖例配色，來源 report_categories） --}}
 @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
     <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
