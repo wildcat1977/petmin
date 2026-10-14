@@ -299,6 +299,29 @@ button.leaflet-theme-toggle.leaflet-control {
 .leaflet-theme-toggle:hover { opacity: 0.85; }
 
 /* ── 行動版右側圖層面板（spec §12.7）：checkbox 式圖層列 + 卡片開啟鈕 ── */
+/* 圖層分組小標：桌機接在 chips 同一列、手機面板當段落標題 */
+.map-chip-group {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #fbbf24;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 6px;
+    backdrop-filter: blur(6px);
+}
+.map-chip-group:first-child { margin-left: 0; }
+.layer-check-group {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #64748b;
+}
+.layer-check-group:first-child { margin-top: 0; }
 .layer-check {
     display: flex;
     align-items: center;

@@ -107,7 +107,7 @@ const VERIFICATION_LABEL = {
 
 let radarMap = null;
 let reportsLayer = null;       // 目前顯示的回報點位/聚合圖層
-let binsLayer = null;          // 桶位圖層（清潔箱 / 狗便袋箱 / 消失的桶，bbox API）
+let binsLayer = null;          // 桶位圖層（清潔箱 / 狗便袋箱 / 已確認消失的桶，前端 markercluster）
 let gapsLayer = null;          // 有袋沒桶圖層（一次全撈）
 let demandLayer = null;        // 需求色塊（DemandGrid 方格，一次全撈）
 let currentTileLayer = null;   // 底圖圖層（MapLibre；隨主題換 style，沒有 WebGL 時為 null）
@@ -117,7 +117,7 @@ let showResolved = true;
 // 回報三態篩選（spec §12.8）：reported/notified 純前端過濾已下發點；
 // resolved 另由 showResolved 伺服端 gating（隱藏時根本不下發已排除點）。
 let activeStatuses = new Set(['reported', 'notified', 'resolved']);
-// 桶位圖層開關：kinds（清潔箱 / 狗便袋箱）+ 是否顯示消失的桶
+// 桶位圖層開關：kinds（清潔箱 / 狗便袋箱）+ 是否顯示已確認消失的桶
 const binLayers = { bins: true, bag_boxes: true, missing_bins: false };
 let gapsVisible = false;
 let demandVisible = true;      // 提案核心產出：一進站就顯示

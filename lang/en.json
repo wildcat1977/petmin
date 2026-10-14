@@ -188,5 +188,11 @@
     "這一格目前沒有需求訊號": "No demand signal in this cell yet",
     "🔥 點紅色區塊，看為什麼需要桶": "🔥 Tap a red area to see why it needs a bin",
     "不再提示": "Don't show again",
-    "需求熱力載入中…": "Loading demand map…"
+    "需求熱力載入中…": "Loading demand map…",
+    "桶位": "Bins",
+    "需求": "Demand",
+    "民眾回報": "Reports",
+    "處理進度": "Progress",
+    "已確認消失": "Confirmed missing",
+    "「桶消失了」回報經核准後，桶的狀態": "Bins confirmed missing after an approved \"bin gone\" report"
 }
