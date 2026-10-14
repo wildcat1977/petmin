@@ -168,5 +168,22 @@
     "沈伯洋圖卡": "Puma Shen's Cards",
     "議員候選人圖卡": "Council Candidates' Cards",
     "此瀏覽器無法顯示地圖底圖，災情點位仍會照常顯示。": "This browser can't display the base map; reports are still shown.",
-    "⏳ 照片處理中…": "⏳ Processing photo…"
+    "⏳ 照片處理中…": "⏳ Processing photo…",
+
+    "捷運": "MRT",
+    "公車站牌": "Bus stops",
+    "狗便袋箱": "Dog-bag dispensers",
+    "狗活動區": "Dog runs",
+    "公園": "Parks",
+    "陳情": "Petitions",
+    "市民：需要桶": "Residents: need a bin",
+    "市民：桶滿了": "Residents: bin full",
+    "市民：家戶垃圾": "Residents: household dumping",
+    "現存清潔箱": "Existing litter bins",
+    "缺桶加成": "No-bin boost",
+    "最近清潔箱 :m 公尺": "Nearest litter bin :m m",
+    "附近沒有清潔箱": "No litter bin nearby",
+    "已上限": "capped",
+    "需求分數": "Demand score",
+    "這一格目前沒有需求訊號": "No demand signal in this cell yet"
 }

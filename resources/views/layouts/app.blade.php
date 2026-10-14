@@ -43,6 +43,8 @@
             gapBoxes:               @js(__('狗便袋箱')),
             gapNearest:             @js(__('最近清潔箱')),
             gapNone:                @js(__('300m 內沒有')),
+            demandScore:            @js(__('需求分數')),
+            demandEmpty:            @js(__('這一格目前沒有需求訊號')),
             reportPhoto:            @js(__('回報照片')),
             searchPlaceholderRadar: @js(__('搜尋地標或路名…(尚不支援詳細地址)')),
             searchPlaceholderPin:   @js(__('搜尋地標或路名…(暫不支援門牌號碼)')),

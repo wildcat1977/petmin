@@ -474,6 +474,7 @@ async function renderDemand() {
     if (!radarMap) return;
     if (!demandVisible) {
         if (demandLayer) { radarMap.removeLayer(demandLayer); demandLayer = null; }
+        if (demandPopup) { radarMap.closePopup(demandPopup); demandPopup = null; }
         return;
     }
     if (!L.heatLayer) {
@@ -493,6 +494,59 @@ async function renderDemand() {
     if (demandLayer) radarMap.removeLayer(demandLayer);
     demandLayer = L.heatLayer(points, { ...demandHeatScale(), minOpacity: 0.25,
         gradient: { 0.2: '#fde68a', 0.5: '#fb923c', 0.8: '#ef4444', 1: '#991b1b' } }).addTo(radarMap);
+}
+
+// ── 點熱力圖看明細：點擊位置所在網格的分數組成，並以虛線框出該格（一塊紅要說得出為什麼紅）──
+let demandPopup = null;
+async function showDemandDetail(latlng) {
+    const el = document.getElementById('radar-map');
+    let cell = null;
+    try {
+        const res = await fetch(`${el.dataset.demandAtUrl}?lat=${latlng.lat}&lng=${latlng.lng}`, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return;
+        ({ cell } = await res.json());
+    } catch (_) { return; }
+    if (!demandVisible) return;
+
+    const box = document.createElement('div');
+    box.style.cssText = 'font-size:13px;line-height:1.5;color:#1e293b;min-width:210px';
+    const popup = L.popup({ maxWidth: 300 }).setLatLng(latlng);
+    if (!cell) {
+        box.textContent = window.i18n?.demandEmpty ?? '這一格目前沒有需求訊號';
+        demandPopup = popup.setContent(box).openOn(radarMap);
+        return;
+    }
+
+    const title = document.createElement('b');
+    title.textContent = `🔥 ${window.i18n?.demandScore ?? '需求分數'} ${cell.score.toFixed(1)}`;
+    const place = document.createElement('div');
+    place.style.cssText = 'font-size:11px;color:#64748b;margin-bottom:4px';
+    place.textContent = cell.title;
+    box.append(title, place);
+    cell.items.forEach((item) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;gap:12px;border-top:1px solid #e2e8f0;padding:2px 0';
+        const left = document.createElement('div');
+        left.textContent = item.key === 'bin_gap' ? item.label : `${item.label} × ${item.count}`;
+        if (item.note) {
+            const note = document.createElement('div');
+            note.style.cssText = 'font-size:11px;color:#64748b';
+            note.textContent = item.note;
+            left.append(note);
+        }
+        const score = document.createElement('span');
+        score.style.cssText = `font-weight:700;white-space:nowrap;color:${item.score < 0 ? '#e11d48' : '#059669'}`;
+        score.textContent = `${item.score > 0 ? '+' : ''}${item.score.toFixed(1)}`;
+        row.append(left, score);
+        box.append(row);
+    });
+
+    // 每個 popup 只收自己的框線：連點兩格時舊 popup 的 remove 會在新框線畫上之後才觸發
+    const b = cell.bounds;
+    const outline = L.rectangle([[b.south, b.west], [b.north, b.east]],
+        { color: '#ea580c', weight: 2, dashArray: '6 4', fill: false, interactive: false }).addTo(radarMap);
+    popup.on('remove', () => radarMap.removeLayer(outline));
+    demandPopup = popup.setContent(box).openOn(radarMap);
 }
 
 // 需求網格是 geohash6（約 1.2km × 0.6km）。半徑若固定像素，放大後各格相距數百像素、互不重疊就變淡
@@ -625,6 +679,7 @@ function initRadar() {
     radarMap.on('moveend', onMove);
     radarMap.on('zoomend', onMove);
     radarMap.on('zoomend', () => demandLayer?.setOptions(demandHeatScale()));
+    radarMap.on('click', (e) => { if (demandVisible) showDemandDetail(e.latlng); });
     fetchReports();
     fetchBins();
 

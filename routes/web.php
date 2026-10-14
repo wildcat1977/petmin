@@ -10,6 +10,8 @@ use App\Models\DemandCell;
 use App\Models\Report;
 use App\Services\BagBoxGapService;
 use App\Services\DemandScoreService;
+use App\Support\Geohash;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -89,6 +91,17 @@ Route::get('/api/map/demand', function () {
         ->map(fn (DemandCell $c) => [(float) $c->latitude, (float) $c->longitude, (float) $c->score, $c->geohash6])
         ->all()));
 })->name('api.map.demand');
+
+// 點熱力圖看明細：點擊位置所在 geohash6 格的分數組成（分數 0 的格子也回，說明被現存桶扣掉）
+Route::get('/api/map/demand/at', function (Request $request) {
+    $validated = $request->validate([
+        'lat' => ['required', 'numeric', 'between:-90,90'],
+        'lng' => ['required', 'numeric', 'between:-180,180'],
+    ]);
+    $cell = DemandCell::where('geohash6', Geohash::encode((float) $validated['lat'], (float) $validated['lng'], 6))->first();
+
+    return response()->json(['cell' => $cell?->explanation()]);
+})->name('api.map.demand.at');
 
 // 有袋沒桶圖層
 Route::get('/api/map/gaps', fn (BagBoxGapService $gaps) => response()->json($gaps->gaps()->all()))->name('api.map.gaps');

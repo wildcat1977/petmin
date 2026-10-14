@@ -45,5 +45,6 @@ new class extends Component
     data-bins-url="{{ route('api.map.bins') }}"
     data-gaps-url="{{ route('api.map.gaps') }}"
     data-demand-url="{{ route('api.map.demand') }}"
+    data-demand-at-url="{{ route('api.map.demand.at') }}"
     data-categories='@json($this->categoryMeta)'
 ></div>

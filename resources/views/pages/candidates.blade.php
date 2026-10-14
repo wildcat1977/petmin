@@ -22,11 +22,7 @@
         </div>
 
         @php
-            $kindLabels = [
-                'mrt' => '捷運', 'bus_stop' => '公車站牌', 'dog_park' => '狗活動區', 'park' => '公園', 'petition' => '陳情',
-                'dog_bag_box' => '狗便袋箱', 'report_need_bin' => '市民：需要桶', 'report_full' => '市民：桶滿了', 'report_dumping' => '市民：家戶垃圾', 'existing_bin' => '現存清潔箱',
-                'bin_gap' => '缺桶加成',
-            ];
+            $kindLabels = \App\Models\DemandCell::BREAKDOWN_LABELS;
         @endphp
 
         {{-- 有袋沒桶 --}}
