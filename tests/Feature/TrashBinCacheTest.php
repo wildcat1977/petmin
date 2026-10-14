@@ -34,4 +34,21 @@ class TrashBinCacheTest extends TestCase
 
         $this->assertCount(1, app(BagBoxGapService::class)->gaps());
     }
+
+    /**
+     * 正式機 Redis 會序列化快取，且 serializable_classes=false 不還原物件：快取裡放 Collection，
+     * 第二次讀回來是 __PHP_Incomplete_Class，候選頁直接 500。快取只能放純陣列。
+     */
+    public function test_bag_box_gaps_survive_a_serializing_cache_store(): void
+    {
+        config(['cache.stores.array.serialize' => true]);
+        Cache::forgetDriver('array');
+        TrashBin::factory()->dogBagBox()->create(['latitude' => 25.0330, 'longitude' => 121.5654]);
+
+        app(BagBoxGapService::class)->gaps();          // 寫入快取
+        $again = app(BagBoxGapService::class)->gaps(); // 從快取讀回
+
+        $this->assertCount(1, $again);
+        $this->assertSame(25.033, $again->first()['lat']);
+    }
 }

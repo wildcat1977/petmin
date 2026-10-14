@@ -26,7 +26,8 @@ class BagBoxGapService
     {
         $meters ??= (int) config('petmin.bag_box_gap_meters');
 
-        return Cache::remember("demand.gaps.{$meters}", 600, function () use ($meters) {
+        // 快取只放純陣列：Redis 會序列化、serializable_classes=false 不還原物件，放 Collection 讀回來會壞掉
+        return collect(Cache::remember("demand.gaps.{$meters}", 600, function () use ($meters) {
             $cleanBoxes = TrashBin::query()->active()->kind(TrashBin::KIND_CLEAN_BOX)
                 ->get(['id', 'latitude', 'longitude']);
 
@@ -52,7 +53,8 @@ class BagBoxGapService
                 })
                 ->filter(fn ($row) => $row['nearest_m'] === null || $row['nearest_m'] > $meters)
                 ->sortByDesc('box_count')
-                ->values();
-        });
+                ->values()
+                ->all();
+        }));
     }
 }
