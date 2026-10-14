@@ -67,7 +67,7 @@ php artisan bins:import-clean-boxes      # 行人專用清潔箱 681 組
 php artisan bins:import-dog-bag-boxes    # 狗便清潔袋箱 130 列（124 站）
 php artisan proxies:import-bus-stops     # 公車站牌 3,407
 php artisan proxies:import-dog-parks     # 狗活動區／公園（手刻 JSON，座標待勘誤）
-php artisan proxies:import-mrt [--od=月OD檔]   # 捷運站點（待補 mrt_stations.csv）
+php artisan proxies:import-mrt                # 捷運站點 119 站（weight 已由 OD 出站量換算，見 database/data/README.md）
 php artisan demand:recompute             # 需求分數（排程每小時）
 php artisan bins:gap-report [--csv=path] # 有袋沒桶清單
 ```

@@ -70,7 +70,12 @@ class ImportMrtStations extends Command
                 );
                 $n++;
             }
-            $this->info("捷運站匯入 {$n} 筆".($max > 0 ? '（含 OD 出站量權重）' : '（權重一律 1）'));
+            $source = match (true) {
+                $max > 0 => '（含 OD 出站量權重）',
+                in_array('weight', $header ?? [], true) => '（權重取自 CSV weight 欄）',
+                default => '（權重一律 1）',
+            };
+            $this->info("捷運站匯入 {$n} 筆{$source}");
             if ($unmatched) {
                 $this->warn('OD 檔找不到這些站（權重維持 1）：'.implode('、', $unmatched));
             }

@@ -30,6 +30,21 @@ class ImportProxiesTest extends TestCase
         $this->assertEqualsWithDelta(1.0, DemandProxy::where('name', '劍潭')->sole()->weight, 0.001);
     }
 
+    /** 站點 CSV 自帶 weight（預先由 OD 換算好）時要照用，且輸出不可再說「一律 1」誤導操作的人 */
+    public function test_mrt_stations_use_weight_column_when_present(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'mrt');
+        file_put_contents($file, "name,lng,lat,weight\n台北車站,121.5170,25.0478,1.000\n劍潭,121.5249,25.0847,0.250\n");
+
+        $this->artisan('proxies:import-mrt', ['--file' => $file])
+            ->expectsOutputToContain('權重取自 CSV weight 欄')
+            ->doesntExpectOutputToContain('權重一律 1')
+            ->assertSuccessful();
+
+        $this->assertEqualsWithDelta(0.25, DemandProxy::where('name', '劍潭')->sole()->weight, 0.001);
+        unlink($file);
+    }
+
     public function test_mrt_od_file_normalises_exit_volume_into_weight(): void
     {
         $this->artisan('proxies:import-mrt', [
