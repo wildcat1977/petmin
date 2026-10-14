@@ -32,7 +32,7 @@
             <div class="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p class="text-xs font-semibold text-slate-400">🐕 {{ __('遛狗族找得到桶嗎') }}</p>
                 <p class="mt-1 text-2xl font-bold text-slate-100">{{ $insights['bags_with_bin_100m_pct'] }}%</p>
-                <p class="mt-1 text-xs leading-relaxed text-slate-400">{{ __(':n 個狗便袋箱，只有 :p100% 在 100 公尺內有清潔箱（300 公尺內 :p300%）。狗便袋拿在手上，沒辦法「帶回家」。', ['n' => $insights['bag_boxes'], 'p100' => $insights['bags_with_bin_100m_pct'], 'p300' => $insights['bags_with_bin_300m_pct']]) }}</p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-400">{{ __(':n 個狗便袋箱，只有 :p100% 在 100 公尺內有清潔箱（300 公尺內 :p300%）。其他地方的遛狗族，只好提著狗便袋走完整趟路、帶回家丟。', ['n' => $insights['bag_boxes'], 'p100' => $insights['bags_with_bin_100m_pct'], 'p300' => $insights['bags_with_bin_300m_pct']]) }}</p>
             </div>
             <div class="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p class="text-xs font-semibold text-slate-400">🏙️ {{ __('各區落差') }}</p>
