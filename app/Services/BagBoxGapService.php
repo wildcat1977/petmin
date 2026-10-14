@@ -16,10 +16,11 @@ class BagBoxGapService
     /**
      * @return Collection<int, array{id: int, name: string, district: ?string, lat: float, lng: float, box_count: int, nearest_m: ?int}>
      */
-    /** 桶位或狗便袋箱異動後清掉「有袋沒桶」快取（鍵帶距離門檻；不可用 Cache::flush——Redis 上會清掉同 DB 其他站） */
+    /** 桶位異動後清掉依桶位算的快取：有袋沒桶（鍵帶距離門檻）、數據判讀統計。不可用 Cache::flush——Redis 上會清掉同 DB 其他站 */
     public static function forgetCache(): void
     {
         Cache::forget('demand.gaps.'.(int) config('petmin.bag_box_gap_meters'));
+        Cache::forget('demand.insights');
     }
 
     public function gaps(?int $meters = null): Collection

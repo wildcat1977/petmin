@@ -36,6 +36,9 @@ Route::get('/candidates', function (DemandScoreService $demand, BagBoxGapService
         'dumping' => $demand->dumpingRisk(),
         'gaps' => $gaps->gaps(),
         'computedAt' => DemandCell::max('computed_at'),
+        'insights' => $demand->insights(),
+        'candidateCount' => DemandCell::whereNotNull('candidate_rank')->count(),
+        'hotspots' => DemandCell::whereNotNull('candidate_rank')->where('score', '>=', config('petmin.demand.hotspot_min_score'))->count(),
     ]);
 })->name('candidates');
 

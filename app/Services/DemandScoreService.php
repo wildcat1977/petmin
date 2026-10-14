@@ -7,8 +7,10 @@ use App\Models\DemandProxy;
 use App\Models\Report;
 use App\Models\TrashBin;
 use App\Support\DemandGrid;
+use App\Support\Geo;
 use App\Support\TaipeiBoundary;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -426,6 +428,43 @@ class DemandScoreService
                 'top' => $mine->sortBy('candidate_rank')->first(),
             ];
         })->sortBy([['hotspots', 'desc'], ['bag_gap_pct', 'desc']])->values()->all();
+    }
+
+    /**
+     * 數據判讀：提案論點背後的數字（桶留在觀光區、袋箱附近有沒有桶、各區落差）。只依桶位資料，
+     * 桶位異動時由 BagBoxGapService::forgetCache() 一併清除；快取只放純陣列。
+     *
+     * @return array{clean_points: int, area_sites: int, area_sets: int, points_near_areas_pct: ?int, bag_boxes: int,
+     *     bags_with_bin_100m_pct: ?int, bags_with_bin_300m_pct: ?int, sets_per_bag: array{max: ?array, min: ?array, by_district: array<string, float>}, synced_at: ?string}
+     */
+    public function insights(): array
+    {
+        return Cache::remember('demand.insights', 600, function () {
+            $bins = TrashBin::query()->active()->get(['source', 'kind', 'district', 'latitude', 'longitude', 'box_count']);
+            $points = $bins->where('source', TrashBin::SOURCE_OFFICIAL_CLEAN_BOX)->values();
+            $areas = $bins->where('source', TrashBin::SOURCE_OFFICIAL_CLEAN_BOX_AREA)->values();
+            $cleanBoxes = $bins->where('kind', TrashBin::KIND_CLEAN_BOX)->values();
+            $bags = $bins->where('kind', TrashBin::KIND_DOG_BAG_BOX)->values();
+            $within = fn (TrashBin $p, $pool, float $m) => $pool->contains(fn (TrashBin $q) => Geo::distanceMeters((float) $p->latitude, (float) $p->longitude, (float) $q->latitude, (float) $q->longitude) <= $m);
+            $pct = fn (int $n, int $of) => $of > 0 ? (int) round(100 * $n / $of) : null;
+
+            // 每個狗便袋箱分到幾組清潔箱（只比有袋箱的區）：居民遛狗的地方分到多少桶
+            $ratios = $bags->groupBy('district')->map(fn ($districtBags, $district) => round(
+                $cleanBoxes->where('district', $district)->sum('box_count') / $districtBags->count(), 1))->sortDesc();
+            $pick = fn (?string $district) => $district === null ? null : ['district' => $district, 'ratio' => (float) $ratios[$district]];
+
+            return [
+                'clean_points' => $points->count(),
+                'area_sites' => $areas->count(),
+                'area_sets' => (int) $areas->sum('box_count'),
+                'points_near_areas_pct' => $pct($points->filter(fn ($p) => $within($p, $areas, 500))->count(), $points->count()),
+                'bag_boxes' => $bags->count(),
+                'bags_with_bin_100m_pct' => $pct($bags->filter(fn ($b) => $within($b, $cleanBoxes, 100))->count(), $bags->count()),
+                'bags_with_bin_300m_pct' => $pct($bags->filter(fn ($b) => $within($b, $cleanBoxes, 300))->count(), $bags->count()),
+                'sets_per_bag' => ['max' => $pick($ratios->keys()->first()), 'min' => $pick($ratios->keys()->last()), 'by_district' => $ratios->all()],
+                'synced_at' => TrashBin::max('last_seen_in_source_at'),
+            ];
+        });
     }
 
     /** @return Collection<int, DemandCell> 撤除風險：家戶垃圾亂丟回報集中格 */

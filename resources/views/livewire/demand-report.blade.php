@@ -54,6 +54,7 @@ new class extends Component
             'ranking' => app(DemandScoreService::class)->districtRanking(),
             'candidates' => DemandCell::query()->candidateList($this->district ?: null, $this->sort, $this->dir)->paginate(25),
             'labels' => DemandCell::BREAKDOWN_LABELS,
+            'setsPerBag' => app(DemandScoreService::class)->insights()['sets_per_bag']['by_district'],
             'hotspotMin' => config('petmin.demand.hotspot_min_score'),
         ];
     }
@@ -65,7 +66,7 @@ new class extends Component
         <h2 class="text-base font-bold text-slate-100">🏙️ {{ __('行政區缺桶排行') }}</h2>
         <p class="mt-1 text-xs text-slate-500">{{ __('缺桶熱點＝需求分數 ≥ :min 的候選地點；有袋沒桶＝狗便袋箱 :m 公尺內沒有清潔箱。點區名篩選下方明細。', ['min' => $hotspotMin, 'm' => config('petmin.bag_box_gap_meters')]) }}</p>
         <div class="mt-3 overflow-x-auto rounded-xl border border-white/10">
-            <table class="w-full min-w-[640px] text-sm">
+            <table class="w-full min-w-[700px] text-sm">
                 <thead class="bg-white/5 text-left text-xs text-slate-400">
                     <tr>
                         <th class="px-3 py-2">{{ __('行政區') }}</th>
@@ -73,6 +74,7 @@ new class extends Component
                         <th class="px-3 py-2 text-right">{{ __('有袋沒桶') }}</th>
                         <th class="px-3 py-2 text-right">{{ __('清潔箱') }}</th>
                         <th class="px-3 py-2 text-right">{{ __('狗便袋箱') }}</th>
+                        <th class="px-3 py-2 text-right" title="{{ __('每個狗便袋箱分到的清潔箱組數') }}">{{ __('桶／袋箱') }}</th>
                         <th class="px-3 py-2">{{ __('最缺的地點') }}</th>
                     </tr>
                 </thead>
@@ -89,6 +91,7 @@ new class extends Component
                             </td>
                             <td class="px-3 py-2 text-right text-slate-300">{{ $row['clean_boxes'] }}</td>
                             <td class="px-3 py-2 text-right text-slate-300">{{ $row['bag_boxes'] }}</td>
+                            <td class="px-3 py-2 text-right {{ ($setsPerBag[$row['district']] ?? 0) < 2 ? 'font-bold text-rose-300' : 'text-slate-300' }}">{{ $setsPerBag[$row['district']] ?? '—' }}</td>
                             <td class="max-w-[220px] truncate px-3 py-2 text-xs text-slate-400">
                                 @if ($row['top'])
                                     {{ $row['top']->explanation()['title'] }} <span class="text-orange-300">{{ $row['top']->score }}</span>

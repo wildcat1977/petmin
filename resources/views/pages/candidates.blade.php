@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', __('候選復設點 · Petmin'))
+@section('title', __('數據判讀 · Petmin'))
 
 @section('content')
 <div class="min-h-dvh bg-radar-bg text-slate-200">
@@ -9,15 +9,47 @@
     <div class="mx-auto max-w-4xl px-4 pb-16 pt-6">
         <div class="flex flex-wrap items-end justify-between gap-3">
             <div>
-                <h1 class="text-xl font-bold text-slate-100">📋 {{ __('候選復設點') }}</h1>
+                <h1 class="text-xl font-bold text-slate-100">📊 {{ __('數據判讀') }}</h1>
                 <p class="mt-1 text-xs text-slate-500">
                     {{ __('需求分數 =（人流（捷運、公車站牌）+ 遛狗（狗便袋箱、狗活動區）+ 市民回報）× 缺桶加成 − 現存清潔箱；離最近清潔箱 :start 公尺起加成，:full 公尺以上需求加倍。純資料計算，可對照環保局「設置／拆除／遷移評估表」送會勘。', ['start' => config('petmin.demand.bin_gap.start_m'), 'full' => config('petmin.demand.bin_gap.full_m')]) }}
                     @if ($computedAt)
                         <span class="text-slate-600">{{ __('最近重算：:at', ['at' => \Illuminate\Support\Carbon::parse($computedAt)->timezone('Asia/Taipei')->format('m/d H:i')]) }}</span>
                     @endif
+                    @if ($insights['synced_at'])
+                        <span class="text-slate-600">{{ __('官方桶位同步：:at', ['at' => \Illuminate\Support\Carbon::parse($insights['synced_at'])->timezone('Asia/Taipei')->format('m/d H:i')]) }}</span>
+                    @endif
                 </p>
             </div>
         </div>
+
+        {{-- 數據判讀：提案論點背後的數字，全部由 open data 即時算出 --}}
+        <section class="mt-6 grid gap-3 sm:grid-cols-2">
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p class="text-xs font-semibold text-slate-400">🗑️ {{ __('桶在哪裡') }}</p>
+                <p class="mt-1 text-2xl font-bold text-slate-100">{{ $insights['points_near_areas_pct'] }}%</p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-400">{{ __('逐點清單 :n 組清潔箱，:pct% 在「景點商圈」500 公尺內；環保局另有景點商圈清單 :sites 處、:sets 組。桶留在觀光客去的地方。', ['n' => $insights['clean_points'], 'pct' => $insights['points_near_areas_pct'], 'sites' => $insights['area_sites'], 'sets' => $insights['area_sets']]) }}</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p class="text-xs font-semibold text-slate-400">🐕 {{ __('遛狗族找得到桶嗎') }}</p>
+                <p class="mt-1 text-2xl font-bold text-slate-100">{{ $insights['bags_with_bin_100m_pct'] }}%</p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-400">{{ __(':n 個狗便袋箱，只有 :p100% 在 100 公尺內有清潔箱（300 公尺內 :p300%）。狗便袋拿在手上，沒辦法「帶回家」。', ['n' => $insights['bag_boxes'], 'p100' => $insights['bags_with_bin_100m_pct'], 'p300' => $insights['bags_with_bin_300m_pct']]) }}</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p class="text-xs font-semibold text-slate-400">🏙️ {{ __('各區落差') }}</p>
+                @if ($insights['sets_per_bag']['max'] && $insights['sets_per_bag']['min'])
+                    @php [$max, $min] = [$insights['sets_per_bag']['max'], $insights['sets_per_bag']['min']]; @endphp
+                    <p class="mt-1 text-2xl font-bold text-slate-100">{{ $max['ratio'] }} : {{ $min['ratio'] }}</p>
+                    <p class="mt-1 text-xs leading-relaxed text-slate-400">{{ __('每個狗便袋箱分到的清潔箱組數：:max_d :max 組，:min_d 只有 :min 組:times。', ['max_d' => $max['district'], 'max' => $max['ratio'], 'min_d' => $min['district'], 'min' => $min['ratio'], 'times' => $min['ratio'] > 0 ? __('（相差 :x 倍）', ['x' => round($max['ratio'] / $min['ratio'])]) : '']) }}</p>
+                @endif
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p class="text-xs font-semibold text-slate-400">🔥 {{ __('缺桶熱點') }}</p>
+                <p class="mt-1 text-2xl font-bold text-slate-100">{{ $hotspots }} <span class="text-sm font-normal text-slate-500">/ {{ $candidateCount }}</span></p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-400">
+                    {{ __(':n 個候選地點中，:h 個需求分數 ≥ :min。新北市道路沿線垃圾桶已全面取消（', ['n' => $candidateCount, 'h' => $hotspots, 'min' => config('petmin.demand.hotspot_min_score')]) }}<a href="https://news.ltn.com.tw/news/life/breakingnews/5130280" target="_blank" rel="noopener" class="text-cyan-300 hover:underline">{{ __('自由時報') }}</a>{{ __('），地圖照畫作為對照，但只有捷運資料、不列入排行。') }}
+                </p>
+            </div>
+        </section>
 
         @php
             $kindLabels = \App\Models\DemandCell::BREAKDOWN_LABELS;
