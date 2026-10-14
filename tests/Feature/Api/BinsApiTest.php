@@ -82,6 +82,16 @@ class BinsApiTest extends TestCase
         $this->assertEqualsCanonicalizing([$near->id, $far->id], collect($res->json('points'))->pluck('id')->all());
     }
 
+    /** 官方清單移除的桶是「消失的桶」最直接的證據：地圖要能顯示環保局哪天把它從清單拿掉 */
+    public function test_points_carry_official_removal_date(): void
+    {
+        $bin = TrashBin::factory()->missing()->create(['latitude' => 25.0330, 'longitude' => 121.5654, 'removed_from_source_at' => '2026-10-20 04:00:00']);
+
+        $points = $this->getJson('/api/map/bins?mode=points&statuses=missing')->assertOk()->json('points');
+
+        $this->assertSame('2026-10-20', collect($points)->firstWhere('id', $bin->id)['removed_at']);
+    }
+
     public function test_nearby_snaps_to_closest_bin_within_snap_distance_only(): void
     {
         config(['petmin.bin_snap_meters' => 30]);

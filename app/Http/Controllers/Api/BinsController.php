@@ -59,7 +59,7 @@ class BinsController extends Controller
 
             if ($zoom >= (int) config('petmin.map.cluster_below_zoom')) {
                 $limit = (int) config('petmin.map.max_points');
-                $bins = $base->limit($limit + 1)->get(['id', 'kind', 'status', 'address', 'district', 'latitude', 'longitude', 'box_count', 'last_verified_at', 'reports_count']);
+                $bins = $base->limit($limit + 1)->get(['id', 'kind', 'status', 'address', 'district', 'latitude', 'longitude', 'box_count', 'last_verified_at', 'reports_count', 'removed_from_source_at']);
 
                 return [
                     'mode' => 'points',
@@ -75,6 +75,7 @@ class BinsController extends Controller
                         'n' => $b->box_count,
                         'reports' => $b->reports_count,
                         'verified_at' => $b->last_verified_at?->diffForHumans(),
+                        'removed_at' => $b->removed_from_source_at?->toDateString(),
                     ])->values()->all(),
                 ];
             }

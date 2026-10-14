@@ -24,6 +24,9 @@ class TrashBin extends Model
 
     public const SOURCE_OFFICIAL_CLEAN_BOX = 'official_clean_box';
 
+    /** 景點商圈周邊清潔箱（環保局另一份清單，一筆是一個地點、box_count＝「N處」） */
+    public const SOURCE_OFFICIAL_CLEAN_BOX_AREA = 'official_clean_box_area';
+
     public const SOURCE_OFFICIAL_DOG_BAG_BOX = 'official_dog_bag_box';
 
     public const SOURCE_CROWD = 'crowd';
@@ -48,7 +51,7 @@ class TrashBin extends Model
     protected $fillable = [
         'external_id', 'source', 'kind', 'district', 'address', 'note',
         'latitude', 'longitude', 'geohash7', 'status', 'box_count',
-        'last_verified_at', 'reports_count',
+        'last_verified_at', 'reports_count', 'last_seen_in_source_at', 'removed_from_source_at',
     ];
 
     protected function casts(): array
@@ -59,6 +62,8 @@ class TrashBin extends Model
             'box_count' => 'integer',
             'reports_count' => 'integer',
             'last_verified_at' => 'datetime',
+            'last_seen_in_source_at' => 'datetime',
+            'removed_from_source_at' => 'datetime',
         ];
     }
 

@@ -108,6 +108,34 @@ return [
         'candidate_spacing_m' => (int) env('PETMIN_DEMAND_CANDIDATE_SPACING_M', 300),
     ],
 
+    /*
+     * 官方桶位每日同步（bins:sync-open-data，排程每天 04:00）。url 為 data.taipei 來源；
+     * snapshot 為 repo 內附快照（--offline 讀它，本機開發與測試用）。
+     * 一次同步若有超過 removal_guard_ratio（且多於 removal_guard_min 筆）的桶從清單消失，
+     * 視為 API 回傳殘缺，不套用撤除並以失敗結束。
+     */
+    'open_data' => [
+        'http_timeout' => 20,
+        'removal_guard_ratio' => 0.1,
+        'removal_guard_min' => 3,
+        'same_bin_meters' => 30,           // 同地址且這個距離內＝同一個桶（環保局微調座標）
+        'area_duplicate_meters' => 100,    // 景點商圈清潔箱離逐點清單這個距離內＝同一批桶，跳過
+        'sources' => [
+            'clean_boxes' => [
+                'url' => 'https://data.taipei/api/v1/dataset/267d550f-c6ec-46e0-b8af-fd5a464eb098?scope=resourceAquire&limit=1000',
+                'snapshot' => database_path('data/clean_boxes.json'),
+            ],
+            'clean_box_areas' => [
+                'url' => 'https://data.taipei/api/v1/dataset/2030d728-9597-437d-81a4-cf2a44c7f114?scope=resourceAquire&limit=1000',
+                'snapshot' => database_path('data/clean_box_areas.json'),
+            ],
+            'dog_bag_boxes' => [
+                'url' => 'https://data.taipei/api/dataset/d338aa80-2aec-4e9d-a7de-a5d980118e32/resource/2822f947-7585-4da4-a1cf-f20d1475d4f8/download',
+                'snapshot' => database_path('data/dog_bag_boxes.csv'),
+            ],
+        ],
+    ],
+
     // 遊戲化：核准一筆回報得幾點
     'points_per_approved_report' => (int) env('PETMIN_POINTS_PER_REPORT', 10),
 ];

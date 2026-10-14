@@ -368,6 +368,13 @@ function createBinPopupEl(b) {
     meta.textContent = (b.verified_at ? `${window.i18n?.binVerified ?? '最近驗證'} ${b.verified_at}` : (window.i18n?.binNeverVerified ?? '尚未有人驗證'))
         + (b.reports ? `｜${b.reports} ${window.i18n?.binReports ?? '筆回報'}` : '');
     wrap.appendChild(meta);
+    // 官方清單移除＝「消失的桶」的官方證據
+    if (b.removed_at) {
+        const removed = document.createElement('div');
+        removed.style.cssText = 'margin-top:4px;font-size:12px;font-weight:600;color:#7c3aed';
+        removed.textContent = `${window.i18n?.binRemovedFromList ?? '環保局清單移除於'} ${b.removed_at}`;
+        wrap.appendChild(removed);
+    }
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = window.i18n?.binReportThis ?? '🐾 回報這個桶';

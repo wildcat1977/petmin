@@ -38,6 +38,7 @@
             binUnverified:          @js(__('待驗證')),
             binVerified:            @js(__('最近驗證')),
             binNeverVerified:       @js(__('尚未有人驗證')),
+            binRemovedFromList:     @js(__('環保局清單移除於')),
             binReports:             @js(__('筆回報')),
             binReportThis:          @js(__('🐾 回報這個桶')),
             gapBoxes:               @js(__('狗便袋箱')),

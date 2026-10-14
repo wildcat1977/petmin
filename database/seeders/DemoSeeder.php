@@ -17,8 +17,7 @@ class DemoSeeder extends Seeder
 {
     public function run(): void
     {
-        Artisan::call('bins:import-clean-boxes');
-        Artisan::call('bins:import-dog-bag-boxes');
+        Artisan::call('bins:sync-open-data', ['--offline' => true]);
         Artisan::call('proxies:import-bus-stops');
         Artisan::call('proxies:import-dog-parks');
         if (is_readable(database_path('data/mrt_stations.csv'))) {
