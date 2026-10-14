@@ -46,6 +46,7 @@ class DemandScoreServiceTest extends TestCase
             // 測試庫裡通常沒有清潔箱＝離桶無限遠；預設關掉缺口加成，讓其他測試只驗基礎公式
             'petmin.demand.bin_gap' => ['start_m' => 300, 'full_m' => 1000, 'max_multiplier' => 0.0],
             'petmin.demand.candidate_spacing_m' => 300,
+            'petmin.demand.dog_bag_box_site_m' => 150,
         ]);
         $this->grid = DemandGrid::fromConfig();
         [$this->ix, $this->iy] = $this->grid->cellAt(self::LAT, self::LNG);
@@ -146,6 +147,26 @@ class DemandScoreServiceTest extends TestCase
 
         $this->assertEqualsWithDelta(2.0, $this->cell()->score, 0.01);
         $this->assertSame(1, $this->cell()->breakdown['dog_bag_box']['count']);
+    }
+
+    /**
+     * 同一個公園常裝一整排袋箱（迎風狗運動公園 01～06）：那是「一個遛狗地點」，不是六倍的遛狗需求。
+     * site_m 內的袋箱併成一處只算一次，否則袋箱裝得多的公園分數會被灌高、擠掉其他缺桶地點。
+     */
+    public function test_nearby_dog_bag_boxes_count_as_one_dog_walking_site(): void
+    {
+        foreach ([[0, 0], [40, 0], [80, 0], [0, 40], [40, 40], [80, 40]] as [$east, $north]) {
+            TrashBin::factory()->dogBagBox()->create(['address' => "迎風狗運動公園{$east}{$north}", ...$this->at($east, $north)]);
+        }
+        TrashBin::factory()->dogBagBox()->create($this->at(0, 1000)); // 1km 外另一處
+
+        $this->recompute();
+
+        $bag = $this->cell()->breakdown['dog_bag_box'];
+        $this->assertSame(1, $bag['count']);
+        $this->assertLessThanOrEqual(2.0, $bag['score']);
+        $this->assertStringContainsString('等 6 個袋箱', $bag['samples'][0]);
+        $this->assertNotNull($this->cell(0, 7)); // 1km 外那一處自己點亮
     }
 
     public function test_only_approved_unresolved_reports_count_and_corroborated_count_double(): void

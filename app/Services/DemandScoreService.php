@@ -129,13 +129,17 @@ class DemandScoreService
                     $isExit ? ($p->meta['station'] ?? $p->name) : $p->name, $isExit);
             });
 
-        // 狗便袋箱＝遛狗族聚集的證據（提案公式「狗便袋箱 ×2」）
-        TrashBin::query()->active()->kind(TrashBin::KIND_DOG_BAG_BOX)
-            ->select(['address', 'latitude', 'longitude'])
-            ->lazy()
-            ->each(function (TrashBin $b) use (&$signals, $point, $w) {
-                $signals[] = $point((float) $b->latitude, (float) $b->longitude, TrashBin::KIND_DOG_BAG_BOX, $w['dog_bag_box'], $b->address);
-            });
+        // 狗便袋箱＝遛狗族聚集的證據（提案公式「狗便袋箱 ×2」）。同一公園常裝一整排袋箱，
+        // dog_bag_box_site_m 內併成「一個遛狗地點」只算一次，否則袋箱裝得多的公園會被灌高分
+        $boxes = TrashBin::query()->active()->kind(TrashBin::KIND_DOG_BAG_BOX)->orderBy('id')
+            ->get(['address', 'latitude', 'longitude'])
+            ->map(fn (TrashBin $b) => [...$grid->toMeters((float) $b->latitude, (float) $b->longitude), $b->address])
+            ->all();
+        foreach ($this->groupIntoSites($boxes, (float) config('petmin.demand.dog_bag_box_site_m')) as $site) {
+            $label = count($site) > 1 ? "{$site[0][2]} 等 ".count($site).' 個袋箱' : $site[0][2];
+            $signals[] = [array_sum(array_column($site, 0)) / count($site), array_sum(array_column($site, 1)) / count($site),
+                TrashBin::KIND_DOG_BAG_BOX, $w['dog_bag_box'], $label, false];
+        }
 
         $dumping = [];
         Report::query()
@@ -156,6 +160,33 @@ class DemandScoreService
             });
 
         return [$signals, $dumping];
+    }
+
+    /**
+     * 依序以尚未歸組的點為中心，把 $radius 內未歸組的點併成一組（輸入順序固定，結果穩定）。
+     *
+     * @param  list<array{0: float, 1: float, 2: ?string}>  $points
+     * @return list<list<array{0: float, 1: float, 2: ?string}>>
+     */
+    private function groupIntoSites(array $points, float $radius): array
+    {
+        $sites = [];
+        $assigned = [];
+        foreach ($points as $i => $seed) {
+            if (isset($assigned[$i])) {
+                continue;
+            }
+            $site = [];
+            foreach ($points as $j => $p) {
+                if (! isset($assigned[$j]) && hypot($p[0] - $seed[0], $p[1] - $seed[1]) <= $radius) {
+                    $assigned[$j] = true;
+                    $site[] = $p;
+                }
+            }
+            $sites[] = $site;
+        }
+
+        return $sites;
     }
 
     /**
