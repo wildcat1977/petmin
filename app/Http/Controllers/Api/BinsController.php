@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Cache;
  * 桶位 API：
  *   GET /api/map/bins?bbox=W,S,E,N&zoom=&kinds=clean_box,dog_bag_box&statuses=active,missing
  *     zoom ≥ cluster_below_zoom 回個別桶；低 zoom 依 geohash 聚合（同 MapPointsController 的做法）
+ *   GET /api/map/bins?mode=points&kinds=&statuses=  → 不分 zoom、不需 bbox，一次回全部個別桶
+ *     （主地圖改在前端依像素距離聚合，聚合點才會貼著它代表的桶）
  *   GET /api/map/bins/nearby?lat=&lng=  → 回報表單吸附用，snap 距離內最近的桶
  */
 class BinsController extends Controller
@@ -20,17 +22,21 @@ class BinsController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'bbox' => ['required', 'regex:/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/'],
-            'zoom' => ['required', 'integer', 'between:1,22'],
+            'mode' => ['nullable', 'in:points'],
+            'bbox' => ['required_unless:mode,points', 'nullable', 'regex:/^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){3}$/'],
+            'zoom' => ['required_unless:mode,points', 'nullable', 'integer', 'between:1,22'],
             'kinds' => ['nullable', 'string'],
             'statuses' => ['nullable', 'string'],
         ]);
 
-        [$west, $south, $east, $north] = array_map('floatval', explode(',', $validated['bbox']));
+        $allPoints = ($validated['mode'] ?? null) === 'points';
+        [$west, $south, $east, $north] = isset($validated['bbox'])
+            ? array_map('floatval', explode(',', $validated['bbox']))
+            : [-180.0, -90.0, 180.0, 90.0];
         if ($west >= $east || $south >= $north) {
             return response()->json(['message' => 'invalid bbox'], 422);
         }
-        $zoom = (int) $validated['zoom'];
+        $zoom = $allPoints ? PHP_INT_MAX : (int) $validated['zoom'];
         $kinds = collect(explode(',', $validated['kinds'] ?? ''))->intersect(array_keys(TrashBin::KIND_LABELS))->values();
         if ($kinds->isEmpty()) {
             $kinds = collect(array_keys(TrashBin::KIND_LABELS));

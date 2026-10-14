@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
+@import 'leaflet.markercluster/dist/MarkerCluster.css';
 
 [x-cloak] { display: none !important; }
 

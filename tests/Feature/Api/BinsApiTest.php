@@ -66,6 +66,22 @@ class BinsApiTest extends TestCase
         $this->assertEqualsWithDelta(121.5664, $clusters[0]['lng'], 0.00001);
     }
 
+    /**
+     * 前端用畫面像素距離聚合（markercluster）：一次拿全部點位，聚合點才會貼著它代表的桶，
+     * 不會像伺服器端大格子聚合那樣，重心落在需求方格上沒有桶的地方。篩選照常生效。
+     */
+    public function test_points_mode_returns_all_matching_bins_without_bbox_or_zoom(): void
+    {
+        $near = TrashBin::factory()->create(['latitude' => 25.0330, 'longitude' => 121.5654]);
+        $far = TrashBin::factory()->create(['latitude' => 25.1500, 'longitude' => 121.4600]);
+        TrashBin::factory()->missing()->create(['latitude' => 25.0331, 'longitude' => 121.5654]);
+        TrashBin::factory()->dogBagBox()->create(['latitude' => 25.0332, 'longitude' => 121.5654]);
+
+        $res = $this->getJson('/api/map/bins?mode=points&kinds=clean_box')->assertOk()->assertJsonPath('mode', 'points');
+
+        $this->assertEqualsCanonicalizing([$near->id, $far->id], collect($res->json('points'))->pluck('id')->all());
+    }
+
     public function test_nearby_snaps_to_closest_bin_within_snap_distance_only(): void
     {
         config(['petmin.bin_snap_meters' => 30]);

@@ -1,4 +1,5 @@
-import L from 'leaflet';
+import L from './leaflet-global.js';
+import 'leaflet.markercluster';
 import { geocoder as createGeocoder, geocoders } from 'leaflet-control-geocoder';
 import exifr from 'exifr';
 import { basemapMaxZoom, createBasemapLayer, setBasemapTheme } from './basemap.js';
@@ -379,33 +380,43 @@ function createBinPopupEl(b) {
     return wrap;
 }
 
-function renderBins(payload) {
+// 桶位在前端依畫面像素距離聚合：40px 內的桶才合併，聚合點一定落在它代表的桶旁邊。
+// （伺服器端以 geohash 大格子聚合時，重心會落在需求方格上沒有桶的地方，跟方格對不起來。）
+// 滑過聚合點畫出涵蓋範圍；聚合色取裡面最多的桶種。
+let binsCache = { key: null, points: [] };
+
+function binClusterIcon(cluster) {
+    const counts = {};
+    cluster.getAllChildMarkers().forEach((m) => { counts[m.options.binKind] = (counts[m.options.binKind] ?? 0) + 1; });
+    const kind = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const color = BIN_STYLE[kind]?.color ?? '#22c55e';
+    const count = cluster.getChildCount();
+    const size = count < 10 ? 30 : count < 100 ? 38 : 46;
+    return L.divIcon({
+        html: `<div style="width:${size}px;height:${size}px;background:${color}b3;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;box-shadow:0 0 8px ${color}66">${count}</div>`,
+        className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+    });
+}
+
+function renderBins() {
     if (!radarMap) return;
-    const layer = L.layerGroup();
-    if (payload.mode === 'points') {
-        (payload.points ?? []).forEach((b) => {
-            const marker = L.marker([b.lat, b.lng], { icon: binIcon(b) });
-            marker.bindPopup(createBinPopupEl(b), { maxWidth: 260 });
-            layer.addLayer(marker);
-        });
-    } else {
-        (payload.clusters ?? []).forEach((c) => {
-            const color = BIN_STYLE[c.kind]?.color ?? '#22c55e';
-            const size = c.count < 10 ? 30 : c.count < 100 ? 38 : 46;
-            const icon = L.divIcon({
-                html: `<div style="width:${size}px;height:${size}px;background:${color}b3;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;box-shadow:0 0 8px ${color}66">${c.count}</div>`,
-                className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
-            });
-            const marker = L.marker([c.lat, c.lng], { icon });
-            marker.on('click', () => radarMap.setView([c.lat, c.lng], Math.min(radarMap.getZoom() + 2, 18)));
-            layer.addLayer(marker);
-        });
-    }
+    const layer = L.markerClusterGroup({
+        maxClusterRadius: 40,
+        showCoverageOnHover: true,
+        polygonOptions: { color: '#15803d', weight: 1.5, opacity: 0.8, fillOpacity: 0.08 },
+        spiderfyOnMaxZoom: true,
+        zoomToBoundsOnClick: true,
+        chunkedLoading: true,
+        iconCreateFunction: binClusterIcon,
+    });
+    layer.addLayers(binsCache.points.map((b) =>
+        L.marker([b.lat, b.lng], { icon: binIcon(b), binKind: b.kind }).bindPopup(() => createBinPopupEl(b), { maxWidth: 260 })));
     if (binsLayer) radarMap.removeLayer(binsLayer);
     binsLayer = layer.addTo(radarMap);
 }
 
-async function fetchBins() {
+// 全部桶位一次載入（全市約 800 筆）：平移縮放由 markercluster 處理，只有篩選改變或 force 才重抓
+async function fetchBins({ force = false } = {}) {
     if (!radarMap) return;
     const el = document.getElementById('radar-map');
     if (!el) return;
@@ -415,25 +426,23 @@ async function fetchBins() {
     if (binLayers.bag_boxes) kinds.push('dog_bag_box');
     if (kinds.length === 0) {
         if (binsLayer) { radarMap.removeLayer(binsLayer); binsLayer = null; }
+        binsCache = { key: null, points: [] };
         return;
     }
     const statuses = ['active', 'unverified'];
     if (binLayers.missing_bins) statuses.push('missing');
 
-    const b = radarMap.getBounds();
-    const params = new URLSearchParams({
-        bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((v) => v.toFixed(5)).join(','),
-        zoom: radarMap.getZoom(),
-        kinds: kinds.join(','),
-        statuses: statuses.join(','),
-    });
+    const key = `${kinds.join(',')}|${statuses.join(',')}`;
+    if (!force && binsCache.key === key) return;
 
+    const params = new URLSearchParams({ mode: 'points', kinds: kinds.join(','), statuses: statuses.join(',') });
     if (binsFetchController) binsFetchController.abort();
     binsFetchController = new AbortController();
     try {
         const res = await fetch(`${el.dataset.binsUrl}?${params}`, { signal: binsFetchController.signal, headers: { Accept: 'application/json' } });
         if (!res.ok) return;
-        renderBins(await res.json());
+        binsCache = { key, points: (await res.json()).points ?? [] };
+        renderBins();
     } catch (_) { /* abort 或離線：保留現有圖層 */ }
 }
 
@@ -996,9 +1005,9 @@ document.addEventListener('livewire:initialized', () => {
         window.Livewire.dispatch('open-report-form');
     });
 
-    // 回報送出或後端通知資料更新 → 重新向 bbox API 取點位（桶狀態也可能被核准回報改掉）
+    // 回報送出或後端通知資料更新 → 重新向 bbox API 取點位；桶狀態也可能被核准回報改掉，強制重抓
     window.addEventListener('petmin:reports-updated', () => {
         scheduleFetch();
-        fetchBins();
+        fetchBins({ force: true });
     });
 });
