@@ -132,9 +132,9 @@ class HomeChromeTest extends TestCase
     {
         $html = $this->get('/')->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('#<meta property="og:image" content="https?://[^"]+/social-image\.png">#', $html);
-        $this->assertStringContainsString('<meta property="og:image:width" content="1731">', $html);
+        $this->assertMatchesRegularExpression('#<meta property="og:image" content="https?://[^"]+/social-image\.jpg">#', $html);
+        $this->assertStringContainsString('<meta property="og:image:width" content="1200">', $html);
         $this->assertStringContainsString('<meta name="twitter:image"', $html);
-        $this->assertFileExists(public_path('social-image.png'));
+        $this->assertFileExists(public_path('social-image.jpg'));
     }
 }
