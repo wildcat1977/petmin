@@ -126,4 +126,15 @@ class HomeChromeTest extends TestCase
                 ->assertSee('id="site-ticker"', false);
         }
     }
+
+    /** 分享到 LINE／FB／X 時要帶出預覽圖：og:image 必須是絕對網址，並附尺寸讓平台不必先下載就知道比例 */
+    public function test_pages_share_with_social_preview_image(): void
+    {
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#<meta property="og:image" content="https?://[^"]+/social-image\.png">#', $html);
+        $this->assertStringContainsString('<meta property="og:image:width" content="1731">', $html);
+        $this->assertStringContainsString('<meta name="twitter:image"', $html);
+        $this->assertFileExists(public_path('social-image.png'));
+    }
 }

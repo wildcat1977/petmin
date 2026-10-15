@@ -15,7 +15,14 @@
     <meta property="og:description" content="遛狗順手回報：垃圾桶滿了、消失了、這裡需要一個。把市民需求變成台北市垃圾桶復設的決策資料。">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:site_name" content="Petmin">
+    <meta property="og:locale" content="zh_TW">
+    <meta property="og:image" content="{{ asset('social-image.png') }}">
+    <meta property="og:image:width" content="1731">
+    <meta property="og:image:height" content="909">
+    <meta property="og:image:alt" content="Petmin 找回消失的垃圾桶">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ asset('social-image.png') }}">
 
     @include('partials.gtag')
 
