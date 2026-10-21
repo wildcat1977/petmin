@@ -43,7 +43,7 @@
 <script>
     (() => {
         // 示範位置：黑客松會場附近（台北市中正區北平東路）
-        const DEMO = { lat: 25.0466, lng: 121.5245 };
+        const DEMO = @json(config('petmin.find_bin.demo_point'));
         const $ = (sel) => document.querySelector(sel);
         const statusEl = $('[data-find-status]');
         const listEl = $('[data-find-list]');

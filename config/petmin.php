@@ -69,6 +69,8 @@ return [
      */
     'find_bin' => [
         'candidates' => (int) env('PETMIN_FIND_BIN_CANDIDATES', 5),
+        // 示範位置（黑客松會場，中正區北平東路附近）：/find 的「用示範位置」與 QR 列印頁預設中心點
+        'demo_point' => ['lat' => 25.0466, 'lng' => 121.5245],
         'results' => (int) env('PETMIN_FIND_BIN_RESULTS', 3),
         'search_radii_m' => [300, 800, 2000],
         'walking' => [

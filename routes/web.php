@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BinsController;
 use App\Http\Controllers\Api\FarSignalController;
 use App\Http\Controllers\Api\MapPointsController;
 use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\BinStickerController;
 use App\Http\Controllers\GmailAuthController;
 use App\Http\Middleware\SetLocale;
 use App\Models\Announcement;
@@ -100,6 +101,10 @@ Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api
 Route::view('/find', 'pages.find')->name('find');
 Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
 Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
+
+// 巡桶貼紙（NFC／QR）列印頁，管理員限定。不放進 auth 群組：未登入會被導向不存在的 login 路由而 500，
+// 改由 controller 對非管理員（含訪客）一律 403
+Route::get('/print/bin-stickers', BinStickerController::class)->name('bin.stickers');
 
 // 本機開發專用：一鍵用測試帳號登入，手機實測回報流程時不用接 LINE／Google。APP_ENV 不是 local 時這條路由不存在
 if (app()->environment('local')) {
