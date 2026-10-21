@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BinsController;
+use App\Http\Controllers\Api\FarSignalController;
 use App\Http\Controllers\Api\MapPointsController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\GmailAuthController;
@@ -90,6 +91,11 @@ Route::get('/news', function () {
 Route::get('/api/map/reports', MapPointsController::class)->name('api.map.reports');
 Route::get('/api/map/bins', [BinsController::class, 'index'])->name('api.map.bins');
 Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api.map.bins.nearby');
+
+// 我找垃圾桶：找最近的桶（步行距離）＋「好遠！」匿名需求訊號
+Route::view('/find', 'pages.find')->name('find');
+Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
+Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
 
 // 需求色塊：只傳格子編號＋分數，前端用 grid 參數自己畫格（8,000 格也只有百來 KB）
 Route::get('/api/map/demand', function () {

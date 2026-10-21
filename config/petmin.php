@@ -41,6 +41,25 @@ return [
     // 回報吸附到既有桶的距離（公尺）
     'bin_snap_meters' => (int) env('PETMIN_BIN_SNAP_METERS', 30),
 
+    /*
+     * 我找垃圾桶（/find）：先用直線距離挑附近 candidates 個清潔箱，再用步行路網換算步行距離排序。
+     * 搜尋半徑由小到大擴張，湊滿 candidates 個就停；路網服務失敗時退回直線距離（回應標 distance_mode=straight）。
+     * 預設用 FOSSGIS 公益架設的 OSRM 步行路網（免金鑰、合理使用），正式量大時改自架或換供應商。
+     */
+    'find_bin' => [
+        'candidates' => (int) env('PETMIN_FIND_BIN_CANDIDATES', 5),
+        'results' => (int) env('PETMIN_FIND_BIN_RESULTS', 3),
+        'search_radii_m' => [300, 800, 2000],
+        'walking' => [
+            'osrm_url' => env('PETMIN_WALKING_OSRM_URL', 'https://routing.openstreetmap.de/routed-foot'),
+            'timeout_seconds' => (int) env('PETMIN_WALKING_TIMEOUT', 4),
+            // OSRM 的 duration 是車速模型換算，步行時間改用距離 ÷ 步速自己算
+            'meters_per_minute' => 75,
+        ],
+        // 「好遠！」匿名訊號：同一 IP 冷卻秒數
+        'far_signal_cooldown_seconds' => (int) env('PETMIN_FAR_SIGNAL_COOLDOWN', 60),
+    ],
+
     // 「有袋沒桶」判定：狗便袋箱周圍此距離內無 active 清潔箱
     'bag_box_gap_meters' => (int) env('PETMIN_BAG_BOX_GAP_METERS', 100),
 
