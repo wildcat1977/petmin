@@ -9,6 +9,7 @@ use App\Http\Middleware\SetLocale;
 use App\Models\Announcement;
 use App\Models\DemandCell;
 use App\Models\Report;
+use App\Models\TrashBin;
 use App\Services\BagBoxGapService;
 use App\Services\DemandScoreService;
 use App\Support\DemandGrid;
@@ -96,6 +97,16 @@ Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api
 Route::view('/find', 'pages.find')->name('find');
 Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
 Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
+
+// 巡桶打卡：每個桶一個專屬網址，NFC 貼紙與 QR Code 都指向這裡（?via=nfc|qr 只是來源標記）。
+// 網址用官方資料的 external_id：自動遞增 id 在各環境不同，貼紙寫死 id 換到正式機會指錯桶；市民新增的桶沒有 external_id 才用 id
+Route::get('/b/{code}', function (string $code) {
+    $bin = TrashBin::where('external_id', $code)->first()
+        ?? (ctype_digit($code) ? TrashBin::whereNull('external_id')->find((int) $code) : null);
+    abort_unless($bin, 404);
+
+    return view('pages.bin-checkin', ['bin' => $bin, 'kindLabel' => TrashBin::KIND_LABELS[$bin->kind] ?? '']);
+})->where('code', '[A-Za-z0-9_-]+')->name('bin.checkin');
 
 // 需求色塊：只傳格子編號＋分數，前端用 grid 參數自己畫格（8,000 格也只有百來 KB）
 Route::get('/api/map/demand', function () {

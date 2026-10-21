@@ -31,7 +31,7 @@
         </div>
 
         <p class="mt-8 text-xs text-slate-500">
-            {{ __('只列出已收錄的公共清潔箱（不含狗便袋箱）；資料可能與現場不同。距離由開源步行路網計算，路網暫時無法使用時會改顯示直線距離。') }}
+            {{ __('只列出已收錄的公共清潔箱（不含狗便袋箱）；資料可能與現場不同。距離由開源步行路網計算，路網暫時無法使用時改用直線距離估算並標「約」。') }}
         </p>
     </main>
 
@@ -51,7 +51,7 @@
         const farBtn = $('[data-find-far]');
         let origin = null;
         let nearest = null;
-        let mode = 'walking';
+        let mode = 'walking'; // walking | estimated
 
         const setStatus = (text) => { statusEl.textContent = text; };
 
@@ -67,8 +67,9 @@
                 title.textContent = `${i === 0 ? '🥇 ' : '🗑️ '}${bin.name || '清潔箱'}`;
                 const meta = document.createElement('div');
                 meta.className = 'mt-0.5 text-sm text-slate-300';
-                const label = mode === 'walking' ? '步行' : '直線';
-                meta.textContent = `${label} ${bin.distance_m} 公尺・約 ${bin.walk_minutes} 分鐘` + (bin.status === 'unverified' ? '・待驗證' : '');
+                const label = mode === 'walking' ? '步行' : '步行約';
+                const confirmed = bin.confirmed_days_ago === null ? '' : (bin.confirmed_days_ago === 0 ? '・今天有人確認還在' : `・${bin.confirmed_days_ago} 天前有人確認還在`);
+                meta.textContent = `${label} ${bin.distance_m} 公尺・約 ${bin.walk_minutes} 分鐘${confirmed}`;
                 info.append(title, meta);
                 const go = document.createElement('a');
                 go.href = bin.nav_url;
@@ -95,7 +96,7 @@
                 render(data.bins);
                 const where = isDemo ? '（示範位置）' : '';
                 setStatus(data.bins.length
-                    ? `離你最近的 ${data.bins.length} 個清潔箱${where}${mode === 'straight' ? '・路網暫時無法使用，先顯示直線距離' : ''}`
+                    ? `離你最近的 ${data.bins.length} 個清潔箱${where}${mode === 'estimated' ? '・路網暫時無法使用，距離為估算' : ''}`
                     : `附近 2 公里內沒有已收錄的清潔箱${where}`);
                 farBtn.disabled = false;
                 farBtn.textContent = '好遠！';

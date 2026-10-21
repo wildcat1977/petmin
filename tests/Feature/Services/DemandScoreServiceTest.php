@@ -4,6 +4,7 @@ namespace Tests\Feature\Services;
 
 use App\Models\DemandCell;
 use App\Models\DemandProxy;
+use App\Models\FarSignal;
 use App\Models\Report;
 use App\Models\TrashBin;
 use App\Models\User;
@@ -71,6 +72,28 @@ class DemandScoreServiceTest extends TestCase
     private function recompute(): void
     {
         app(DemandScoreService::class)->recompute();
+    }
+
+    /** 「好遠！」匿名訊號算進需求，權重是「這裡需要桶」的一半，而且一格有上限，灌再多也不會淹掉其他證據 */
+    public function test_far_signals_add_capped_demand(): void
+    {
+        config([
+            'petmin.demand.weights.far_signal' => 1.0,
+            'petmin.demand.caps.far_signal' => 4.0,
+        ]);
+        foreach (range(1, 10) as $i) {
+            FarSignal::create([
+                ...$this->at(), 'cell' => $this->grid->id($this->ix, $this->iy), 'district' => '中正區',
+                'distance_mode' => FarSignal::MODE_WALKING, 'ip_hash' => str_repeat((string) ($i % 10), 64), 'signal_date' => now()->toDateString(),
+            ]);
+        }
+
+        $this->recompute();
+
+        $far = $this->cell()->breakdown['far_signal'];
+        $this->assertSame(10, $far['count']);
+        $this->assertTrue($far['capped']);
+        $this->assertEqualsWithDelta(4.0, $this->cell()->score, 0.01);
     }
 
     /** 半徑內線性衰減：隔壁格（150m 外）的站牌照樣算進來，300m 外才不算 */

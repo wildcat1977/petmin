@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\FarSignal;
 use App\Models\TrashBin;
+use App\Support\DemandGrid;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 
 /**
  * POST /api/far-signals：「好遠！」不需登入。
- * 同一 IP 冷卻內再按只回 accepted=false，不重複寫入（避免同一人狂按灌需求）。
+ * 位置先換成需求網格的格中心再存；同一 IP、同一格、同一天已按過就只回 accepted=false。
  */
 class FarSignalController extends Controller
 {
@@ -23,27 +23,34 @@ class FarSignalController extends Controller
             'lng' => ['required', 'numeric', 'between:-180,180'],
             'nearest_bin_id' => ['nullable', 'integer', Rule::exists(TrashBin::class, 'id')],
             'nearest_distance_m' => ['nullable', 'integer', 'min:0', 'max:100000'],
-            'distance_mode' => ['required', Rule::in([FarSignal::MODE_WALKING, FarSignal::MODE_STRAIGHT])],
+            'distance_mode' => ['required', Rule::in([FarSignal::MODE_WALKING, FarSignal::MODE_ESTIMATED])],
         ]);
 
+        $grid = DemandGrid::fromConfig();
+        [$ix, $iy] = $grid->cellAt((float) $validated['lat'], (float) $validated['lng']);
+        $cell = $grid->id($ix, $iy);
+        $center = $grid->center($ix, $iy);
         $ipHash = hash('sha256', (string) $request->ip().'|'.config('app.key'));
-        $cooldown = (int) config('petmin.find_bin.far_signal_cooldown_seconds');
-        if (! Cache::add('far-signal:'.$ipHash, true, $cooldown)) {
-            return response()->json(['accepted' => false, 'message' => '剛剛已經收到你的「好遠！」了']);
-        }
+        $today = now('Asia/Taipei')->toDateString();
 
         $bin = isset($validated['nearest_bin_id']) ? TrashBin::find($validated['nearest_bin_id']) : null;
 
-        FarSignal::create([
-            'user_id' => $request->user()?->id,
-            'latitude' => $validated['lat'],
-            'longitude' => $validated['lng'],
-            'district' => $bin?->district,
-            'nearest_bin_id' => $bin?->id,
-            'nearest_distance_m' => $validated['nearest_distance_m'] ?? null,
-            'distance_mode' => $validated['distance_mode'],
-            'ip_hash' => $ipHash,
-        ]);
+        $signal = FarSignal::firstOrCreate(
+            ['ip_hash' => $ipHash, 'cell' => $cell, 'signal_date' => $today],
+            [
+                'user_id' => $request->user()?->id,
+                'latitude' => $center['lat'],
+                'longitude' => $center['lng'],
+                'district' => $bin?->district,
+                'nearest_bin_id' => $bin?->id,
+                'nearest_distance_m' => $validated['nearest_distance_m'] ?? null,
+                'distance_mode' => $validated['distance_mode'],
+            ],
+        );
+
+        if (! $signal->wasRecentlyCreated) {
+            return response()->json(['accepted' => false, 'message' => '今天已經收到你在這附近的「好遠！」了']);
+        }
 
         return response()->json(['accepted' => true, 'message' => '收到！這裡需要一個垃圾桶'], 201);
     }

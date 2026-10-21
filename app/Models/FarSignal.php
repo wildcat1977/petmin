@@ -2,20 +2,20 @@
 
 namespace App\Models;
 
-use App\Support\Geohash;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** 「好遠！」匿名訊號（/find 頁按下），見 create_far_signals_table migration。 */
+/** 「好遠！」匿名訊號（/find 頁按下），座標是需求網格的格中心，見 create_far_signals_table migration。 */
 class FarSignal extends Model
 {
     public const MODE_WALKING = 'walking';
 
-    public const MODE_STRAIGHT = 'straight';
+    /** 步行路網失敗時以直線 × 係數估算 */
+    public const MODE_ESTIMATED = 'estimated';
 
     protected $fillable = [
-        'user_id', 'latitude', 'longitude', 'district',
-        'nearest_bin_id', 'nearest_distance_m', 'distance_mode', 'ip_hash',
+        'user_id', 'cell', 'latitude', 'longitude', 'district',
+        'nearest_bin_id', 'nearest_distance_m', 'distance_mode', 'ip_hash', 'signal_date',
     ];
 
     protected function casts(): array
@@ -24,14 +24,8 @@ class FarSignal extends Model
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'nearest_distance_m' => 'integer',
+            // signal_date 刻意不 cast 成 date：SQLite 會存成「Y-m-d 00:00:00」，firstOrCreate 用字串比對會找不到而撞 unique
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::saving(function (FarSignal $signal) {
-            $signal->geohash7 = Geohash::encode((float) $signal->latitude, (float) $signal->longitude, 7);
-        });
     }
 
     public function nearestBin(): BelongsTo

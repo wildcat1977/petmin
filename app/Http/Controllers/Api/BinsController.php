@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FarSignal;
 use App\Models\TrashBin;
 use App\Services\WalkingDistanceService;
 use App\Support\Geo;
@@ -113,7 +114,7 @@ class BinsController extends Controller
     /**
      * 我找垃圾桶：只找清潔箱（狗便袋箱是拿袋子的，不能丟）、排除已消失的桶。
      * 搜尋半徑由小到大擴張到湊滿候選數，先用直線距離挑候選，再換算步行距離排序；
-     * 路網失敗時退回直線距離，distance_mode 標成 straight 讓前端照實顯示。
+     * 路網失敗時用直線 × 係數估算，distance_mode 標成 estimated 讓前端顯示「約」。
      */
     public function find(Request $request, WalkingDistanceService $walking): JsonResponse
     {
@@ -148,34 +149,33 @@ class BinsController extends Controller
             'lat' => (float) $row['bin']->latitude,
             'lng' => (float) $row['bin']->longitude,
         ])->all());
-        $mode = $walkMeters === null ? 'straight' : 'walking';
+        $mode = $walkMeters === null ? FarSignal::MODE_ESTIMATED : FarSignal::MODE_WALKING;
         $perMinute = (float) config('petmin.find_bin.walking.meters_per_minute');
+        $detour = (float) config('petmin.find_bin.walking.estimate_detour_factor');
 
         $results = $candidates
-            ->map(function ($row, $i) use ($walkMeters) {
-                $row['walk_m'] = $walkMeters[$i] ?? null;
+            // 步行模式下路網接不到的桶，也用直線 × 係數估一個值，排序才不會亂
+            ->map(function ($row, $i) use ($walkMeters, $detour) {
+                $row['walk_m'] = $walkMeters[$i] ?? $row['straight_m'] * $detour;
 
                 return $row;
             })
-            // 步行模式下路網接不到的桶排最後；退回直線模式則照直線排
-            ->sortBy(fn ($row) => $mode === 'walking' ? ($row['walk_m'] ?? INF) : $row['straight_m'])
+            ->sortBy('walk_m')
             ->take((int) config('petmin.find_bin.results'))
             ->map(function ($row) use ($perMinute) {
                 $bin = $row['bin'];
-                $meters = $row['walk_m'] ?? $row['straight_m'];
 
                 return [
                     'id' => $bin->id,
                     'name' => $bin->address,
                     'district' => $bin->district,
-                    'status' => $bin->status,
-                    'status_label' => TrashBin::STATUS_LABELS[$bin->status],
                     'lat' => (float) $bin->latitude,
                     'lng' => (float) $bin->longitude,
-                    'distance_m' => (int) round($meters),
+                    'distance_m' => (int) round($row['walk_m']),
                     'straight_m' => (int) round($row['straight_m']),
-                    'walk_minutes' => max(1, (int) ceil($meters / $perMinute)),
-                    'verified_at' => $bin->last_verified_at?->diffForHumans(),
+                    'walk_minutes' => max(1, (int) ceil($row['walk_m'] / $perMinute)),
+                    // 官方桶大多沒人實地回報過，標「待驗證」沒有區別作用；改給「最近一次有人確認還在」的天數
+                    'confirmed_days_ago' => $bin->last_verified_at ? (int) $bin->last_verified_at->diffInDays(now()) : null,
                     'nav_url' => 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination='.$bin->latitude.','.$bin->longitude,
                 ];
             })

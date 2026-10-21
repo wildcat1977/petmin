@@ -45,7 +45,7 @@ class FindBinsApiTest extends TestCase
         $this->assertSame([$clean->id], collect($res->json('bins'))->pluck('id')->all());
     }
 
-    public function test_falls_back_to_straight_distance_when_router_fails(): void
+    public function test_falls_back_to_estimated_walking_distance_when_router_fails(): void
     {
         $near = TrashBin::factory()->create(['latitude' => 25.0470, 'longitude' => self::LNG]);
         $far = TrashBin::factory()->create(['latitude' => 25.0490, 'longitude' => self::LNG]);
@@ -53,10 +53,23 @@ class FindBinsApiTest extends TestCase
 
         $res = $this->getJson('/api/map/bins/find?lat='.self::LAT.'&lng='.self::LNG)
             ->assertOk()
-            ->assertJsonPath('distance_mode', 'straight');
+            ->assertJsonPath('distance_mode', 'estimated');
 
         $this->assertSame([$near->id, $far->id], collect($res->json('bins'))->pluck('id')->all());
-        $this->assertSame($res->json('bins.0.straight_m'), $res->json('bins.0.distance_m'));
+        // 估算＝直線 × 1.3
+        $this->assertEqualsWithDelta($res->json('bins.0.straight_m') * 1.3, $res->json('bins.0.distance_m'), 1);
+    }
+
+    public function test_reports_days_since_someone_confirmed_the_bin(): void
+    {
+        TrashBin::factory()->create(['latitude' => 25.0470, 'longitude' => self::LNG, 'last_verified_at' => now()->subDays(3)]);
+        TrashBin::factory()->create(['latitude' => 25.0475, 'longitude' => self::LNG, 'last_verified_at' => null]);
+        Http::fake(['*' => Http::response(['code' => 'Ok', 'distances' => [[0, 50, 100]]])]);
+
+        $res = $this->getJson('/api/map/bins/find?lat='.self::LAT.'&lng='.self::LNG)->assertOk();
+
+        $this->assertSame(3, $res->json('bins.0.confirmed_days_ago'));
+        $this->assertNull($res->json('bins.1.confirmed_days_ago'));
     }
 
     public function test_expands_search_radius_and_returns_empty_when_nothing_nearby(): void

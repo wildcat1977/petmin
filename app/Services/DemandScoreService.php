@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DemandCell;
 use App\Models\DemandProxy;
+use App\Models\FarSignal;
 use App\Models\Report;
 use App\Models\TrashBin;
 use App\Support\DemandGrid;
@@ -175,6 +176,14 @@ class DemandScoreService
                 }
                 $base = $r->category === Report::CATEGORY_NEED_BIN ? $w['report_need_bin'] : $w['report_full'];
                 $signals[] = $point((float) $r->latitude, (float) $r->longitude, 'report_'.$r->category, $base * $mult, $r->address);
+            });
+
+        // 「好遠！」：寫入時已是格中心、已依 IP／格／日去重，這裡每筆算一個訊號，靠 caps 封頂
+        FarSignal::query()
+            ->select(['latitude', 'longitude', 'district'])
+            ->lazy()
+            ->each(function (FarSignal $f) use (&$signals, $point, $w) {
+                $signals[] = $point((float) $f->latitude, (float) $f->longitude, 'far_signal', $w['far_signal'] ?? 1.0, $f->district);
             });
 
         return [$signals, $dumping];

@@ -14,7 +14,7 @@ class DemandCell extends Model
     public const BREAKDOWN_LABELS = [
         'mrt' => '捷運', 'bus_stop' => '公車站牌', 'dog_bag_box' => '狗便袋箱', 'dog_park' => '狗活動區', 'park' => '公園', 'petition' => '陳情',
         'report_need_bin' => '市民：需要桶', 'report_full' => '市民：桶滿了', 'report_dumping' => '市民：家戶垃圾', 'existing_bin' => '現存清潔箱',
-        'bin_gap' => '缺桶加成',
+        'bin_gap' => '缺桶加成', 'far_signal' => '市民：好遠！',
     ];
 
     /** 報表明細可排序的欄位（白名單：排序欄位來自網址參數） */
