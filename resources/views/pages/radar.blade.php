@@ -87,8 +87,11 @@
     {{-- 登入引導 / 回報表單 (Livewire Modal) --}}
     <livewire:auth-onboarding />
     <livewire:report-form />
+    <livewire:gacha-player />
     <livewire:contact-form />
 </div>
+
+@include('partials.gacha-stage')
 
 @if (session('open_report_form'))
     <script>

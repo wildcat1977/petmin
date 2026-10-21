@@ -42,6 +42,27 @@ return [
     'bin_snap_meters' => (int) env('PETMIN_BIN_SNAP_METERS', 30),
 
     /*
+     * 扭蛋劇情＋狗狗圖鑑：每筆回報送出後隨機抽一張卡、播對應的劇情（素材在 public/gacha/）。
+     * 加新卡＝在這裡加一筆並在 gacha 播放器補上劇情；story 對應播放器裡的劇情函式。
+     */
+    'gacha' => [
+        'cards' => [
+            'honest-pooper' => [
+                'story' => 'gold-silver',
+                'title' => '誠實的丟屎人',
+                'image' => 'bin-gold',
+                'line' => '獲得：金・銀・普通垃圾桶各一',
+            ],
+            'super-clean-bin' => [
+                'story' => 'old-maid',
+                'title' => '超級乾淨的垃圾桶',
+                'image' => 'card-clean',
+                'line' => '狗狗成為垃圾桶富翁',
+            ],
+        ],
+    ],
+
+    /*
      * 我找垃圾桶（/find）：先用直線距離挑附近 candidates 個清潔箱，再用步行路網換算步行距離排序。
      * 搜尋半徑由小到大擴張，湊滿 candidates 個就停；路網服務失敗時用直線 × estimate_detour_factor 估算（回應標 distance_mode=estimated）。
      * 預設用 FOSSGIS 公益架設的 OSRM 步行路網（免金鑰、合理使用），正式量大時改自架或換供應商。

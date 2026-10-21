@@ -41,7 +41,10 @@
     </div>
 
     <livewire:report-form />
+    <livewire:gacha-player />
 </div>
+
+@include('partials.gacha-stage')
 
 <style>
     .checkin-stamp { animation: checkin-stamp .6s cubic-bezier(.3, 1.6, .5, 1) both; }
