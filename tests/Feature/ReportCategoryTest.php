@@ -14,14 +14,17 @@ class ReportCategoryTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_migration_seeds_seven_categories_in_order(): void
+    public function test_migration_seeds_categories_in_order(): void
     {
         $slugs = ReportCategory::activeOrdered()->pluck('slug')->all();
 
+        // broken／smelly 由 2026_10_22 巡桶打卡遷移加入，排在「桶滿了」之後
         $this->assertSame(
-            ['need_bin', 'full', 'missing', 'exists', 'bag_empty', 'dumping', 'hazard'],
+            ['need_bin', 'full', 'broken', 'smelly', 'missing', 'exists', 'bag_empty', 'dumping', 'hazard'],
             $slugs
         );
+        $this->assertSame('桶壞了', ReportCategory::labels()['broken']);
+        $this->assertSame('有異味', ReportCategory::labels()['smelly']);
         $this->assertSame('桶滿了', ReportCategory::labels()['full']);
         $this->assertSame('#38bdf8', ReportCategory::bySlug('bag_empty')->color);
     }
