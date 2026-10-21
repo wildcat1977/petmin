@@ -55,7 +55,7 @@
 </style>
 <script>
     document.querySelector('[data-checkin-report]').addEventListener('click', () => {
-        window.Livewire.dispatch('open-report-form', { binId: {{ $bin->id }} });
+        window.Livewire.dispatch('open-report-form', { binId: {{ $bin->id }}, requirePhoto: true });
     });
 </script>
 @endsection
