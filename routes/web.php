@@ -10,13 +10,16 @@ use App\Models\Announcement;
 use App\Models\DemandCell;
 use App\Models\Report;
 use App\Models\TrashBin;
+use App\Models\User;
 use App\Services\BagBoxGapService;
 use App\Services\DemandScoreService;
 use App\Support\DemandGrid;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 Route::get('/locale/{locale}', function (string $locale) {
     if (in_array($locale, SetLocale::SUPPORTED, true)) {
@@ -97,6 +100,16 @@ Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api
 Route::view('/find', 'pages.find')->name('find');
 Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
 Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
+
+// 本機開發專用：一鍵用測試帳號登入，手機實測回報流程時不用接 LINE／Google。APP_ENV 不是 local 時這條路由不存在
+if (app()->environment('local')) {
+    Route::get('/dev/login', function (Request $request) {
+        $user = User::firstOrCreate(['email' => 'dev-tester@petmin.local'], ['name' => '本機測試員', 'password' => Str::random(32)]);
+        Auth::login($user, remember: true);
+
+        return redirect($request->query('to', '/'));
+    })->name('dev.login');
+}
 
 // 巡桶打卡：每個桶一個專屬網址，NFC 貼紙與 QR Code 都指向這裡（?via=nfc|qr 只是來源標記）。
 // 網址用官方資料的 external_id：自動遞增 id 在各環境不同，貼紙寫死 id 換到正式機會指錯桶；市民新增的桶沒有 external_id 才用 id

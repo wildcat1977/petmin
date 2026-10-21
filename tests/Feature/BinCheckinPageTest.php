@@ -41,4 +41,11 @@ class BinCheckinPageTest extends TestCase
         $this->get("/b/{$bin->id}")->assertOk()->assertSee('市民新增的桶');
         $this->get('/b/no-such-bin')->assertNotFound();
     }
+
+    public function test_dev_login_route_is_not_registered_outside_local(): void
+    {
+        // 測試環境 APP_ENV=testing：本機專用的一鍵登入不能存在（正式機 production 同理）
+        $this->get('/dev/login')->assertNotFound();
+        $this->assertGuest();
+    }
 }
