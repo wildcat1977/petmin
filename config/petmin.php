@@ -56,12 +56,15 @@ return [
                 'title' => '誠實的丟屎人',
                 'image' => 'bin-gold',
                 'line' => '獲得：金・銀・普通垃圾桶各一',
+                'share_image' => 'share-honest-pooper.jpg', // 1200×630 分享預覽圖
+
             ],
             'super-clean-bin' => [
                 'story' => 'old-maid',
                 'title' => '超級乾淨的垃圾桶',
                 'image' => 'card-clean',
                 'line' => '狗狗成為垃圾桶富翁',
+                'share_image' => 'share-super-clean-bin.jpg',
             ],
         ],
     ],

@@ -44,6 +44,7 @@
     .gacha-reward .acts a, .gacha-reward .acts button { flex: 1; border-radius: 10px; padding: 9px 4px; font-size: 14px; font-weight: 800; text-align: center; }
     .gacha-reward .acts a { background: #2f8f5b; color: #fff; }
     .gacha-reward .acts button { background: #fff; border: 2px solid #2b2320; color: #2b2320; }
+    .gacha-reward .close-link { margin-top: 10px; background: none; border: 0; color: #7a6d64; font-size: 13px; text-decoration: underline; }
     @media (prefers-reduced-motion: reduce) { .gacha-root * { animation-duration: .01s !important; transition-duration: .01s !important; } }
 </style>
 
@@ -111,15 +112,49 @@
     function reward(detail) {
         const r = document.createElement('div');
         r.className = 'gacha-reward';
-        r.innerHTML = '<div class="box"><img alt=""><div class="t"></div><div class="s"></div><div class="n"></div><div class="acts"><a href="/profile#dog-cards"></a><button type="button"></button></div></div>';
+        r.innerHTML = '<div class="box"><img alt=""><div class="t"></div><div class="s"></div><div class="n"></div><div class="acts"><a href="/profile#dog-cards"></a><button type="button" data-share></button></div><button type="button" class="close-link" data-close></button></div>';
         r.querySelector('img').src = ART + detail.card.image + '.webp';
         r.querySelector('.t').textContent = detail.card.title;
         r.querySelector('.s').textContent = detail.card.line;
         r.querySelector('.n').textContent = `狗狗圖鑑 ${detail.collected} / ${detail.total}`;
         r.querySelector('a').textContent = '看我的狗狗圖鑑';
-        r.querySelector('button').textContent = '關閉';
-        r.querySelector('button').addEventListener('click', close);
+        const shareBtn = r.querySelector('[data-share]');
+        shareBtn.textContent = '分享';
+        shareBtn.addEventListener('click', () => shareCard(detail.card, shareBtn));
+        const closeBtn = r.querySelector('[data-close]');
+        closeBtn.textContent = '關閉';
+        closeBtn.addEventListener('click', close);
         stage.appendChild(r);
+    }
+
+    // 分享：手機支援就叫出原生分享（附卡片預覽圖＋連結），不支援就複製連結。
+    // Web Share 只在 https 才能用，本機 http 測試會走複製連結
+    async function shareCard(card, btn) {
+        const url = `${location.origin}/card/${card.key}`;
+        const text = `我的狗狗抽到了「${card.title}」！散步順手檢查垃圾桶，一起出任務吧`;
+        try {
+            if (navigator.share) {
+                const data = { title: card.title, text, url };
+                if (card.share_image && navigator.canShare) {
+                    const blob = await fetch(`${ART}${card.share_image}`).then((r) => r.blob());
+                    const file = new File([blob], `${card.key}.jpg`, { type: 'image/jpeg' });
+                    if (navigator.canShare({ files: [file] })) data.files = [file];
+                }
+                await navigator.share(data);
+                return;
+            }
+        } catch (e) {
+            if (e && e.name === 'AbortError') return; // 使用者自己取消分享
+        }
+        const ok = await copyText(url);
+        btn.textContent = ok ? '已複製連結' : url;
+    }
+    async function copyText(text) {
+        try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.top = '-9999px';
+        document.body.appendChild(ta); ta.select();
+        try { return document.execCommand('copy'); } catch (e) { return false; } finally { ta.remove(); }
     }
 
     // ── 劇情：金銀垃圾桶 ─────────────────────

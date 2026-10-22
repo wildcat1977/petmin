@@ -9,6 +9,7 @@ use App\Http\Controllers\GmailAuthController;
 use App\Http\Middleware\SetLocale;
 use App\Models\Announcement;
 use App\Models\DemandCell;
+use App\Models\DogCard;
 use App\Models\Report;
 use App\Models\TrashBin;
 use App\Models\User;
@@ -102,6 +103,14 @@ Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api
 Route::view('/find', 'pages.find')->name('find');
 Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
 Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
+
+// 扭蛋卡分享頁：獎勵卡「分享」帶出去的連結，附這張卡的預覽圖與「一起出任務」入口
+Route::get('/card/{key}', function (string $key) {
+    $card = DogCard::definitions()[$key] ?? null;
+    abort_unless($card, 404);
+
+    return view('pages.card-share', ['card' => ['key' => $key, ...$card]]);
+})->where('key', '[a-z0-9-]+')->name('card.share');
 
 // 垃圾桶多快會滿（展示版）：真實數據要累積「滿了」回報才算得出，現在一律顯示示意數字並在頁面標明。
 // 示意值由桶的編號固定算出（6–72 小時），重新整理不會跳動
