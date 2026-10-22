@@ -76,6 +76,15 @@ class BinCheckinPageTest extends TestCase
         $this->get('/b/clean_box-xyz')->assertOk()->assertSee('requirePhoto: true', false);
     }
 
+    public function test_mission_intro_only_when_arriving_from_sticker(): void
+    {
+        $this->withoutVite();
+        TrashBin::factory()->create(['external_id' => 'clean_box-intro']);
+
+        $this->get('/b/clean_box-intro?via=nfc')->assertOk()->assertSee('今日巡桶任務開始');
+        $this->get('/b/clean_box-intro')->assertOk()->assertDontSee('今日巡桶任務開始');
+    }
+
     public function test_dev_login_route_is_not_registered_outside_local(): void
     {
         // 測試環境 APP_ENV=testing：本機專用的一鍵登入不能存在（正式機 production 同理）
