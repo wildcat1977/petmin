@@ -95,6 +95,7 @@ class FindBinsApiTest extends TestCase
     {
         $this->withoutVite();
 
-        $this->get('/find')->assertOk()->assertSee('我找垃圾桶')->assertSee('好遠！');
+        $this->get('/find')->assertOk()->assertSee('我找垃圾桶')->assertSee('好遠！')
+            ->assertSee('垃圾桶小天使正在趕來')->assertSee('/gacha/angel.webp', false);
     }
 }

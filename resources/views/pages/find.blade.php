@@ -35,10 +35,36 @@
         </p>
     </main>
 
+    {{-- 「好遠！」被記下後的小獎勵：垃圾桶小天使從遠方飛過來 --}}
+    <div data-angel-modal class="angel-modal" hidden>
+        <div class="angel-card" role="dialog" aria-modal="true" aria-labelledby="angel-title">
+            <img src="/gacha/angel.webp" alt="" class="angel-img" width="240" height="240">
+            <h2 id="angel-title" class="text-xl font-extrabold text-slate-900">{{ __('收到！垃圾桶小天使正在趕來……') }}</h2>
+            <p class="mt-2 text-sm text-slate-600">{{ __('我們記下了「這附近需要一個垃圾桶」，會把它交給市府當作設桶的參考。') }}</p>
+            <button type="button" data-angel-close class="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-emerald-950 hover:bg-emerald-400">{{ __('好，等你喔') }}</button>
+        </div>
+    </div>
+
     <div class="px-4 py-6">
         @include('partials.footer-links')
     </div>
 </div>
+
+<style>
+    .angel-modal { position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 14, 10, .7); backdrop-filter: blur(3px); }
+    .angel-modal[hidden] { display: none; }
+    .angel-card { width: min(100%, 360px); background: #fffaf0; border-radius: 24px; padding: 20px 20px 18px; text-align: center; box-shadow: 0 0 0 5px #ffd65a, 0 16px 40px rgba(0, 0, 0, .45); }
+    .angel-img { width: 70%; height: auto; margin: -70px auto 6px; display: block; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .25)); }
+    /* 從遠方轉著飛過來，最後在卡片上方輕輕上下飄 */
+    .angel-img.fly { animation: angel-fly 1.1s cubic-bezier(.2, 1.3, .4, 1) both, angel-hover 1.6s ease-in-out 1.1s infinite; }
+    @keyframes angel-fly {
+        0% { transform: translate(120px, -260px) scale(.15) rotate(-35deg); opacity: 0; }
+        60% { transform: translate(-10px, 10px) scale(1.12) rotate(6deg); opacity: 1; }
+        100% { transform: translate(0, 0) scale(1) rotate(0); }
+    }
+    @keyframes angel-hover { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+    @media (prefers-reduced-motion: reduce) { .angel-img.fly { animation: none; } }
+</style>
 
 <script>
     (() => {
@@ -54,6 +80,18 @@
         let mode = 'walking'; // walking | estimated
 
         const setStatus = (text) => { statusEl.textContent = text; };
+
+        const angelModal = $('[data-angel-modal]');
+        function showAngel() {
+            angelModal.hidden = false;
+            // 重新觸發飛入動畫
+            const img = angelModal.querySelector('.angel-img');
+            img.classList.remove('fly');
+            void img.offsetWidth;
+            img.classList.add('fly');
+        }
+        $('[data-angel-close]').addEventListener('click', () => { angelModal.hidden = true; });
+        angelModal.addEventListener('click', (e) => { if (e.target === angelModal) angelModal.hidden = true; });
 
         function render(bins) {
             listEl.innerHTML = '';
@@ -142,6 +180,7 @@
                 });
                 const data = await res.json();
                 farBtn.textContent = data.message ?? '收到！';
+                if (data.accepted) showAngel();
             } catch (e) {
                 farBtn.disabled = false;
                 farBtn.textContent = '送出失敗，再按一次';

@@ -8,9 +8,10 @@
 
     <main class="mx-auto max-w-xl px-4 py-6">
         {{-- 碰 NFC 貼紙或掃 QR 進來的第一個畫面：先給打卡成就感，再引導回報 --}}
-        <div class="checkin-stamp mx-auto flex h-36 w-36 flex-col items-center justify-center rounded-full border-4 border-emerald-400 bg-emerald-500/15 text-center">
-            <span class="text-4xl">🐾</span>
-            <span class="mt-1 text-lg font-extrabold text-emerald-300">{{ __('打卡成功') }}</span>
+        {{-- 印章圖的緞帶是空白的（圖高 75–84%），字用網頁疊上去，改字不用重畫 --}}
+        <div class="checkin-stamp">
+            <img src="/gacha/stamp.webp" alt="" width="520" height="465">
+            <span class="checkin-stamp-text">{{ __('打卡成功') }}</span>
         </div>
 
         <div class="mt-6 rounded-2xl bg-radar-card p-5 shadow">
@@ -47,11 +48,15 @@
 @include('partials.gacha-stage')
 
 <style>
-    .checkin-stamp { animation: checkin-stamp .6s cubic-bezier(.3, 1.6, .5, 1) both; }
+    .checkin-stamp { position: relative; width: min(64%, 260px); margin: 0 auto; animation: checkin-stamp .7s cubic-bezier(.3, 1.6, .5, 1) both; }
+    .checkin-stamp img { display: block; width: 100%; height: auto; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .35)); }
+    .checkin-stamp-text { position: absolute; left: 0; right: 0; top: 79.5%; transform: translateY(-50%); text-align: center; font-size: clamp(18px, 6vw, 26px); font-weight: 900; letter-spacing: .12em; color: #fff7d6; text-shadow: 0 2px 0 #8a1c12, 0 0 6px rgba(0, 0, 0, .35); }
     @keyframes checkin-stamp {
-        from { transform: scale(2.2) rotate(-18deg); opacity: 0; }
-        to { transform: scale(1) rotate(-6deg); opacity: 1; }
+        0% { transform: scale(2.4) rotate(-20deg); opacity: 0; }
+        70% { transform: scale(.94) rotate(-4deg); opacity: 1; }
+        100% { transform: scale(1) rotate(-6deg); }
     }
+    @media (prefers-reduced-motion: reduce) { .checkin-stamp { animation: none; } }
 </style>
 <script>
     document.querySelector('[data-checkin-report]').addEventListener('click', () => {
