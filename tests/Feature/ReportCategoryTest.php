@@ -18,14 +18,14 @@ class ReportCategoryTest extends TestCase
     {
         $slugs = ReportCategory::activeOrdered()->pluck('slug')->all();
 
-        // broken／smelly 由 2026_10_22 巡桶打卡遷移加入，排在「桶滿了」之後
+        // 2026_10_22 巡桶打卡：加入 broken／smelly，三類桶況改口語名稱並排在 need_bin 之後
         $this->assertSame(
-            ['need_bin', 'full', 'broken', 'smelly', 'missing', 'exists', 'bag_empty', 'dumping', 'hazard'],
+            ['need_bin', 'broken', 'smelly', 'full', 'missing', 'exists', 'bag_empty', 'dumping', 'hazard'],
             $slugs
         );
-        $this->assertSame('桶壞了', ReportCategory::labels()['broken']);
-        $this->assertSame('有異味', ReportCategory::labels()['smelly']);
-        $this->assertSame('桶滿了', ReportCategory::labels()['full']);
+        $this->assertSame('垃圾桶壞了', ReportCategory::labels()['broken']);
+        $this->assertSame('臭臭的', ReportCategory::labels()['smelly']);
+        $this->assertSame('垃圾桶滿了！', ReportCategory::labels()['full']);
         $this->assertSame('#38bdf8', ReportCategory::bySlug('bag_empty')->color);
     }
 
@@ -48,7 +48,8 @@ class ReportCategoryTest extends TestCase
         $this->assertNotContains('need_bin', ReportCategory::activeSlugs());
         $this->assertContains('need_bin', ReportCategory::slugs());
         $this->assertArrayHasKey('need_bin', ReportCategory::labels());
-        $this->assertSame('full', ReportCategory::defaultSlug());
+        // 預設＝排序第一個仍啟用的分類；2026_10_22 起 need_bin 之後是 broken
+        $this->assertSame('broken', ReportCategory::defaultSlug());
     }
 
     public function test_cache_is_flushed_on_save(): void

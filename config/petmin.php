@@ -46,6 +46,10 @@ return [
      * 加新卡＝在這裡加一筆並在 gacha 播放器補上劇情；story 對應播放器裡的劇情函式。
      */
     'gacha' => [
+        // 圖鑑至少顯示幾格：還沒設計的卡先用剪影佔位，讓圖鑑看起來有得集（內容之後再補）
+        'dex_slots' => (int) env('PETMIN_GACHA_DEX_SLOTS', 16),
+        // 佔位剪影輪流用的素材（public/gacha/*.webp），只取輪廓
+        'placeholder_images' => ['dog-rich', 'bin-silver', 'god-bless', 'card-120', 'owner-joy', 'bin-plain', 'dog-happy', 'card-40'],
         'cards' => [
             'honest-pooper' => [
                 'story' => 'gold-silver',

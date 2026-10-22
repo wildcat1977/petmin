@@ -23,8 +23,11 @@ class DogCardCollectionTest extends TestCase
         }
         DogCard::create(['user_id' => $other->id, 'report_id' => Report::factory()->create(['user_id' => $other->id])->id, 'card_key' => 'super-clean-bin']);
 
+        config(['petmin.gacha.dex_slots' => 16]);
+
         Livewire::actingAs($user)->test('dog-card-collection')
-            ->assertSee('已收集 1 / 2')
+            ->assertViewHas('cards', fn ($cards) => $cards->count() === 16) // 2 張真卡＋14 格剪影
+            ->assertSee('已收集 1 / 16')
             ->assertSee('誠實的丟屎人')
             ->assertSee('收集 2 張')
             ->assertDontSee('超級乾淨的垃圾桶')

@@ -20,8 +20,15 @@ new class extends Component
             'count' => (int) ($owned[$key] ?? 0),
         ])->values();
 
+        // 還沒設計的卡用剪影補到 dex_slots 格，輪流換輪廓，看起來是各種不同的卡
+        $silhouettes = config('petmin.gacha.placeholder_images', []);
+        $slots = max((int) config('petmin.gacha.dex_slots'), $cards->count());
+        $placeholders = collect(range(1, $slots - $cards->count()))
+            ->filter(fn () => $slots > $cards->count())
+            ->map(fn (int $i) => ['key' => "placeholder-{$i}", 'title' => '', 'image' => $silhouettes ? $silhouettes[($i - 1) % count($silhouettes)] : 'card-back', 'count' => 0]);
+
         return [
-            'cards' => $cards,
+            'cards' => $cards->concat($placeholders)->values(),
             'collected' => $cards->where('count', '>', 0)->count(),
         ];
     }
@@ -32,9 +39,9 @@ new class extends Component
         <h2 class="text-base font-bold text-slate-200">🐾 {{ __('狗狗圖鑑') }}</h2>
         <span class="text-sm text-slate-400">{{ __('已收集 :n / :total', ['n' => $collected, 'total' => $cards->count()]) }}</span>
     </div>
-    <p class="mt-1 text-sm text-slate-400">{{ __('每次回報桶況都會抽一段扭蛋劇情，收集不一樣的卡片。') }}</p>
+    <p class="mt-1 text-sm text-slate-400">{{ __('每次回報桶況都會抽一段扭蛋劇情，收集不一樣的卡片。去巡桶就有機會抽到新卡！') }}</p>
 
-    <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div class="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3">
         @foreach ($cards as $card)
             <div class="rounded-2xl bg-radar-card p-3 text-center shadow">
                 <div class="flex aspect-square items-center justify-center rounded-xl {{ $card['count'] ? 'bg-amber-100' : 'bg-slate-800' }}">
@@ -44,9 +51,9 @@ new class extends Component
                 <div class="mt-2 text-sm font-bold {{ $card['count'] ? 'text-slate-100' : 'text-slate-500' }}">
                     {{ $card['count'] ? $card['title'] : '？？？' }}
                 </div>
-                <div class="text-xs text-slate-400">
-                    {{ $card['count'] ? __('收集 :n 張', ['n' => $card['count']]) : __('去巡桶就有機會抽到') }}
-                </div>
+                @if ($card['count'])
+                    <div class="text-xs text-slate-400">{{ __('收集 :n 張', ['n' => $card['count']]) }}</div>
+                @endif
             </div>
         @endforeach
     </div>

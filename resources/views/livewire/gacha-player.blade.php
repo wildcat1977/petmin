@@ -34,7 +34,8 @@ new class extends Component
             story: $cards[$key]['story'],
             card: ['key' => $key, ...$cards[$key]],
             collected: DogCard::where('user_id', Auth::id())->distinct()->count('card_key'),
-            total: count($cards),
+            // 跟圖鑑同一個分母（含剪影佔位格），兩邊顯示一致
+            total: max((int) config('petmin.gacha.dex_slots'), count($cards)),
         );
     }
 }; ?>

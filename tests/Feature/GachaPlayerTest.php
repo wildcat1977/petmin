@@ -22,7 +22,7 @@ class GachaPlayerTest extends TestCase
         Livewire::actingAs($user)->test('gacha-player')
             ->dispatch('report-submitted')
             ->assertDispatched('gacha-play', fn (string $event, array $params) => in_array($params['story'], ['gold-silver', 'old-maid'], true)
-                && $params['total'] === 2 && $params['collected'] === 1);
+                && $params['total'] === max(16, count(DogCard::definitions())) && $params['collected'] === 1);
 
         $card = DogCard::sole();
         $this->assertSame($report->id, $card->report_id);
