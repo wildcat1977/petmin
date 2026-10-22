@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\BagBoxGapService;
 use App\Services\DemandScoreService;
 use App\Support\DemandGrid;
+use App\Support\Geo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -101,6 +102,30 @@ Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api
 Route::view('/find', 'pages.find')->name('find');
 Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
 Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
+
+// 垃圾桶多快會滿（展示版）：真實數據要累積「滿了」回報才算得出，現在一律顯示示意數字並在頁面標明。
+// 示意值由桶的編號固定算出（6–72 小時），重新整理不會跳動
+Route::get('/fill-speed', function () {
+    $demo = config('petmin.find_bin.demo_point');
+    $bbox = Geo::bbox($demo['lat'], $demo['lng'], 1500);
+    $bins = TrashBin::query()
+        ->where('kind', TrashBin::KIND_CLEAN_BOX)
+        ->whereIn('status', [TrashBin::STATUS_ACTIVE, TrashBin::STATUS_UNVERIFIED])
+        ->whereBetween('latitude', [$bbox['south'], $bbox['north']])
+        ->whereBetween('longitude', [$bbox['west'], $bbox['east']])
+        ->get()
+        ->sortBy(fn (TrashBin $b) => Geo::distanceMeters($demo['lat'], $demo['lng'], (float) $b->latitude, (float) $b->longitude))
+        ->take(12)
+        ->map(function (TrashBin $b) {
+            $hours = 6 + crc32($b->external_id ?? (string) $b->id) % 67;
+
+            return ['name' => $b->address ?: '清潔箱', 'district' => $b->district, 'hours' => $hours, 'bar' => (int) round(100 - ($hours - 6) / 66 * 85)];
+        })
+        ->sortBy('hours')
+        ->values();
+
+    return view('pages.fill-speed', ['bins' => $bins]);
+})->name('fill-speed');
 
 // 巡桶貼紙（NFC／QR）列印頁，管理員限定。不放進 auth 群組：未登入會被導向不存在的 login 路由而 500，
 // 改由 controller 對非管理員（含訪客）一律 403
