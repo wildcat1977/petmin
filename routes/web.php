@@ -1,20 +1,28 @@
 <?php
 
 use App\Http\Controllers\Api\BinsController;
+use App\Http\Controllers\Api\FarSignalController;
 use App\Http\Controllers\Api\MapPointsController;
 use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\BinStickerController;
 use App\Http\Controllers\GmailAuthController;
 use App\Http\Middleware\SetLocale;
 use App\Models\Announcement;
 use App\Models\DemandCell;
+use App\Models\DogCard;
 use App\Models\Report;
+use App\Models\TrashBin;
+use App\Models\User;
 use App\Services\BagBoxGapService;
 use App\Services\DemandScoreService;
 use App\Support\DemandGrid;
+use App\Support\Geo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 Route::get('/locale/{locale}', function (string $locale) {
     if (in_array($locale, SetLocale::SUPPORTED, true)) {
@@ -90,6 +98,72 @@ Route::get('/news', function () {
 Route::get('/api/map/reports', MapPointsController::class)->name('api.map.reports');
 Route::get('/api/map/bins', [BinsController::class, 'index'])->name('api.map.bins');
 Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api.map.bins.nearby');
+
+// 我找垃圾桶：找最近的桶（步行距離）＋「好遠！」匿名需求訊號
+Route::view('/find', 'pages.find')->name('find');
+// LINE 選單：回報垃圾桶狀況（列出身邊的桶 → 進打卡頁回報）、怎麼使用（任務說明）
+Route::view('/report-bin', 'pages.report-bin')->name('report-bin');
+Route::view('/guide', 'pages.guide')->name('guide');
+// 服務介紹（給第一次接觸的人：網頁看資料、LINE 參與回報）
+Route::view('/about', 'pages.about')->name('about');
+Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
+Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
+
+// 扭蛋卡分享頁：獎勵卡「分享」帶出去的連結，附這張卡的預覽圖與「一起出任務」入口
+Route::get('/card/{key}', function (string $key) {
+    $card = DogCard::definitions()[$key] ?? null;
+    abort_unless($card, 404);
+
+    return view('pages.card-share', ['card' => ['key' => $key, ...$card]]);
+})->where('key', '[a-z0-9-]+')->name('card.share');
+
+// 垃圾桶多快會滿（展示版）：真實數據要累積「滿了」回報才算得出，現在一律顯示示意數字並在頁面標明。
+// 示意值由桶的編號固定算出（6–72 小時），重新整理不會跳動
+Route::get('/fill-speed', function () {
+    $demo = config('petmin.find_bin.demo_point');
+    $bbox = Geo::bbox($demo['lat'], $demo['lng'], 1500);
+    $bins = TrashBin::query()
+        ->where('kind', TrashBin::KIND_CLEAN_BOX)
+        ->whereIn('status', [TrashBin::STATUS_ACTIVE, TrashBin::STATUS_UNVERIFIED])
+        ->whereBetween('latitude', [$bbox['south'], $bbox['north']])
+        ->whereBetween('longitude', [$bbox['west'], $bbox['east']])
+        ->get()
+        ->sortBy(fn (TrashBin $b) => Geo::distanceMeters($demo['lat'], $demo['lng'], (float) $b->latitude, (float) $b->longitude))
+        ->take(12)
+        ->map(function (TrashBin $b) {
+            $hours = 6 + crc32($b->external_id ?? (string) $b->id) % 67;
+
+            return ['name' => $b->address ?: '清潔箱', 'district' => $b->district, 'hours' => $hours, 'bar' => (int) round(100 - ($hours - 6) / 66 * 85)];
+        })
+        ->sortBy('hours')
+        ->values();
+
+    return view('pages.fill-speed', ['bins' => $bins]);
+})->name('fill-speed');
+
+// 巡桶貼紙（NFC／QR）列印頁，管理員限定。不放進 auth 群組：未登入會被導向不存在的 login 路由而 500，
+// 改由 controller 對非管理員（含訪客）一律 403
+Route::get('/print/bin-stickers', BinStickerController::class)->name('bin.stickers');
+
+// 本機開發專用：一鍵用測試帳號登入，手機實測回報流程時不用接 LINE／Google。APP_ENV 不是 local 時這條路由不存在
+if (app()->environment('local')) {
+    Route::get('/dev/login', function (Request $request) {
+        $user = User::firstOrCreate(['email' => 'dev-tester@petmin.local'], ['name' => '本機測試員', 'password' => Str::random(32)]);
+        Auth::login($user, remember: true);
+
+        return redirect($request->query('to', '/'));
+    })->name('dev.login');
+}
+
+// 巡桶打卡：每個桶一個專屬網址，NFC 貼紙與 QR Code 都指向這裡（?via=nfc|qr 只是來源標記）。
+// 網址用官方資料的 external_id：自動遞增 id 在各環境不同，貼紙寫死 id 換到正式機會指錯桶；市民新增的桶沒有 external_id 才用 id
+Route::get('/b/{code}', function (string $code) {
+    $bin = TrashBin::where('external_id', $code)->first()
+        ?? (ctype_digit($code) ? TrashBin::whereNull('external_id')->find((int) $code) : null);
+    abort_unless($bin, 404);
+
+    return view('pages.bin-checkin', ['bin' => $bin, 'kindLabel' => TrashBin::KIND_LABELS[$bin->kind] ?? '']);
+})->where('code', '[A-Za-z0-9_-]+')->name('bin.checkin');
 
 // 需求色塊：只傳格子編號＋分數，前端用 grid 參數自己畫格（8,000 格也只有百來 KB）
 Route::get('/api/map/demand', function () {

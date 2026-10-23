@@ -41,6 +41,63 @@ return [
     // 回報吸附到既有桶的距離（公尺）
     'bin_snap_meters' => (int) env('PETMIN_BIN_SNAP_METERS', 30),
 
+    // LINE 官方帳號（養狗的人用的入口：找桶、回報）；/about 的加好友 QR 與按鈕用
+    'line_oa' => [
+        'id' => env('PETMIN_LINE_OA_ID', '@358xpblo'),
+        'add_friend_url' => env('PETMIN_LINE_ADD_FRIEND_URL', 'https://line.me/R/ti/p/@358xpblo'),
+    ],
+
+    /*
+     * 扭蛋劇情＋垃圾桶圖鑑：每筆回報送出後隨機抽一張卡、播對應的劇情（素材在 public/gacha/）。
+     * 加新卡＝在這裡加一筆並在 gacha 播放器補上劇情；story 對應播放器裡的劇情函式。
+     */
+    'gacha' => [
+        // 圖鑑至少顯示幾格：還沒設計的卡先用剪影佔位，讓圖鑑看起來有得集（內容之後再補）
+        'dex_slots' => (int) env('PETMIN_GACHA_DEX_SLOTS', 16),
+        // 佔位剪影輪流用的素材（public/gacha/*.webp），只取輪廓
+        'placeholder_images' => ['dog-rich', 'bin-silver', 'god-bless', 'card-120', 'owner-joy', 'bin-plain', 'dog-happy', 'card-40'],
+        'cards' => [
+            'honest-pooper' => [
+                'story' => 'gold-silver',
+                'title' => '誠實的丟屎人',
+                'image' => 'bin-gold',
+                'line' => '獲得：金・銀・普通垃圾桶各一',
+                'share_image' => 'share-honest-pooper.jpg', // 1200×630 分享預覽圖
+
+            ],
+            'super-clean-bin' => [
+                'story' => 'old-maid',
+                'title' => '超級乾淨的垃圾桶',
+                'image' => 'card-clean',
+                'line' => '狗狗成為垃圾桶富翁',
+                'share_image' => 'share-super-clean-bin.jpg',
+            ],
+        ],
+    ],
+
+    /*
+     * 我找垃圾桶（/find）：先用直線距離挑附近 candidates 個清潔箱，再用步行路網換算步行距離排序。
+     * 搜尋半徑由小到大擴張，湊滿 candidates 個就停；路網服務失敗時用直線 × estimate_detour_factor 估算（回應標 distance_mode=estimated）。
+     * 預設用 FOSSGIS 公益架設的 OSRM 步行路網（免金鑰、合理使用），正式量大時改自架或換供應商。
+     */
+    'find_bin' => [
+        'candidates' => (int) env('PETMIN_FIND_BIN_CANDIDATES', 5),
+        // 示範位置（黑客松會場，中正區北平東路附近）：/find 的「用示範位置」與 QR 列印頁預設中心點
+        'demo_point' => ['lat' => 25.0466, 'lng' => 121.5245],
+        'results' => (int) env('PETMIN_FIND_BIN_RESULTS', 3),
+        'search_radii_m' => [300, 800, 2000],
+        'walking' => [
+            'osrm_url' => env('PETMIN_WALKING_OSRM_URL', 'https://routing.openstreetmap.de/routed-foot'),
+            'timeout_seconds' => (int) env('PETMIN_WALKING_TIMEOUT', 4),
+            // OSRM 的 duration 是車速模型換算，步行時間改用距離 ÷ 步速自己算
+            'meters_per_minute' => 75,
+            // 路網失敗時的退路：直線距離 × 這個係數估步行距離（回應標 distance_mode=estimated）
+            'estimate_detour_factor' => (float) env('PETMIN_WALKING_DETOUR_FACTOR', 1.3),
+        ],
+        // 「好遠！」匿名訊號：同一 IP 冷卻秒數
+        'far_signal_cooldown_seconds' => (int) env('PETMIN_FAR_SIGNAL_COOLDOWN', 60),
+    ],
+
     // 「有袋沒桶」判定：狗便袋箱周圍此距離內無 active 清潔箱
     'bag_box_gap_meters' => (int) env('PETMIN_BAG_BOX_GAP_METERS', 100),
 
@@ -88,6 +145,8 @@ return [
             'petition' => (float) env('PETMIN_DEMAND_W_PETITION', 1.0),
             'report_need_bin' => (float) env('PETMIN_DEMAND_W_NEED', 2.0),
             'report_full' => (float) env('PETMIN_DEMAND_W_FULL', 1.0),
+            // 「好遠！」匿名訊號：沒有照片也不審核，權重訂在「這裡需要桶」回報的一半，另有 caps 上限
+            'far_signal' => (float) env('PETMIN_DEMAND_W_FAR', 1.0),
             'corroborated_multiplier' => (float) env('PETMIN_DEMAND_CORROBORATED_X', 2.0),
             'existing_bin_penalty' => (float) env('PETMIN_DEMAND_BIN_PENALTY', 2.5),
         ],
@@ -95,6 +154,8 @@ return [
         'caps' => [
             'bus_stop' => (float) env('PETMIN_DEMAND_CAP_BUS', 4.0),
             'mrt' => (float) env('PETMIN_DEMAND_CAP_MRT', 10.0),
+            // 一格的「好遠！」最多抵兩筆「這裡需要桶」，避免匿名訊號淹掉其他證據
+            'far_signal' => (float) env('PETMIN_DEMAND_CAP_FAR', 4.0),
         ],
         // 缺桶加成：格中心到最近現存清潔箱 start_m 內不加成，到 full_m 線性升到需求訊號 × max_multiplier
         // （台北各格最近清潔箱距離中位數約 700m；1000m 以上約 4 成的格子）

@@ -16,6 +16,8 @@
         </div>
     @endif
 
+    <livewire:dog-card-collection />
+
     <livewire:user-profile />
 
     <div class="px-4 py-6">

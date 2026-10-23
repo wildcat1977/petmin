@@ -49,6 +49,9 @@ new class extends Component
     /** 從桶 popup「回報這個桶」進來：表單帶桶位座標，小地圖不再抓 GPS */
     public bool $presetLocation = false;
 
+    /** 從佔領垃圾桶頁（NFC／QR）進來：照片必填；其他入口維持選填 */
+    public bool $requirePhoto = false;
+
     public function mount(): void
     {
         $this->category = ReportCategory::defaultSlug();
@@ -63,7 +66,7 @@ new class extends Component
             'extraValue'  => $extra
                 ? ['nullable', 'integer', 'between:'.($extra['min'] ?? 0).','.($extra['max'] ?? 9999)]
                 : ['nullable', 'integer'],
-            'photo'       => ['nullable', 'image', 'max:20480'],
+            'photo'       => [$this->requirePhoto ? 'required' : 'nullable', 'image', 'max:20480'],
             'latitude'    => ['required', 'numeric', 'between:-90,90'],
             'longitude'   => ['required', 'numeric', 'between:-180,180'],
             'description' => ['nullable', 'string', 'max:500'],
@@ -75,6 +78,7 @@ new class extends Component
         return [
             'photo.image' => __('請上傳圖片檔案。'),
             'photo.max'   => __('照片檔案不得超過 20MB。'),
+            'photo.required' => __('佔領垃圾桶要拍一張現場照片。'),
         ];
     }
 
@@ -83,7 +87,7 @@ new class extends Component
      * 帶 binId 時預先吸附該桶並把位置定在桶上。
      */
     #[On('open-report-form')]
-    public function show(?int $binId = null): void
+    public function show(?int $binId = null, bool $requirePhoto = false): void
     {
         if (! Auth::check()) {
             $this->dispatch('open-auth-onboarding');
@@ -91,6 +95,7 @@ new class extends Component
         }
         $this->reset(['photo', 'description', 'submitted', 'extraValue', 'exifLocation',
             'trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance', 'presetLocation']);
+        $this->requirePhoto = $requirePhoto;
         $this->category = ReportCategory::defaultSlug();
 
         if ($binId && ($bin = TrashBin::find($binId))) {
@@ -331,7 +336,7 @@ new class extends Component
                         @endif
 
                         <div x-data="{ preview: null, setPreview(files) { const f = files?.[0]; if (!f) return; const old = this.preview; this.preview = URL.createObjectURL(f); if (old) URL.revokeObjectURL(old); } }">
-                            <label class="block text-xs font-medium text-slate-400">{{ __('📸 現場照片') }} <span class="text-slate-600">（{{ __('選填；拍到桶或現場最好，不用拍到人') }}）</span></label>
+                            <label class="block text-xs font-medium text-slate-400">{{ __('📸 現場照片') }} @if ($requirePhoto)<span class="text-amber-400">（{{ __('必填；拍到桶或現場最好，不用拍到人') }}）</span>@else<span class="text-slate-600">（{{ __('選填；拍到桶或現場最好，不用拍到人') }}）</span>@endif</label>
                             {{-- 縮圖預覽 --}}
                             <div x-show="preview" x-cloak class="mt-2 flex items-center gap-3">
                                 <img :src="preview" alt="預覽" class="h-20 w-20 rounded-lg object-cover ring-1 ring-white/20">
