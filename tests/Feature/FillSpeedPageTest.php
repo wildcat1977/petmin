@@ -27,4 +27,14 @@ class FillSpeedPageTest extends TestCase
         $first->assertSee("約 {$hours} 小時滿一次");
         $this->get('/fill-speed')->assertSee("約 {$hours} 小時滿一次"); // 重新整理不會變
     }
+
+    public function test_site_nav_links_to_fill_speed_but_not_line_only_pages(): void
+    {
+        $this->withoutVite();
+
+        // 網頁給所有人看政府資料：導覽列有「多快會滿」；找桶、回報是 LINE 上的功能，不放網頁導覽列
+        $this->get('/news')->assertOk()
+            ->assertSee('href="'.route('fill-speed').'"', false)
+            ->assertDontSee('href="'.route('find').'"', false);
+    }
 }
