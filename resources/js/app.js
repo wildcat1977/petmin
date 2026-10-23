@@ -118,7 +118,7 @@ let showResolved = true;
 // resolved 另由 showResolved 伺服端 gating（隱藏時根本不下發已排除點）。
 let activeStatuses = new Set(['reported', 'notified', 'resolved']);
 // 桶位圖層開關：kinds（清潔箱 / 狗便袋箱）+ 是否顯示已確認消失的桶
-const binLayers = { bins: true, bag_boxes: true, missing_bins: false };
+const binLayers = { bins: true, bag_boxes: true, missing_bins: false, occupied_only: false };
 let gapsVisible = false;
 let demandVisible = true;      // 提案核心產出：一進站就顯示
 let gapsCache = null;
@@ -339,14 +339,15 @@ const BIN_STATUS_LABEL = {
 function binIcon(b) {
     const style = BIN_STYLE[b.kind] ?? BIN_STYLE.clean_box;
     const missing = b.status === 'missing';
+    // 被佔領命名的桶放大、金框、插大一點的旗，一眼就分得出來
+    const size = b.nick ? 36 : 26;
     const html =
-        `<div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;` +
-        `background:${missing ? '#a78bfa' : style.color};border:2px solid #fff;border-radius:8px;` +
-        `box-shadow:0 2px 6px rgba(0,0,0,0.4);opacity:${missing ? 0.75 : 1};${missing ? 'filter:grayscale(0.4)' : ''}">` +
+        `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-size:${b.nick ? 19 : 14}px;` +
+        `background:${missing ? '#a78bfa' : style.color};border:${b.nick ? '3px solid #f59e0b' : '2px solid #fff'};border-radius:${b.nick ? 10 : 8}px;` +
+        `box-shadow:${b.nick ? '0 0 0 2px #fff,0 3px 10px rgba(0,0,0,0.45)' : '0 2px 6px rgba(0,0,0,0.4)'};opacity:${missing ? 0.75 : 1};${missing ? 'filter:grayscale(0.4)' : ''}">` +
         `${missing ? '👻' : style.emoji}</div>` +
-        // 被佔領命名的桶右上角插一面小旗
-        (b.nick ? '<div style="position:absolute;top:-9px;right:-9px;font-size:13px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">🚩</div>' : '');
-    return L.divIcon({ html: `<div style="position:relative">${html}</div>`, className: '', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14] });
+        (b.nick ? '<div style="position:absolute;top:-14px;right:-12px;font-size:20px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">🚩</div>' : '');
+    return L.divIcon({ html: `<div style="position:relative">${html}</div>`, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -(size / 2 + 1)] });
 }
 
 function createBinPopupEl(b) {
@@ -427,6 +428,18 @@ function binClusterIcon(cluster) {
 
 function renderBins() {
     if (!radarMap) return;
+    const marker = (b) => L.marker([b.lat, b.lng], { icon: binIcon(b), binKind: b.kind, binNick: !!b.nick, zIndexOffset: b.nick ? 1000 : 0 })
+        .bindPopup(() => createBinPopupEl(b), { maxWidth: 260 });
+    if (binsLayer) radarMap.removeLayer(binsLayer);
+
+    // 只看被佔領的：數量少，不群聚、全部攤開，並縮放到剛好框住它們（demo 一鍵到位）
+    if (binLayers.occupied_only) {
+        const named = binsCache.points.filter((b) => b.nick);
+        binsLayer = L.layerGroup(named.map(marker)).addTo(radarMap);
+        if (named.length) radarMap.fitBounds(L.latLngBounds(named.map((b) => [b.lat, b.lng])), { padding: [60, 60], maxZoom: 16 });
+        return;
+    }
+
     const layer = L.markerClusterGroup({
         maxClusterRadius: 40,
         showCoverageOnHover: true,
@@ -436,9 +449,7 @@ function renderBins() {
         chunkedLoading: true,
         iconCreateFunction: binClusterIcon,
     });
-    layer.addLayers(binsCache.points.map((b) =>
-        L.marker([b.lat, b.lng], { icon: binIcon(b), binKind: b.kind, binNick: !!b.nick }).bindPopup(() => createBinPopupEl(b), { maxWidth: 260 })));
-    if (binsLayer) radarMap.removeLayer(binsLayer);
+    layer.addLayers(binsCache.points.map(marker));
     binsLayer = layer.addTo(radarMap);
 }
 
@@ -705,6 +716,7 @@ function initChips() {
         bins: (on) => { binLayers.bins = on; fetchBins(); },
         bag_boxes: (on) => { binLayers.bag_boxes = on; fetchBins(); },
         missing_bins: (on) => { binLayers.missing_bins = on; fetchBins(); },
+        occupied_only: (on) => { binLayers.occupied_only = on; renderBins(); },
         gaps: (on) => { gapsVisible = on; renderGaps(); },
         demand: (on) => { demandVisible = on; renderDemand(); },
         reported: (on) => { setStatus('reported', on); scheduleFetch(); },

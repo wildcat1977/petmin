@@ -9,6 +9,7 @@
 <button type="button" data-map-chip="bins" style="--chip-color:#22c55e" class="{{ $cls }} chip-on">🗑️ {{ __('清潔箱') }}</button>
 <button type="button" data-map-chip="bag_boxes" style="--chip-color:#38bdf8" class="{{ $cls }} chip-on">🐕 {{ __('狗便袋箱') }}</button>
 <button type="button" data-map-chip="missing_bins" style="--chip-color:#a78bfa" class="{{ $cls }}" title="{{ __('「桶消失了」回報經核准後，桶的狀態') }}">👻 {{ __('已確認消失') }}</button>
+<button type="button" data-map-chip="occupied_only" style="--chip-color:#f59e0b" class="{{ $cls }}" title="{{ __('只顯示被市民佔領命名的桶') }}">🚩 {{ __('只看被佔領的') }}</button>
 <button type="button" data-map-chip="gaps" style="--chip-color:#f472b6" class="{{ $cls }}">🧷 {{ __('有袋沒桶') }}</button>
 <span class="{{ $cls }}-group">{{ __('需求') }}</span>
 <button type="button" data-map-chip="demand" style="--chip-color:#f97316" class="{{ $cls }} chip-on">🔥 {{ __('需求熱力') }}</button>

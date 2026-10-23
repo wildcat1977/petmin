@@ -452,5 +452,7 @@
     "恭喜你佔領這個桶！": "Congratulations, you've occupied this bin!",
     "「:name」的佔領結束了，幫它取個新名字吧": "\":name\" has been taken over — give it a new name",
     "幫它取個名字，名字會掛在地圖上": "Give it a name — it'll show on the map",
-    "等一下再取": "Maybe later"
+    "等一下再取": "Maybe later",
+    "只看被佔領的": "Occupied only",
+    "只顯示被市民佔領命名的桶": "Show only bins that residents have occupied and named"
 }
