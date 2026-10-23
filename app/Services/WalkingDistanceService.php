@@ -22,13 +22,21 @@ class WalkingDistanceService
             return [];
         }
 
+        // 路網是選配：網址留空就不連（公益 OSRM 對單一 IP 有流量上限，正式機全部請求都出自同一台伺服器）
+        $base = trim((string) config('petmin.find_bin.walking.osrm_url'));
+        if ($base === '') {
+            return null;
+        }
+
         $coords = collect([['lat' => $lat, 'lng' => $lng], ...$destinations])
             ->map(fn (array $p) => sprintf('%.6f,%.6f', $p['lng'], $p['lat']))
             ->implode(';');
-        $url = rtrim((string) config('petmin.find_bin.walking.osrm_url'), '/').'/table/v1/foot/'.$coords;
+        $url = rtrim($base, '/').'/table/v1/foot/'.$coords;
 
         try {
-            $res = Http::timeout((int) config('petmin.find_bin.walking.timeout_seconds'))
+            // 公益服務的使用規範要求識別來源
+            $res = Http::withUserAgent('Petmin/1.0 (+'.config('app.url').')')
+                ->timeout((int) config('petmin.find_bin.walking.timeout_seconds'))
                 ->get($url, ['sources' => 0, 'annotations' => 'distance']);
         } catch (Throwable $e) {
             Log::warning('walking distance request failed', ['error' => $e->getMessage()]);

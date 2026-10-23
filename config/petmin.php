@@ -87,6 +87,7 @@ return [
         'results' => (int) env('PETMIN_FIND_BIN_RESULTS', 3),
         'search_radii_m' => [300, 800, 2000],
         'walking' => [
+            // 留空＝不連路網、一律直線估算。公益 OSRM 對單一 IP 有流量上限（實測連打 3 次被暫時封鎖），量大時要自架
             'osrm_url' => env('PETMIN_WALKING_OSRM_URL', 'https://routing.openstreetmap.de/routed-foot'),
             'timeout_seconds' => (int) env('PETMIN_WALKING_TIMEOUT', 4),
             // OSRM 的 duration 是車速模型換算，步行時間改用距離 ÷ 步速自己算
