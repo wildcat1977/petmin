@@ -41,6 +41,12 @@ return [
     // 回報吸附到既有桶的距離（公尺）
     'bin_snap_meters' => (int) env('PETMIN_BIN_SNAP_METERS', 30),
 
+    // LINE 官方帳號（養狗的人用的入口：找桶、回報）；/about 的加好友 QR 與按鈕用
+    'line_oa' => [
+        'id' => env('PETMIN_LINE_OA_ID', '@358xpblo'),
+        'add_friend_url' => env('PETMIN_LINE_ADD_FRIEND_URL', 'https://line.me/R/ti/p/@358xpblo'),
+    ],
+
     /*
      * 扭蛋劇情＋狗狗圖鑑：每筆回報送出後隨機抽一張卡、播對應的劇情（素材在 public/gacha/）。
      * 加新卡＝在這裡加一筆並在 gacha 播放器補上劇情；story 對應播放器裡的劇情函式。

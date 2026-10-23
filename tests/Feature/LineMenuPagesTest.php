@@ -22,6 +22,21 @@ class LineMenuPagesTest extends TestCase
             ->assertSee('href="'.route('report-bin').'"', false);
     }
 
+    public function test_about_page_explains_both_sides_and_links_line_and_data(): void
+    {
+        $this->withoutVite();
+
+        $this->get('/about')->assertOk()
+            ->assertSee('找回消失的垃圾桶')
+            ->assertSee('網頁・給所有人')
+            ->assertSee('LINE・給遛狗的你')
+            ->assertSee(config('petmin.line_oa.add_friend_url'), false)
+            ->assertSee('href="'.route('candidates').'"', false);
+
+        // 導覽列可以找到「關於 Petmin」
+        $this->get('/news')->assertSee('href="'.route('about').'"', false);
+    }
+
     public function test_find_api_returns_checkin_code_for_report_links(): void
     {
         $demo = config('petmin.find_bin.demo_point');

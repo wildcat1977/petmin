@@ -82,6 +82,7 @@
          x-transition:leave-end="opacity-0 -translate-y-1"
          class="border-t border-white/10 px-4 py-3 lg:hidden">
         <nav class="flex flex-col gap-1 text-sm">
+            <a href="{{ route('about') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('關於 Petmin') }}</a>
             <a href="{{ route('candidates') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('數據判讀') }}</a>
             <a href="{{ route('fill-speed') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('多快會滿') }}</a>
             <a href="{{ route('reports') }}" @click="mobileNavOpen = false" class="rounded-lg px-3 py-2 text-slate-300 hover:bg-white/10">{{ __('回報清單') }}</a>
