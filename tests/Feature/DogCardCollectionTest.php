@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
-/** 狗狗圖鑑：已收集的卡顯示名稱與張數，沒收集到的顯示 ？？？；只算自己的卡。 */
+/** 垃圾桶圖鑑：已收集的卡顯示名稱與張數，沒收集到的顯示 ？？？；只算自己的卡。 */
 class DogCardCollectionTest extends TestCase
 {
     use RefreshDatabase;
@@ -38,6 +38,6 @@ class DogCardCollectionTest extends TestCase
     {
         $this->withoutVite();
 
-        $this->actingAs(User::factory()->create())->get('/profile')->assertOk()->assertSee('狗狗圖鑑');
+        $this->actingAs(User::factory()->create())->get('/profile')->assertOk()->assertSee('垃圾桶圖鑑');
     }
 }

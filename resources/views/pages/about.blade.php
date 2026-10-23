@@ -49,7 +49,7 @@
             <div class="mt-4 grid grid-cols-3 gap-3 text-center text-sm">
                 <div class="rounded-2xl bg-radar-card p-3">
                     <img src="/gacha/stamp.webp" alt="" class="mx-auto h-20 w-auto">
-                    <p class="mt-2 font-bold">{{ __('碰貼紙打卡') }}</p>
+                    <p class="mt-2 font-bold">{{ __('佔領垃圾桶') }}</p>
                     <p class="text-xs text-slate-400">{{ __('跳出今日任務動畫') }}</p>
                 </div>
                 <div class="rounded-2xl bg-radar-card p-3">
@@ -59,7 +59,7 @@
                 </div>
                 <div class="rounded-2xl bg-radar-card p-3">
                     <img src="/gacha/card-clean.webp" alt="" class="mx-auto h-20 w-auto">
-                    <p class="mt-2 font-bold">{{ __('收集狗狗圖鑑') }}</p>
+                    <p class="mt-2 font-bold">{{ __('收集垃圾桶圖鑑') }}</p>
                     <p class="text-xs text-slate-400">{{ __('分享給朋友一起來') }}</p>
                 </div>
             </div>

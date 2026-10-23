@@ -116,8 +116,8 @@
         r.querySelector('img').src = ART + detail.card.image + '.webp';
         r.querySelector('.t').textContent = detail.card.title;
         r.querySelector('.s').textContent = detail.card.line;
-        r.querySelector('.n').textContent = `狗狗圖鑑 ${detail.collected} / ${detail.total}`;
-        r.querySelector('a').textContent = '看我的狗狗圖鑑';
+        r.querySelector('.n').textContent = `垃圾桶圖鑑 ${detail.collected} / ${detail.total}`;
+        r.querySelector('a').textContent = '看我的垃圾桶圖鑑';
         const shareBtn = r.querySelector('[data-share]');
         shareBtn.textContent = '分享';
         shareBtn.addEventListener('click', () => shareCard(detail.card, shareBtn));

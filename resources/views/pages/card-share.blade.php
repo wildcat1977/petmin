@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', __(':title · 狗狗圖鑑 · Petmin', ['title' => $card['title']]))
+@section('title', __(':title · 垃圾桶圖鑑 · Petmin', ['title' => $card['title']]))
 @section('og_title', __('我的狗狗抽到了「:title」', ['title' => $card['title']]))
 @section('og_description', __('散步時順手檢查附近的垃圾桶，回報就能抽扭蛋卡。帶你家狗狗一起出任務！'))
 @section('og_image', asset('gacha/'.($card['share_image'] ?? 'share-honest-pooper.jpg')))

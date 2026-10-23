@@ -4,7 +4,7 @@ use App\Models\DogCard;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
-/** 狗狗圖鑑：列出所有卡片種類，已收集的顯示圖與張數，沒收集到的顯示剪影，引導再去巡桶。 */
+/** 垃圾桶圖鑑：列出所有卡片種類，已收集的顯示圖與張數，沒收集到的顯示剪影，引導再去巡桶。 */
 new class extends Component
 {
     public function with(): array
@@ -36,7 +36,7 @@ new class extends Component
 
 <section id="dog-cards" class="mx-auto max-w-2xl px-4 pt-10">
     <div class="flex items-baseline justify-between gap-3">
-        <h2 class="text-base font-bold text-slate-200">🐾 {{ __('狗狗圖鑑') }}</h2>
+        <h2 class="text-base font-bold text-slate-200">🐾 {{ __('垃圾桶圖鑑') }}</h2>
         <span class="text-sm text-slate-400">{{ __('已收集 :n / :total', ['n' => $collected, 'total' => $cards->count()]) }}</span>
     </div>
     <p class="mt-1 text-sm text-slate-400">{{ __('每次回報桶況都會抽一段扭蛋劇情，收集不一樣的卡片。去巡桶就有機會抽到新卡！') }}</p>

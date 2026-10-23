@@ -49,7 +49,7 @@ new class extends Component
     /** 從桶 popup「回報這個桶」進來：表單帶桶位座標，小地圖不再抓 GPS */
     public bool $presetLocation = false;
 
-    /** 從巡桶打卡頁（NFC／QR）進來：照片必填；其他入口維持選填 */
+    /** 從佔領垃圾桶頁（NFC／QR）進來：照片必填；其他入口維持選填 */
     public bool $requirePhoto = false;
 
     public function mount(): void
@@ -78,7 +78,7 @@ new class extends Component
         return [
             'photo.image' => __('請上傳圖片檔案。'),
             'photo.max'   => __('照片檔案不得超過 20MB。'),
-            'photo.required' => __('打卡回報請拍一張現場照片。'),
+            'photo.required' => __('佔領垃圾桶要拍一張現場照片。'),
         ];
     }
 

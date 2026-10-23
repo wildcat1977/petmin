@@ -34,7 +34,7 @@
             <li class="flex gap-4 rounded-2xl bg-radar-card p-4">
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400 font-extrabold text-amber-950">3</span>
                 <div class="min-w-0">
-                    <h2 class="font-bold">{{ __('看到 Petmin 貼紙？碰一下就打卡') }}</h2>
+                    <h2 class="font-bold">{{ __('看到 Petmin 貼紙？碰一下就佔領垃圾桶') }}</h2>
                     <p class="mt-1 text-sm text-slate-300">{{ __('有貼紙的垃圾桶，用手機碰一下貼紙或掃 QR Code，會跳出今日任務動畫，直接回報這個桶。') }}</p>
                     <img src="/gacha/stamp.webp" alt="" class="mt-3 h-24 w-auto">
                 </div>
@@ -43,7 +43,7 @@
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-400 font-extrabold text-amber-950">4</span>
                 <div>
                     <h2 class="font-bold">{{ __('每次回報都抽一張扭蛋卡') }}</h2>
-                    <p class="mt-1 text-sm text-slate-300">{{ __('回報完會播一段隨機的扭蛋劇情，抽到的卡收進「我的狗狗圖鑑」，也可以分享給朋友，邀他們的狗狗一起出任務。') }}</p>
+                    <p class="mt-1 text-sm text-slate-300">{{ __('回報完會播一段隨機的扭蛋劇情，抽到的卡收進「我的垃圾桶圖鑑」，也可以分享給朋友，邀他們的狗狗一起出任務。') }}</p>
                 </div>
             </li>
         </ol>

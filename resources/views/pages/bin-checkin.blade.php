@@ -1,17 +1,17 @@
 @extends('layouts.app')
 
-@section('title', __('巡桶打卡 · Petmin'))
+@section('title', __('佔領垃圾桶 · Petmin'))
 
 @section('content')
 <div class="min-h-dvh bg-radar-bg text-slate-100">
     @include('partials.nav')
 
     <main class="mx-auto max-w-xl px-4 py-6">
-        {{-- 碰 NFC 貼紙或掃 QR 進來的第一個畫面：先給打卡成就感，再引導回報 --}}
+        {{-- 碰 NFC 貼紙或掃 QR 進來的第一個畫面：先給佔領成就感，再引導回報 --}}
         {{-- 印章圖的緞帶是空白的（圖高 75–84%），字用網頁疊上去，改字不用重畫 --}}
         <div class="checkin-stamp">
             <img src="/gacha/stamp.webp" alt="" width="520" height="465">
-            <span class="checkin-stamp-text">{{ __('打卡成功') }}</span>
+            <span class="checkin-stamp-text">{{ __('佔領成功') }}</span>
         </div>
 
         <div class="mt-6 rounded-2xl bg-radar-card p-5 shadow">

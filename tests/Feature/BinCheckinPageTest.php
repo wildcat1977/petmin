@@ -21,7 +21,7 @@ class BinCheckinPageTest extends TestCase
 
         $this->get('/b/clean_box-abc123?via=nfc')
             ->assertOk()
-            ->assertSee('打卡成功')
+            ->assertSee('佔領成功')
             ->assertSee('北平東路口')
             ->assertSee('2 天前有人確認還在')
             ->assertSee('回報這個桶的狀況')
