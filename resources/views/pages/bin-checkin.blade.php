@@ -46,7 +46,7 @@
 </div>
 
 {{-- 碰貼紙／掃碼進來的開場短動畫：「今日巡桶任務開始」，同一桶一天播一次，點一下可略過 --}}
-@if (in_array(request('via'), ['nfc', 'qr'], true))
+@if (in_array(request('via'), ['nfc', 'qr', 'line'], true))
     <div data-mission-intro class="mission-intro" hidden>
         <div class="mission-stage">
             <img src="/gacha/dog-happy.webp" alt="" class="mission-dog">

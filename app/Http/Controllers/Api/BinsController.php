@@ -134,7 +134,7 @@ class BinsController extends Controller
                 ->whereIn('status', [TrashBin::STATUS_ACTIVE, TrashBin::STATUS_UNVERIFIED])
                 ->whereBetween('latitude', [$bbox['south'], $bbox['north']])
                 ->whereBetween('longitude', [$bbox['west'], $bbox['east']])
-                ->get(['id', 'status', 'address', 'district', 'latitude', 'longitude', 'last_verified_at'])
+                ->get(['id', 'external_id', 'status', 'address', 'district', 'latitude', 'longitude', 'last_verified_at'])
                 ->map(fn (TrashBin $b) => ['bin' => $b, 'straight_m' => Geo::distanceMeters($lat, $lng, (float) $b->latitude, (float) $b->longitude)])
                 ->filter(fn ($row) => $row['straight_m'] <= $radius)
                 ->sortBy('straight_m')
@@ -167,6 +167,8 @@ class BinsController extends Controller
 
                 return [
                     'id' => $bin->id,
+                    // 打卡頁 /b/{code} 用的編號：官方編號，市民新增的桶才用 id
+                    'code' => $bin->external_id ?? (string) $bin->id,
                     'name' => $bin->address,
                     'district' => $bin->district,
                     'lat' => (float) $bin->latitude,

@@ -101,6 +101,9 @@ Route::get('/api/map/bins/nearby', [BinsController::class, 'nearby'])->name('api
 
 // 我找垃圾桶：找最近的桶（步行距離）＋「好遠！」匿名需求訊號
 Route::view('/find', 'pages.find')->name('find');
+// LINE 選單：回報垃圾桶狀況（列出身邊的桶 → 進打卡頁回報）、怎麼使用（任務說明）
+Route::view('/report-bin', 'pages.report-bin')->name('report-bin');
+Route::view('/guide', 'pages.guide')->name('guide');
 Route::get('/api/map/bins/find', [BinsController::class, 'find'])->middleware('throttle:30,1')->name('api.map.bins.find');
 Route::post('/api/far-signals', FarSignalController::class)->middleware('throttle:10,1')->name('api.far-signals');
 
