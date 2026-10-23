@@ -32,6 +32,49 @@
     background: #1f1f1f;
 }
 
+/* 我的位置：藍點 + 往外擴散的雷達脈衝；雷達圈半徑標籤貼在圈的上緣 */
+.my-location-dot {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #0ea5e9;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.6), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.my-location-dot span {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: rgba(14, 165, 233, 0.45);
+    animation: my-location-ping 2s ease-out infinite;
+}
+@keyframes my-location-ping {
+    from { transform: scale(1); opacity: 0.9; }
+    to { transform: scale(4); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .my-location-dot span { animation: none; } }
+.my-radar-label {
+    transform: translate(-50%, -50%);
+    width: max-content;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #0369a1;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(14, 165, 233, 0.6);
+    pointer-events: none;
+}
+#radar-map.map-theme-dark .my-radar-label {
+    color: #7dd3fc;
+    background: rgba(15, 23, 42, 0.9);
+}
+.leaflet-control-my-location {
+    font-size: 15px;
+    text-decoration: none;
+}
+
 /* 被佔領的桶名字標籤（IITC portal 名稱風格）：無底框、靠光暈在底圖上讀得清楚，不擋點擊 */
 .bin-nick-label {
     position: absolute;
@@ -109,7 +152,8 @@
 
 /* 小螢幕額外加大點擊區 */
 @media (max-width: 640px) {
-    .leaflet-control-zoom a {
+    .leaflet-control-zoom a,
+    a.leaflet-control-my-location {
         width: 36px !important;
         height: 36px !important;
         line-height: 36px !important;
@@ -163,12 +207,14 @@ path.radar-scan-circle {
 }
 
 /* ── 暗色地圖：縮放 / 圖層控制元件 ──────────────────────────── */
-#radar-map.map-theme-dark .leaflet-control-zoom a {
+#radar-map.map-theme-dark .leaflet-control-zoom a,
+#radar-map.map-theme-dark a.leaflet-control-my-location {
     background: #1e293b !important;
     color: #e2e8f0 !important;
     border-bottom-color: rgba(255,255,255,0.12) !important;
 }
-#radar-map.map-theme-dark .leaflet-control-zoom a:hover {
+#radar-map.map-theme-dark .leaflet-control-zoom a:hover,
+#radar-map.map-theme-dark a.leaflet-control-my-location:hover {
     background: #334155 !important;
 }
 #radar-map.map-theme-dark .leaflet-control-layers {

@@ -845,21 +845,85 @@ function initRadar() {
     // 縮放鈕跟暗色模式、搜尋排在左上同一列（右上留給「圖層」鈕）
     L.control.zoom({ position: 'topleft' }).addTo(radarMap);
 
+    // 📍 回到我的位置：緊接在縮放鈕下面
+    initMyLocation(el, { recenter: !hash });
+
     // 熱力預設開啟；放在搜尋鈕之後，提示才會排在左上控制項最下面
     renderDemand();
     initDemandCursor();
 
-    if (navigator.geolocation && !hash) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                radarMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
-            },
-            () => {},
-            { enableHighAccuracy: true, timeout: 8000 }
-        );
-    }
-
     initChips();
+}
+
+// ── 我的位置：中心點 + 雷達圈（附近 N 公里內有什麼一眼看得到）──────────
+// 第一次定位把地圖框到雷達圈；之後跟著使用者移動（遛狗會邊走邊看），但不再搶畫面。
+// 左上「📍」鈕回到自己的位置。雷達圈不吃點擊，點圈內的需求格子照常看分數組成。
+function initMyLocation(mapEl, { recenter }) {
+    if (!navigator.geolocation) return;
+    const radiusM = parseFloat(mapEl.dataset.radarRadiusM) || 1000;
+    const label = radiusM >= 1000 ? `${+(radiusM / 1000).toFixed(1)} km` : `${radiusM} m`;
+    let here = null;
+    let dot = null;
+    let ring = null;
+    let ringLabel = null;
+
+    const show = (latlng) => {
+        here = latlng;
+        if (!dot) {
+            ring = L.circle(latlng, { radius: radiusM, color: '#0ea5e9', weight: 2, dashArray: '6 6', fillColor: '#0ea5e9', fillOpacity: 0.06, interactive: false }).addTo(radarMap);
+            ringLabel = L.marker(latlng, {
+                icon: L.divIcon({ className: '', html: `<div class="my-radar-label">${label}</div>`, iconSize: [0, 0] }),
+                interactive: false, keyboard: false,
+            }).addTo(radarMap);
+            dot = L.marker(latlng, {
+                icon: L.divIcon({ className: '', html: '<div class="my-location-dot"><span></span></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+                interactive: false, keyboard: false, zIndexOffset: 2000,
+            }).addTo(radarMap);
+        }
+        dot.setLatLng(latlng);
+        ring.setLatLng(latlng);
+        // 標籤放在圈的正上緣
+        ringLabel.setLatLng(L.latLng(latlng.lat + radiusM / 111320, latlng.lng));
+    };
+    const frame = () => here && radarMap.fitBounds(ring.getBounds(), { padding: [24, 24] });
+
+    let first = true;
+    navigator.geolocation.watchPosition(
+        (pos) => {
+            show(L.latLng(pos.coords.latitude, pos.coords.longitude));
+            if (first && recenter) frame();
+            first = false;
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 },
+    );
+
+    const LocateControl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd() {
+            const bar = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+            const btn = L.DomUtil.create('a', 'leaflet-control-my-location', bar);
+            btn.href = '#';
+            btn.role = 'button';
+            btn.title = window.i18n?.myLocation ?? '📍 我的位置';
+            btn.textContent = '📍';
+            L.DomEvent.on(btn, 'click', (ev) => {
+                L.DomEvent.preventDefault(ev);
+                L.DomEvent.stopPropagation(ev);
+                if (here) {
+                    frame();
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => { show(L.latLng(pos.coords.latitude, pos.coords.longitude)); frame(); },
+                    () => {},
+                    { enableHighAccuracy: true, timeout: 8000 },
+                );
+            });
+            return bar;
+        },
+    });
+    new LocateControl().addTo(radarMap);
 }
 
 // ── 回報表單小地圖（由 Alpine x-init 呼叫）──────────────────

@@ -41,6 +41,7 @@ new class extends Component
     data-default-lat="{{ config('petmin.default_lat') }}"
     data-default-lng="{{ config('petmin.default_lng') }}"
     data-default-zoom="{{ config('petmin.default_zoom') }}"
+    data-radar-radius-m="{{ (int) round(config('petmin.nearby_radius_km') * 1000) }}"
     data-reports-url="{{ route('api.map.reports') }}"
     data-bins-url="{{ route('api.map.bins') }}"
     data-gaps-url="{{ route('api.map.gaps') }}"
