@@ -448,13 +448,29 @@ class DemandScoreService
      */
     public function insights(): array
     {
-        return Cache::remember('demand.insights', 600, function () {
+        // 只隨桶位變動：不設過期，桶位異動時 BagBoxGapService::forgetCache() 清除，同步後由 bins:sync-open-data 先算好
+        return Cache::rememberForever('demand.insights', function () {
             $bins = TrashBin::query()->active()->get(['source', 'kind', 'district', 'latitude', 'longitude', 'box_count']);
             $points = $bins->where('source', TrashBin::SOURCE_OFFICIAL_CLEAN_BOX)->values();
             $areas = $bins->where('source', TrashBin::SOURCE_OFFICIAL_CLEAN_BOX_AREA)->values();
             $cleanBoxes = $bins->where('kind', TrashBin::KIND_CLEAN_BOX)->values();
             $bags = $bins->where('kind', TrashBin::KIND_DOG_BAG_BOX)->values();
-            $within = fn (TrashBin $p, $pool, float $m) => $pool->contains(fn (TrashBin $q) => Geo::distanceMeters((float) $p->latitude, (float) $p->longitude, (float) $q->latitude, (float) $q->longitude) <= $m);
+            // 座標先轉成純浮點陣列（Eloquent decimal cast 在雙層迴圈裡每次讀都要轉字串，全市一跑要十幾秒），
+            // 再用經緯度差先排除明顯太遠的點，只對剩下的算 Haversine
+            $coords = fn ($bins) => $bins->map(fn (TrashBin $b) => [(float) $b->latitude, (float) $b->longitude])->all();
+            $within = function (array $p, array $pool, float $m): bool {
+                $dLat = $m / 111195;
+                $dLng = $m / (111195 * cos(deg2rad($p[0])));
+                foreach ($pool as $q) {
+                    if (abs($q[0] - $p[0]) <= $dLat && abs($q[1] - $p[1]) <= $dLng && Geo::distanceMeters($p[0], $p[1], $q[0], $q[1]) <= $m) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+            $countWithin = fn (array $from, array $pool, float $m) => count(array_filter($from, fn ($p) => $within($p, $pool, $m)));
+            [$pointXy, $areaXy, $cleanXy, $bagXy] = [$coords($points), $coords($areas), $coords($cleanBoxes), $coords($bags)];
             $pct = fn (int $n, int $of) => $of > 0 ? (int) round(100 * $n / $of) : null;
 
             // 每個狗便袋箱分到幾組清潔箱（只比有袋箱的區）：居民遛狗的地方分到多少桶
@@ -466,10 +482,10 @@ class DemandScoreService
                 'clean_points' => $points->count(),
                 'area_sites' => $areas->count(),
                 'area_sets' => (int) $areas->sum('box_count'),
-                'points_near_areas_pct' => $pct($points->filter(fn ($p) => $within($p, $areas, 500))->count(), $points->count()),
+                'points_near_areas_pct' => $pct($countWithin($pointXy, $areaXy, 500), $points->count()),
                 'bag_boxes' => $bags->count(),
-                'bags_with_bin_100m_pct' => $pct($bags->filter(fn ($b) => $within($b, $cleanBoxes, 100))->count(), $bags->count()),
-                'bags_with_bin_300m_pct' => $pct($bags->filter(fn ($b) => $within($b, $cleanBoxes, 300))->count(), $bags->count()),
+                'bags_with_bin_100m_pct' => $pct($countWithin($bagXy, $cleanXy, 100), $bags->count()),
+                'bags_with_bin_300m_pct' => $pct($countWithin($bagXy, $cleanXy, 300), $bags->count()),
                 'sets_per_bag' => ['max' => $pick($ratios->keys()->first()), 'min' => $pick($ratios->keys()->last()), 'by_district' => $ratios->all()],
                 'synced_at' => TrashBin::max('last_seen_in_source_at'),
             ];

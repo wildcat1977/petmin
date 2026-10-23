@@ -31,6 +31,7 @@ class SyncOpenDataBins extends Command
             $cells = $demand->recompute();
             Cache::forget('map.demand');
             BagBoxGapService::forgetCache();
+            $demand->insights(); // 數據判讀統計先算好，第一個開頁面的人不用等
             $this->info("桶位有異動，需求分數已重算：{$cells} 格");
         }
 
