@@ -15,7 +15,7 @@
         </div>
 
         <div class="mt-6 rounded-2xl bg-radar-card p-5 shadow">
-            <p class="text-xs text-slate-400">{{ $kindLabel }}{{ $bin->district ? ' · '.$bin->district : '' }}</p>
+            <p class="text-xs text-slate-400">{{ __($kindLabel) }}{{ $bin->district ? ' · '.$bin->district : '' }}</p>
             <h1 class="mt-1 text-xl font-bold">🗑️ {{ $bin->address ?: __('清潔箱') }}</h1>
             <p class="mt-2 text-sm text-slate-300">
                 @if ($bin->last_verified_at)

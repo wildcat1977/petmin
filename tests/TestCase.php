@@ -23,5 +23,9 @@ abstract class TestCase extends BaseTestCase
         if (! $this->app->environment('testing') || config('database.default') !== 'sqlite') {
             throw new RuntimeException('測試環境設定異常（非 testing 或非 sqlite），為避免碰到正式資料已中止。');
         }
+
+        // 語系依瀏覽器 Accept-Language 決定（SetLocale），測試請求預設帶 en-us 會拿到英文版；
+        // 主要使用者是中文瀏覽器，測試照中文跑。要測英文版的個別測試自己覆寫這個 header。
+        $this->withHeader('Accept-Language', 'zh-TW,zh;q=0.9');
     }
 }
