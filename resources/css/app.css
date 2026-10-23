@@ -32,6 +32,23 @@
     background: #1f1f1f;
 }
 
+/* 被佔領的桶名字標籤（IITC portal 名稱風格）：無底框、靠光暈在底圖上讀得清楚，不擋點擊 */
+.bin-nick-label {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+    font-size: 12px;
+    font-weight: 800;
+    color: #1c1917;
+    text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 0 5px #fff;
+}
+#radar-map.map-theme-dark .bin-nick-label {
+    color: #fde68a;
+    text-shadow: 0 0 2px #000, 0 0 3px #000, 0 0 4px #000, 0 0 5px #000;
+}
+
 /* Geocoder 搜尋框（亮色預設） */
 .leaflet-control-geocoder {
     background: #ffffff !important;

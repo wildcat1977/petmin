@@ -336,6 +336,10 @@ const BIN_STATUS_LABEL = {
     unverified: () => window.i18n?.binUnverified ?? '待驗證',
 };
 
+function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
 function binIcon(b) {
     const style = BIN_STYLE[b.kind] ?? BIN_STYLE.clean_box;
     const missing = b.status === 'missing';
@@ -346,7 +350,9 @@ function binIcon(b) {
         `background:${missing ? '#a78bfa' : style.color};border:${b.nick ? '3px solid #f59e0b' : '2px solid #fff'};border-radius:${b.nick ? 10 : 8}px;` +
         `box-shadow:${b.nick ? '0 0 0 2px #fff,0 3px 10px rgba(0,0,0,0.45)' : '0 2px 6px rgba(0,0,0,0.4)'};opacity:${missing ? 0.75 : 1};${missing ? 'filter:grayscale(0.4)' : ''}">` +
         `${missing ? '👻' : style.emoji}</div>` +
-        (b.nick ? '<div style="position:absolute;top:-14px;right:-12px;font-size:20px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">🚩</div>' : '');
+        (b.nick ? '<div style="position:absolute;top:-14px;right:-12px;font-size:20px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">🚩</div>' : '') +
+        // 名字標在圖示下方（像 IITC 的 portal 名稱）；名字是市民取的，進 HTML 前要跳脫
+        (b.nick ? `<div class="bin-nick-label" style="top:${size + 3}px">${escapeHtml(b.nick)}</div>` : '');
     return L.divIcon({ html: `<div style="position:relative">${html}</div>`, className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -(size / 2 + 1)] });
 }
 
