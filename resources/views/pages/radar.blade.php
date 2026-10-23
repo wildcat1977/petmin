@@ -33,7 +33,7 @@
         @include('partials.site-header')
 
         {{-- 桌機：右上「圖層」鈕，滑過展開 checkbox 面板（IITC 風格，地圖不被一整排按鈕佔掉）；手機收進右側面板 --}}
-        <div data-map-chip-bar class="pointer-events-none hidden justify-end px-4 lg:flex">
+        <div data-map-chip-bar class="pointer-events-none hidden justify-end px-4 pt-2 lg:flex">
             <div class="pointer-events-auto relative" x-data="{ open: false, timer: null }"
                  @mouseenter="clearTimeout(timer); open = true"
                  @mouseleave="timer = setTimeout(() => open = false, 250)">

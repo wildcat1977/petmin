@@ -784,24 +784,6 @@ const ThemeToggleControl = L.Control.extend({
     },
 });
 
-// 桌機 chips 依視窗寬度換成 1～3 排，寫死的下推距離會被多出來的那排蓋住（暗色模式鈕被擋）：
-// 量 chips 實際底部，寫進 --map-controls-top 讓左上／右上控制項跟著推；chips 隱藏（手機）時交回 CSS 預設
-function syncMapControlsBelowChips(mapEl) {
-    const bar = document.querySelector('[data-map-chip-bar]');
-    if (!bar || !window.ResizeObserver) return;
-    const sync = () => {
-        if (bar.offsetParent === null) {
-            mapEl.style.removeProperty('--map-controls-top');
-            return;
-        }
-        const top = bar.getBoundingClientRect().bottom - mapEl.getBoundingClientRect().top + 8;
-        mapEl.style.setProperty('--map-controls-top', `${Math.round(top)}px`);
-    };
-    new ResizeObserver(sync).observe(bar);
-    window.addEventListener('resize', sync);
-    sync();
-}
-
 // ── 主地圖 ──────────────────────────────────────────────────
 function initRadar() {
     const el = document.getElementById('radar-map');
@@ -828,8 +810,6 @@ function initRadar() {
     if (!currentTileLayer) {
         document.querySelector('[data-basemap-unsupported]')?.classList.remove('hidden');
     }
-    L.control.zoom({ position: 'topright' }).addTo(radarMap);
-    syncMapControlsBelowChips(el);
 
     const onMove = () => { scheduleFetch(); fetchBins(); };
     radarMap.on('moveend', onMove);
@@ -861,6 +841,9 @@ function initRadar() {
         radarMap.setView(e.geocode.center, 15);
     })
     .addTo(radarMap);
+
+    // 縮放鈕跟暗色模式、搜尋排在左上同一列（右上留給「圖層」鈕）
+    L.control.zoom({ position: 'topleft' }).addTo(radarMap);
 
     // 熱力預設開啟；放在搜尋鈕之後，提示才會排在左上控制項最下面
     renderDemand();

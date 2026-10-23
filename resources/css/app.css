@@ -92,32 +92,18 @@
 }
 
 /*
- * 民眾地圖頁（.radar-page）：左上地圖控制項（搜尋放大鏡 + 亮/暗切換）
- * 需下推到分類 chips 之下，避免與 chips 重疊。手機版 chips 會換成兩排，
- * 需要更多留白。僅限 #radar-map，不影響回報表單小地圖與 dashboard。
+ * 民眾地圖頁（.radar-page）：左上一列控制項（亮/暗切換、搜尋放大鏡、縮放）貼著頂部 nav 下方；
+ * 圖層改成右上收合面板後，上方不再有按鈕列要避開。僅限 #radar-map，不影響回報表單小地圖與 dashboard。
  */
 .radar-page #radar-map .leaflet-top.leaflet-left {
-    margin-top: 96px;
+    margin-top: 56px;
 }
 .radar-page #radar-map button.leaflet-theme-toggle.leaflet-control {
     margin-top: 6px !important;
 }
-/* 桌機 chips 會依寬度換成 1～3 排：app.js 量 chips 底部寫進 --map-controls-top，左上／右上控制項跟著往下推 */
-@media (min-width: 1024px) {
-    .radar-page #radar-map .leaflet-top.leaflet-left {
-        margin-top: var(--map-controls-top, 96px);
-    }
-    .radar-page #radar-map .leaflet-top.leaflet-right .leaflet-control-zoom {
-        margin-top: var(--map-controls-top, 108px);
-    }
-}
 @media (max-width: 640px) {
-    /* v0.3：手機頂部 chips 已移入右側面板，控制項只需避開 ~56px 頂帶 */
     .radar-page #radar-map .leaflet-top.leaflet-left {
-        margin-top: 72px;
-    }
-    .radar-page #radar-map .leaflet-top.leaflet-right .leaflet-control-zoom {
-        margin-top: 72px;
+        margin-top: 64px;
     }
 }
 
@@ -198,7 +184,7 @@ path.radar-scan-circle {
 /* button 本身即 .leaflet-control，直接設定 margin */
 button.leaflet-theme-toggle.leaflet-control {
     margin-top: 64px !important;
-    margin-left: 18px !important;
+    margin-left: 10px !important; /* 跟下面的搜尋、縮放鈕左緣對齊 */
 }
 /* 熱力可點提示（左上，接在搜尋鈕下方）；按 ✕ 或點過一次熱力後不再出現 */
 .leaflet-demand-hint {
