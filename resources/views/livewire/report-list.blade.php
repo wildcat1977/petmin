@@ -91,7 +91,7 @@ $verificationConfig = [
 ];
 // 分類徽章：由 report_categories 驅動（含停用，舊通報仍需標籤/配色），色票改 inline style
 $categoryConfig = \App\Models\ReportCategory::allOrdered()->mapWithKeys(fn ($cat) => [$cat->slug => [
-    'label' => __($cat->name),
+    'label' => $cat->label(),
     'style' => "background: {$cat->color}26; color: {$cat->color}; box-shadow: inset 0 0 0 1px {$cat->color}4d",
 ]])->all();
 $categoryFallback = fn ($category) => $categoryConfig[$category]

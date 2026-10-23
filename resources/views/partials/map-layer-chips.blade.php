@@ -21,7 +21,7 @@
     <span class="layer-check-group">{{ __('民眾回報') }}</span>
     @foreach (\App\Models\ReportCategory::activeOrdered() as $cat)
         <button type="button" data-map-chip="{{ $cat->slug }}" style="--chip-color:{{ $cat->color }}"
-                class="layer-check chip-on">{{ $cat->emoji }} {{ __($cat->name) }}</button>
+                class="layer-check chip-on">{{ $cat->emoji }} {{ $cat->label() }}</button>
     @endforeach
 </div>
 {{-- 回報三態 --}}

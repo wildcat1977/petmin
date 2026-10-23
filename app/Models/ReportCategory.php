@@ -19,7 +19,7 @@ class ReportCategory extends Model
     // v2：快取只存純陣列（見 allOrdered），換版號避開 v1 的物件序列化 blob
     private const CACHE_KEY = 'petmin:report-categories:v2';
 
-    protected $fillable = ['slug', 'name', 'emoji', 'color', 'sort_order', 'is_active', 'extra_field'];
+    protected $fillable = ['slug', 'name', 'name_en', 'emoji', 'color', 'sort_order', 'is_active', 'extra_field'];
 
     protected function casts(): array
     {
@@ -65,10 +65,16 @@ class ReportCategory extends Model
         return self::allOrdered()->where('is_active', true)->values();
     }
 
-    /** @return array<string, string> slug => name（含停用，舊點位仍需標籤） */
+    /** 顯示名稱：英文版網站用 name_en，沒填就退回中文 */
+    public function label(): string
+    {
+        return (app()->getLocale() === 'en' && filled($this->name_en)) ? $this->name_en : $this->name;
+    }
+
+    /** @return array<string, string> slug => 顯示名稱（依目前語系；含停用，舊點位仍需標籤） */
     public static function labels(): array
     {
-        return self::allOrdered()->pluck('name', 'slug')->all();
+        return self::allOrdered()->mapWithKeys(fn (self $c) => [$c->slug => $c->label()])->all();
     }
 
     /** @return list<string> 全部 slug（讀取端白名單：停用分類的既有點位仍可篩選） */

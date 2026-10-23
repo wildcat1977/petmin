@@ -29,6 +29,11 @@ class ReportCategoryForm
                     ->required()
                     ->maxLength(32),
 
+                TextInput::make('name_en')
+                    ->label('英文名稱')
+                    ->maxLength(64)
+                    ->helperText('英文版網站顯示；留空就顯示中文名稱'),
+
                 TextInput::make('emoji')
                     ->label('Emoji')
                     ->maxLength(8),

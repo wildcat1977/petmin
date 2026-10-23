@@ -770,8 +770,9 @@ const ThemeToggleControl = L.Control.extend({
         const btn = L.DomUtil.create('button', 'leaflet-theme-toggle');
         btn.type = 'button';
         const refresh = () => {
-            btn.textContent = currentTheme === 'dark' ? '☀️ 亮色模式' : '🌙 暗色模式';
-            btn.title = currentTheme === 'dark' ? '切換至亮色地圖' : '切換至暗色地圖';
+            const t = window.i18n ?? {};
+            btn.textContent = currentTheme === 'dark' ? (t.mapLightMode ?? '☀️ 亮色模式') : (t.mapDarkMode ?? '🌙 暗色模式');
+            btn.title = currentTheme === 'dark' ? (t.mapLightModeTitle ?? '切換至亮色地圖') : (t.mapDarkModeTitle ?? '切換至暗色地圖');
         };
         refresh();
         L.DomEvent.disableClickPropagation(btn);

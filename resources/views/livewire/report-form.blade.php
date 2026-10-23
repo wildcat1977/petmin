@@ -302,7 +302,7 @@ new class extends Component
                                             @if ($category === $cat->slug)
                                                 style="border-color: {{ $cat->color }}99; background: {{ $cat->color }}26; color: {{ $cat->color }}; box-shadow: 0 0 18px {{ $cat->color }}59"
                                             @endif>
-                                        {{ $cat->emoji }} {{ __($cat->name) }}
+                                        {{ $cat->emoji }} {{ $cat->label() }}
                                     </button>
                                 @endforeach
                             </div>

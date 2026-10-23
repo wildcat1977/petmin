@@ -26,6 +26,9 @@ new class extends Component
                 $messages[] = "🗑️ 台北市目前登記 {$active} 組行人專用清潔箱".($missing > 0 ? "，已確認消失 {$missing} 組" : '');
             }
 
+            // 跑馬燈句子是中文、快取不分語系，分類名也固定用中文（labels() 會跟著訪客語系變）
+            $names = ReportCategory::allOrdered()->pluck('name', 'slug');
+
             // 近 24h 各分類統計
             Report::query()
                 ->visible()
@@ -34,8 +37,8 @@ new class extends Component
                 ->selectRaw('category, count(*) as n')
                 ->groupBy('category')
                 ->pluck('n', 'category')
-                ->each(function ($n, $category) use (&$messages) {
-                    $label = ReportCategory::labels()[$category] ?? $category;
+                ->each(function ($n, $category) use (&$messages, $names) {
+                    $label = $names[$category] ?? $category;
                     $messages[] = "📊 近 24 小時已收 {$n} 筆「{$label}」回報";
                 });
 
@@ -47,8 +50,8 @@ new class extends Component
                 ->latest()
                 ->limit(6)
                 ->get(['category', 'description', 'created_at'])
-                ->each(function ($r) use (&$messages) {
-                    $label = ReportCategory::labels()[$r->category] ?? $r->category;
+                ->each(function ($r) use (&$messages, $names) {
+                    $label = $names[$r->category] ?? $r->category;
                     $messages[] = '🐾 '.$r->created_at->diffForHumans()
                         ."，市民回報「{$label}」：".Str::limit($r->description, 25);
                 });

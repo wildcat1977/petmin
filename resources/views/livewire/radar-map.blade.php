@@ -15,7 +15,7 @@ new class extends Component
     {
         return \App\Models\ReportCategory::allOrdered()->map(fn ($cat) => [
             'slug' => $cat->slug,
-            'name' => __($cat->name),
+            'name' => $cat->label(),
             'emoji' => $cat->emoji,
             'color' => $cat->color,
             'active' => $cat->is_active,

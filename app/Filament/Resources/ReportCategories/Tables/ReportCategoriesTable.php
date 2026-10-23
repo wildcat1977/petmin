@@ -27,6 +27,7 @@ class ReportCategoriesTable
                 TextColumn::make('name')
                     ->label('名稱')
                     ->formatStateUsing(fn (ReportCategory $record) => trim("{$record->emoji} {$record->name}"))
+                    ->description(fn (ReportCategory $record) => $record->name_en)
                     ->searchable(),
 
                 TextColumn::make('slug')

@@ -297,7 +297,7 @@
                         </button>
                         <div class="ml-auto flex items-center gap-4 text-xs text-slate-500">
                             @foreach (\App\Models\ReportCategory::activeOrdered() as $legendCat)
-                                <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full" style="background: {{ $legendCat->color }}"></span>{{ __($legendCat->name) }}</span>
+                                <span><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full" style="background: {{ $legendCat->color }}"></span>{{ $legendCat->label() }}</span>
                             @endforeach
                             <span class="text-slate-600">越亮 = 越近期</span>
                         </div>
