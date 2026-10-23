@@ -154,6 +154,22 @@ class BinOccupationServiceTest extends TestCase
         $this->assertSame('eligible', $service->status($this->bin->fresh(), $challenger)['state']);
     }
 
+    public function test_zero_cooldown_lets_one_person_count_back_to_back_for_demo(): void
+    {
+        // demo 時把冷卻與保護期設成 0，碰 NFC 連續回報 3 次就要能當場佔領
+        config(['petmin.bin_naming.cooldown_hours' => 0, 'petmin.bin_naming.protect_hours' => 0]);
+        $service = app(BinOccupationService::class);
+        [$owner, $user] = User::factory()->count(2)->create();
+        $this->occupy($owner, '2026-10-23 11:00');
+        foreach (['11:01', '11:02', '11:03'] as $at) {
+            $this->report($user, "2026-10-23 {$at}");
+        }
+
+        $this->assertSame([$user->id => 3], $service->standings($this->bin, Carbon::parse('2026-10-23 11:00'))
+            ->mapWithKeys(fn ($r) => [$r['user']->id => $r['count']])->all());
+        $this->assertSame('eligible', $service->status($this->bin->fresh(), $user)['state']);
+    }
+
     private function occupy(User $owner, string $at): void
     {
         BinName::create(['trash_bin_id' => $this->bin->id, 'user_id' => $owner->id, 'name' => '舊名字',

@@ -203,6 +203,15 @@ class BinOccupationComponentTest extends TestCase
             ->assertDontSee('某某某下台');
     }
 
+    public function test_zero_hour_rules_are_hidden_instead_of_saying_zero_hours(): void
+    {
+        config(['petmin.bin_naming.cooldown_hours' => 0, 'petmin.bin_naming.protect_hours' => 0]);
+
+        Livewire::test('bin-occupation', ['binId' => $this->bin->id])
+            ->assertSee('怎麼算次數？')
+            ->assertDontSee('0 小時');
+    }
+
     public function test_checkin_page_includes_occupation_panel(): void
     {
         $this->withoutVite();

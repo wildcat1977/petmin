@@ -87,7 +87,7 @@ new class extends Component
     }
 }; ?>
 
-@php $min = config('petmin.bin_naming.min_reports'); $protect = config('petmin.bin_naming.protect_hours'); @endphp
+@php $min = config('petmin.bin_naming.min_reports'); $protect = (int) config('petmin.bin_naming.protect_hours'); $cooldown = (int) config('petmin.bin_naming.cooldown_hours'); @endphp
 <div class="mt-6 rounded-2xl bg-radar-card p-5 shadow" x-data="{ claim: @js($canName) }"
      @if ($mySubmission?->status === \App\Models\BinName::STATUS_PENDING) wire:poll.5s @endif>
     @if ($current)
@@ -135,7 +135,11 @@ new class extends Component
             @switch($status['state'])
                 @case('occupier')
                     <p class="text-sm font-semibold text-amber-300">🏴 {{ __('你正在佔領這個桶') }}</p>
-                    <p class="mt-1 text-xs text-slate-400">{{ __('別人要從你佔領後重新巡滿 :min 次，而且你佔領滿 :hours 小時，才搶得走', ['min' => $min, 'hours' => $protect]) }}</p>
+                    <p class="mt-1 text-xs text-slate-400">
+                        {{ $protect > 0
+                            ? __('別人要從你佔領後重新巡滿 :min 次，而且你佔領滿 :hours 小時，才搶得走', ['min' => $min, 'hours' => $protect])
+                            : __('別人要從你佔領後重新巡滿 :min 次才搶得走', ['min' => $min]) }}
+                    </p>
                     @break
                 @case('eligible')
                     @if ($canName)
@@ -167,10 +171,17 @@ new class extends Component
         <summary class="cursor-pointer">{{ __('怎麼算次數？') }}</summary>
         <ul class="mt-2 list-disc space-y-1 pl-5">
             <li>{{ __('只算最近 :days 天內、審核通過的回報', ['days' => config('petmin.bin_naming.window_days')]) }}</li>
-            <li>{{ __('同一個人 :hours 小時內只算一次', ['hours' => config('petmin.bin_naming.cooldown_hours')]) }}</li>
-            <li>{{ __('同一個桶 :hours 小時內最多算 :users 個人（交叉驗證，揪團灌也灌不動）', ['hours' => config('petmin.bin_naming.cooldown_hours'), 'users' => config('petmin.bin_naming.max_users_per_window')]) }}</li>
+            {{-- 冷卻設成 0（例如 demo）就沒有這兩條限制，不顯示「0 小時內只算一次」 --}}
+            @if ($cooldown > 0)
+                <li>{{ __('同一個人 :hours 小時內只算一次', ['hours' => $cooldown]) }}</li>
+                <li>{{ __('同一個桶 :hours 小時內最多算 :users 個人（交叉驗證，揪團灌也灌不動）', ['hours' => $cooldown, 'users' => config('petmin.bin_naming.max_users_per_window')]) }}</li>
+            @endif
             <li>{{ __('沒人佔領的桶，巡滿 :min 次就能佔領命名，先命名先贏', ['min' => $min]) }}</li>
-            <li>{{ __('已被佔領的桶，要從佔領之後重新巡滿 :min 次，而且佔領滿 :hours 小時才搶得走', ['min' => $min, 'hours' => $protect]) }}</li>
+            <li>
+                {{ $protect > 0
+                    ? __('已被佔領的桶，要從佔領之後重新巡滿 :min 次，而且佔領滿 :hours 小時才搶得走', ['min' => $min, 'hours' => $protect])
+                    : __('已被佔領的桶，要從佔領之後重新巡滿 :min 次才搶得走', ['min' => $min]) }}
+            </li>
             <li>{{ __('新名字通過審核之前，地圖上照掛舊名字') }}</li>
             <li>{{ __('名字會經過審核，不雅、廣告、真實人物、政治相關的名字不會公開') }}</li>
         </ul>
