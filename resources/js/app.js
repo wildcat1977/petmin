@@ -416,8 +416,11 @@ function binClusterIcon(cluster) {
     const color = BIN_STYLE[kind]?.color ?? '#22c55e';
     const count = cluster.getChildCount();
     const size = count < 10 ? 30 : count < 100 ? 38 : 46;
+    // 裡面有被佔領命名的桶，聚合點也插旗：不然要放大到單一桶才看得到旗子
+    const flag = cluster.getAllChildMarkers().some((m) => m.options.binNick)
+        ? '<div style="position:absolute;top:-9px;right:-9px;font-size:13px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">🚩</div>' : '';
     return L.divIcon({
-        html: `<div style="width:${size}px;height:${size}px;background:${color}b3;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;box-shadow:0 0 8px ${color}66">${count}</div>`,
+        html: `<div style="position:relative;width:${size}px;height:${size}px;background:${color}b3;border:2px solid #fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0f172a;box-shadow:0 0 8px ${color}66">${count}${flag}</div>`,
         className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
     });
 }
@@ -434,7 +437,7 @@ function renderBins() {
         iconCreateFunction: binClusterIcon,
     });
     layer.addLayers(binsCache.points.map((b) =>
-        L.marker([b.lat, b.lng], { icon: binIcon(b), binKind: b.kind }).bindPopup(() => createBinPopupEl(b), { maxWidth: 260 })));
+        L.marker([b.lat, b.lng], { icon: binIcon(b), binKind: b.kind, binNick: !!b.nick }).bindPopup(() => createBinPopupEl(b), { maxWidth: 260 })));
     if (binsLayer) radarMap.removeLayer(binsLayer);
     binsLayer = layer.addTo(radarMap);
 }
