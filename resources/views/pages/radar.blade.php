@@ -32,9 +32,20 @@
         {{-- 頂帶：全站共用 head nav --}}
         @include('partials.site-header')
 
-        {{-- 桌機：圖層 chips（手機收進右側面板） --}}
-        <div data-map-chip-bar class="pointer-events-auto hidden gap-1.5 px-4 lg:flex lg:flex-wrap">
-            @include('partials.map-layer-chips', ['cls' => 'map-chip'])
+        {{-- 桌機：右上「圖層」鈕，滑過展開 checkbox 面板（IITC 風格，地圖不被一整排按鈕佔掉）；手機收進右側面板 --}}
+        <div data-map-chip-bar class="pointer-events-none hidden justify-end px-4 lg:flex">
+            <div class="pointer-events-auto relative" x-data="{ open: false, timer: null }"
+                 @mouseenter="clearTimeout(timer); open = true"
+                 @mouseleave="timer = setTimeout(() => open = false, 250)">
+                <button type="button" @click="open = ! open" :aria-expanded="open"
+                        class="flex items-center gap-1.5 rounded-lg border border-white/15 bg-radar-bg/95 px-3 py-1.5 text-sm font-semibold text-slate-200 shadow-lg shadow-black/40 backdrop-blur hover:border-white/30">
+                    🗂️ {{ __('圖層') }} <span class="text-xs text-slate-400" x-text="open ? '▴' : '▾'"></span>
+                </button>
+                <div x-show="open" x-cloak x-transition.opacity.duration.100ms
+                     class="layer-panel absolute right-0 top-full z-[520] mt-1 max-h-[70vh] w-[30rem] overflow-y-auto rounded-xl border border-white/10 bg-radar-bg/97 p-3 shadow-2xl shadow-black/50 backdrop-blur">
+                    @include('partials.map-layer-chips')
+                </div>
+            </div>
         </div>
 
         <div class="flex-1"></div>
@@ -79,7 +90,7 @@
              class="pointer-events-auto fixed bottom-24 right-0 top-16 z-[505] flex w-64 flex-col gap-3 overflow-y-auto rounded-l-xl border-l border-white/10 bg-radar-bg/98 p-3 backdrop-blur">
             <p class="mb-1 text-[11px] font-bold tracking-widest text-slate-400">{{ __('圖層') }}</p>
             <div class="flex flex-col gap-1">
-                @include('partials.map-layer-chips', ['cls' => 'layer-check'])
+                @include('partials.map-layer-chips')
             </div>
         </div>
     </div>
