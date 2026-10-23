@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\BinName;
 use App\Models\TrashBin;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /** 桶位 API：bbox 點位／聚合、狀態篩選（消失的桶預設不下發）、回報表單的吸附查詢。 */
@@ -90,6 +93,27 @@ class BinsApiTest extends TestCase
         $points = $this->getJson('/api/map/bins?mode=points&statuses=missing')->assertOk()->json('points');
 
         $this->assertSame('2026-10-20', collect($points)->firstWhere('id', $bin->id)['removed_at']);
+    }
+
+    /** 佔領命名：地圖只掛審核通過的最新名字；佔領者開隱私模式就匿名；code 讓 popup 連到打卡頁看佔領榜 */
+    public function test_points_carry_approved_bin_name_owner_and_checkin_code(): void
+    {
+        $bin = TrashBin::factory()->create(['external_id' => 'clean_box-abc', 'latitude' => 25.0330, 'longitude' => 121.5654]);
+        $owner = User::factory()->create(['name' => '小美']);
+        BinName::create(['trash_bin_id' => $bin->id, 'user_id' => $owner->id, 'name' => '舊名字', 'status' => BinName::STATUS_APPROVED]);
+        BinName::create(['trash_bin_id' => $bin->id, 'user_id' => $owner->id, 'name' => '新名字', 'status' => BinName::STATUS_APPROVED]);
+        BinName::create(['trash_bin_id' => $bin->id, 'user_id' => $owner->id, 'name' => '待審名字', 'status' => BinName::STATUS_PENDING]);
+        $unnamed = TrashBin::factory()->create(['external_id' => null, 'latitude' => 25.0331, 'longitude' => 121.5655]);
+
+        $points = collect($this->getJson('/api/map/bins?mode=points')->assertOk()->json('points'));
+
+        $this->assertSame(['新名字', '小美', 'clean_box-abc'], [$points->firstWhere('id', $bin->id)['nick'], $points->firstWhere('id', $bin->id)['owner'], $points->firstWhere('id', $bin->id)['code']]);
+        $this->assertNull($points->firstWhere('id', $unnamed->id)['nick']);
+        $this->assertSame((string) $unnamed->id, $points->firstWhere('id', $unnamed->id)['code']);
+
+        $owner->update(['is_private' => true]);
+        Cache::flush(); // 測試用 array cache
+        $this->assertNull(collect($this->getJson('/api/map/bins?mode=points')->json('points'))->firstWhere('id', $bin->id)['owner']);
     }
 
     public function test_nearby_snaps_to_closest_bin_within_snap_distance_only(): void

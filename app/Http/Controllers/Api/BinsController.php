@@ -62,7 +62,8 @@ class BinsController extends Controller
 
             if ($zoom >= (int) config('petmin.map.cluster_below_zoom')) {
                 $limit = (int) config('petmin.map.max_points');
-                $bins = $base->limit($limit + 1)->get(['id', 'kind', 'status', 'address', 'district', 'latitude', 'longitude', 'box_count', 'last_verified_at', 'reports_count', 'removed_from_source_at']);
+                $bins = $base->with('currentName.user:id,name,is_private')->limit($limit + 1)
+                    ->get(['id', 'external_id', 'kind', 'status', 'address', 'district', 'latitude', 'longitude', 'box_count', 'last_verified_at', 'reports_count', 'removed_from_source_at']);
 
                 return [
                     'mode' => 'points',
@@ -79,6 +80,11 @@ class BinsController extends Controller
                         'reports' => $b->reports_count,
                         'verified_at' => $b->last_verified_at?->diffForHumans(),
                         'removed_at' => $b->removed_from_source_at?->toDateString(),
+                        // 佔領命名（審核通過才有）；code 給 popup 連打卡頁 /b/{code} 看佔領榜
+                        'nick' => $b->currentName?->name,
+                        // 隱私模式回 null 由前端顯示「匿名巡桶員」：這份快取不分語系共用，不能放翻譯過的字
+                        'owner' => ($b->currentName?->user && ! $b->currentName->user->is_private) ? $b->currentName->user->name : null,
+                        'code' => $b->external_id ?? (string) $b->id,
                     ])->values()->all(),
                 ];
             }

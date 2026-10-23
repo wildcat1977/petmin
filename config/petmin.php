@@ -204,4 +204,23 @@ return [
 
     // 遊戲化：核准一筆回報得幾點
     'points_per_approved_report' => (int) env('PETMIN_POINTS_PER_REPORT', 10),
+
+    /*
+     * 佔領命名（Summer 的提案）：同一個桶有效回報最多的人可以幫桶取名，名字掛在地圖上。
+     * 有效回報＝最近 window_days 天內已核准、掛在這個桶上的回報，再套兩條防灌規則：
+     *   - 同一人 cooldown_hours 內只算一次（不能站在桶前連拍）
+     *   - 同一桶任一 cooldown_hours 時段內最多計 max_users_per_window 人（幾個人揪團輪流灌也灌不動）
+     * 有效次數 ≥ min_reports 且排第一（同分先達到者優先）才能命名；被超越時舊名保留，直到新第一名命名。
+     * 名字審核：格式 → 黑名單（config/bin_name_blocklist.php）→ Claude，通過才公開；AI 失敗停在待審（fail-closed）。
+     */
+    'bin_naming' => [
+        'min_reports' => (int) env('PETMIN_BIN_NAMING_MIN_REPORTS', 5),
+        'window_days' => (int) env('PETMIN_BIN_NAMING_WINDOW_DAYS', 90),
+        'cooldown_hours' => (int) env('PETMIN_BIN_NAMING_COOLDOWN_HOURS', 8),
+        'max_users_per_window' => (int) env('PETMIN_BIN_NAMING_MAX_USERS', 3),
+        'name_min_length' => 2,
+        'name_max_length' => 12,
+        // 每人每天最多送審幾次（每次都要叫一次 AI）
+        'daily_submissions' => (int) env('PETMIN_BIN_NAMING_DAILY_SUBMISSIONS', 5),
+    ],
 ];

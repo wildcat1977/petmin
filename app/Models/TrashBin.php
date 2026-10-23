@@ -8,6 +8,7 @@ use Database\Factories\TrashBinFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -84,6 +85,12 @@ class TrashBin extends Model
     public function reports(): HasMany
     {
         return $this->hasMany(Report::class);
+    }
+
+    /** 目前掛在地圖上的佔領名：最新一筆通過審核的命名 */
+    public function currentName(): HasOne
+    {
+        return $this->hasOne(BinName::class)->ofMany(['id' => 'max'], fn ($q) => $q->where('status', BinName::STATUS_APPROVED));
     }
 
     public function scopeActive($query)

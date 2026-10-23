@@ -32,6 +32,8 @@
         </button>
         <p class="mt-2 text-center text-xs text-slate-400">{{ __('拍一張照片，選「垃圾桶壞了」「臭臭的」「垃圾桶滿了！」或「桶還在」') }}</p>
 
+        <livewire:bin-occupation :bin-id="$bin->id" />
+
         <a href="{{ route('find') }}" class="mt-6 block text-center text-sm text-sky-300 underline underline-offset-4">
             {{ __('不是這個桶？找附近其他桶') }}
         </a>

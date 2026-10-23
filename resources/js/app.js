@@ -343,8 +343,10 @@ function binIcon(b) {
         `<div style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;` +
         `background:${missing ? '#a78bfa' : style.color};border:2px solid #fff;border-radius:8px;` +
         `box-shadow:0 2px 6px rgba(0,0,0,0.4);opacity:${missing ? 0.75 : 1};${missing ? 'filter:grayscale(0.4)' : ''}">` +
-        `${missing ? '👻' : style.emoji}</div>`;
-    return L.divIcon({ html, className: '', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14] });
+        `${missing ? '👻' : style.emoji}</div>` +
+        // 被佔領命名的桶右上角插一面小旗
+        (b.nick ? '<div style="position:absolute;top:-9px;right:-9px;font-size:13px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5))">🚩</div>' : '');
+    return L.divIcon({ html: `<div style="position:relative">${html}</div>`, className: '', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14] });
 }
 
 function createBinPopupEl(b) {
@@ -359,6 +361,16 @@ function createBinPopupEl(b) {
     st.textContent = BIN_STATUS_LABEL[b.status]?.() ?? b.status;
     head.appendChild(st);
     wrap.appendChild(head);
+    // 佔領命名：市民取的名字，同樣只用 textContent
+    if (b.nick) {
+        const nick = document.createElement('div');
+        nick.style.cssText = 'margin-top:2px;font-size:15px;font-weight:800;color:#b45309;word-break:break-all';
+        nick.textContent = `🚩「${b.nick}」`;
+        const owner = document.createElement('small');
+        owner.style.cssText = 'display:block;color:#64748b';
+        owner.textContent = `${window.i18n?.binOwnedBy ?? '佔領者'}：${b.owner ?? (window.i18n?.binAnonymousOwner ?? '匿名巡桶員')}`;
+        wrap.append(nick, owner);
+    }
     // 名稱/地址為 open data，用 textContent 組裝避免 XSS
     const name = document.createElement('div');
     name.textContent = [b.district, b.name].filter(Boolean).join(' ') + (b.n > 1 ? `（${b.n} 處）` : '');
@@ -384,6 +396,11 @@ function createBinPopupEl(b) {
         window.Livewire.dispatch('open-report-form', { binId: b.id });
     });
     wrap.appendChild(btn);
+    const occupation = document.createElement('a');
+    occupation.href = `/b/${encodeURIComponent(b.code)}`;
+    occupation.textContent = window.i18n?.binOccupation ?? '🏴 佔領榜／幫桶命名';
+    occupation.style.cssText = 'display:block;margin-top:6px;text-align:center;font-size:12px;color:#0369a1;text-decoration:underline';
+    wrap.appendChild(occupation);
     return wrap;
 }
 
