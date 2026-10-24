@@ -79,7 +79,7 @@ class BinCheckinPageTest extends TestCase
         Livewire::actingAs($user)->test('report-form')
             ->dispatch('open-report-form', binId: $bin->id, requirePhoto: true)
             ->call('setLocationFromExif', 25.0461, 121.5232)
-            ->call('clearSnappedBin')
+            ->call('clearAutoSnappedBin')
             ->call('setSnappedBin', $other->id, '別的桶', TrashBin::KIND_CLEAN_BOX, 5)
             ->assertSet('trashBinId', $bin->id)
             ->set('photo', UploadedFile::fake()->image('bin.jpg'))
@@ -100,7 +100,7 @@ class BinCheckinPageTest extends TestCase
             ->dispatch('open-report-form')
             ->call('setSnappedBin', $other->id, '別的桶', TrashBin::KIND_CLEAN_BOX, 5)
             ->assertSet('trashBinId', $other->id)
-            ->call('clearSnappedBin')
+            ->call('clearAutoSnappedBin')
             ->assertSet('trashBinId', null);
     }
 

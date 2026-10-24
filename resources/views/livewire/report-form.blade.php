@@ -132,12 +132,20 @@ new class extends Component
         $this->snappedBinDistance = $distance;
     }
 
+    /** 使用者按「取消」：明確不掛這個桶，連鎖定一起解除 */
     public function clearSnappedBin(): void
+    {
+        $this->lockedBinId = null;
+        $this->reset(['trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance']);
+    }
+
+    /** 拖動地圖後附近沒桶（前端自動呼叫）：鎖定的桶不受影響 */
+    public function clearAutoSnappedBin(): void
     {
         if ($this->lockedBinId) {
             return;
         }
-        $this->reset(['trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance']);
+        $this->clearSnappedBin();
     }
 
     public function close(): void

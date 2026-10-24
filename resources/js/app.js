@@ -952,7 +952,7 @@ window.initPinMap = function (el, wire) {
             .then((data) => {
                 if (!data) return;
                 if (data.bin) wire.setSnappedBin(data.bin.id, data.bin.name ?? '', data.bin.kind, data.bin.distance_m);
-                else wire.clearSnappedBin();
+                else wire.clearAutoSnappedBin();
             })
             .catch(() => {});
     };
