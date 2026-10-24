@@ -8,8 +8,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * 免責聲明：進站彈窗掛全站 layout（sessionStorage 每 session 一次，
- * 顯示邏輯在前端）；回報彈窗模式由 config 控制（every|session|off），預設 session。
+ * 免責聲明：進站彈窗掛全站 layout，回報彈窗模式由 config 控制（every|session|off），預設 session。
+ * 看過一次記在 cookie（兩個彈窗共用）：LINE／FB 內建瀏覽器每次開都是新分頁，sessionStorage 會讓它每次重跳。
  */
 class DisclaimerTest extends TestCase
 {
@@ -22,7 +22,7 @@ class DisclaimerTest extends TestCase
             ->assertOk()
             ->assertSee('使用前請注意')
             ->assertSee('僅供大眾參考')
-            ->assertSee('petmin:disclaimer:entry', false);
+            ->assertSee('petmin_disclaimer_v1=1', false);
     }
 
     public function test_report_form_disclaimer_shows_in_every_mode(): void
@@ -51,10 +51,10 @@ class DisclaimerTest extends TestCase
         config(['petmin.disclaimer.report_mode' => 'session']);
         $user = User::factory()->create();
 
-        // session 模式仍需渲染 markup（已讀與否由前端 sessionStorage 決定）
+        // session 模式仍需渲染 markup（已讀與否由前端讀 cookie 決定）
         Livewire::actingAs($user)->test('report-form')
             ->dispatch('open-report-form')
             ->assertSee('僅供大眾參考')
-            ->assertSee('petmin:disclaimer:report', false);
+            ->assertSee('petmin_disclaimer_v1=1', false);
     }
 }

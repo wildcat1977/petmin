@@ -24,7 +24,7 @@ return [
     'report_cooldown_seconds' => (int) env('PETMIN_REPORT_COOLDOWN', 60),
     'report_hourly_limit' => (int) env('PETMIN_REPORT_HOURLY_LIMIT', 10),
 
-    // 回報免責聲明模式 every=每次回報跳|session=每 session 一次|off=關閉
+    // 回報免責聲明模式 every=每次回報跳|session=看過一次記 cookie 一年（與進站聲明共用）|off=關閉
     'disclaimer' => [
         'report_mode' => env('PETMIN_DISCLAIMER_REPORT_MODE', 'session'),
     ],

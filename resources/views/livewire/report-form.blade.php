@@ -268,8 +268,8 @@ new class extends Component
     @if ($open)
         @php $disclaimerMode = config('petmin.disclaimer.report_mode', 'every'); @endphp
         @if ($disclaimerMode !== 'off' && ! $submitted)
-            {{-- 回報免責聲明（spec §11.3）：every=每次開表單重跳；session=每 session 一次 --}}
-            <div x-data="{ ack: @js($disclaimerMode) === 'session' && !! sessionStorage.getItem('petmin:disclaimer:report') }"
+            {{-- 回報免責聲明（spec §11.3）：every=每次開表單重跳；session=看過一次記 cookie 一年（與進站聲明共用，見 partials/disclaimer-modal） --}}
+            <div x-data="{ ack: @js($disclaimerMode) === 'session' && document.cookie.includes('petmin_disclaimer_v1=1') }"
                  x-show="! ack"
                  x-cloak
                  class="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
@@ -279,7 +279,7 @@ new class extends Component
                         {{ __('本地圖彙整環保局開放資料與市民回報，僅供大眾參考，不代表市府公告。清運需求請同時撥打 1999 或使用台北市民當家熱線。回報時請注意自身與毛孩安全。') }}
                     </p>
                     <button type="button"
-                            @click="sessionStorage.setItem('petmin:disclaimer:report', '1'); ack = true"
+                            @click="document.cookie = 'petmin_disclaimer_v1=1; max-age=31536000; path=/; SameSite=Lax; Secure'; ack = true"
                             class="mt-5 w-full rounded-xl bg-cyan-600 px-4 py-3 font-semibold hover:bg-cyan-500">
                         {{ __('我知道了，開始回報') }}
                     </button>
