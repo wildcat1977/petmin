@@ -1048,7 +1048,8 @@ window.initPinMap = function (el, wire) {
     };
 
     // 接收 EXIF 解析成功後的位置事件
-    const onExifLocation = (e) => setPos(e.detail.lat, e.detail.lng);
+    // 從特定桶進來（打卡頁、popup）位置就是那個桶，照片 GPS 不移動圖釘、不重新吸附
+    const onExifLocation = (e) => { if (!hasPreset) setPos(e.detail.lat, e.detail.lng); };
     window.addEventListener('exif-location', onExifLocation);
     // 元件移除時清理事件
     el.__exifCleanup = () => window.removeEventListener('exif-location', onExifLocation);

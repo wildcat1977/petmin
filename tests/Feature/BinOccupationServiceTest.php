@@ -77,16 +77,17 @@ class BinOccupationServiceTest extends TestCase
         $this->assertSame([$a->id => 1, $b->id => 1, $c->id => 1, $d->id => 1], $this->counts());
     }
 
-    public function test_only_recent_approved_reports_on_this_bin_count(): void
+    public function test_submitted_reports_count_until_rejected(): void
     {
+        // 站在桶前就要能累積（AI 拿不準時會停在待審）；只有被 AI 或管理員退件的才扣掉
         $user = User::factory()->create();
         $this->report($user, '2026-07-24 11:00');                                         // 91 天前
-        $this->report($user, '2026-10-01 08:00', ['status' => Report::STATUS_PENDING]);    // 未核准
-        $this->report($user, '2026-10-02 08:00', ['status' => Report::STATUS_REJECTED]);   // 退件
+        $this->report($user, '2026-10-01 08:00', ['status' => Report::STATUS_PENDING]);    // 待審：算
+        $this->report($user, '2026-10-02 08:00', ['status' => Report::STATUS_REJECTED]);   // 退件：不算
         $this->report($user, '2026-10-03 08:00', ['trash_bin_id' => TrashBin::factory()->create()->id]); // 別的桶
         $this->report($user, '2026-10-04 08:00');
 
-        $this->assertSame([$user->id => 1], $this->counts());
+        $this->assertSame([$user->id => 2], $this->counts());
     }
 
     public function test_banned_users_do_not_count_and_do_not_take_window_slots(): void

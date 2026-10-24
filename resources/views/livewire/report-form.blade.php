@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -48,6 +49,13 @@ new class extends Component
 
     /** 從桶 popup「回報這個桶」進來：表單帶桶位座標，小地圖不再抓 GPS */
     public bool $presetLocation = false;
+
+    /**
+     * 從特定桶打開（打卡頁 NFC/QR、地圖 popup「回報這個桶」）時鎖定那個桶：
+     * 照片 EXIF 位置或拖動地圖重新吸附都不能把它換掉（10-24 Summer 在桶前回報，照片 GPS 偏 100m 就掉桶）。
+     */
+    #[Locked]
+    public ?int $lockedBinId = null;
 
     /** 從佔領垃圾桶頁（NFC／QR）進來：照片必填；其他入口維持選填 */
     public bool $requirePhoto = false;
@@ -94,7 +102,7 @@ new class extends Component
             return;
         }
         $this->reset(['photo', 'description', 'submitted', 'extraValue', 'exifLocation',
-            'trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance', 'presetLocation']);
+            'trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance', 'presetLocation', 'lockedBinId']);
         $this->requirePhoto = $requirePhoto;
         $this->category = ReportCategory::defaultSlug();
 
@@ -104,6 +112,7 @@ new class extends Component
             $this->address = $bin->district ? "台北市 {$bin->district}" : '';
             $this->presetLocation = true;
             $this->setSnappedBin($bin->id, $bin->address ?? '', $bin->kind, 0);
+            $this->lockedBinId = $bin->id;
             // 從桶進來，預設分類改成「桶滿了」（最常見的回報）
             if (in_array(Report::CATEGORY_FULL, ReportCategory::activeSlugs(), true)) {
                 $this->category = Report::CATEGORY_FULL;
@@ -114,6 +123,9 @@ new class extends Component
 
     public function setSnappedBin(int $id, string $name, string $kind, ?int $distance = null): void
     {
+        if ($this->lockedBinId && $id !== $this->lockedBinId) {
+            return;
+        }
         $this->trashBinId = $id;
         $this->snappedBinName = $name;
         $this->snappedBinKind = $kind;
@@ -122,6 +134,9 @@ new class extends Component
 
     public function clearSnappedBin(): void
     {
+        if ($this->lockedBinId) {
+            return;
+        }
         $this->reset(['trashBinId', 'snappedBinName', 'snappedBinKind', 'snappedBinDistance']);
     }
 
@@ -151,6 +166,10 @@ new class extends Component
 
     public function setLocationFromExif(float $lat, float $lng): void
     {
+        // 已鎖定桶：位置就是那個桶，不被照片 GPS 拉走
+        if ($this->lockedBinId) {
+            return;
+        }
         $this->latitude = $lat;
         $this->longitude = $lng;
         $this->exifLocation = true;

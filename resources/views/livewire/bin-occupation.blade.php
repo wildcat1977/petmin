@@ -6,6 +6,7 @@ use App\Models\TrashBin;
 use App\Services\BinNameModerationService;
 use App\Services\BinOccupationService;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -18,6 +19,10 @@ new class extends Component
     public int $binId;
 
     public string $name = '';
+
+    /** 同頁的回報表單送出後重算：第 3 次送出當下就跳恭喜視窗 */
+    #[On('report-submitted')]
+    public function refreshAfterReport(): void {}
 
     public function submit(BinOccupationService $occupation, BinNameModerationService $moderation): void
     {
@@ -88,7 +93,7 @@ new class extends Component
 }; ?>
 
 @php $min = config('petmin.bin_naming.min_reports'); $protect = (int) config('petmin.bin_naming.protect_hours'); $cooldown = (int) config('petmin.bin_naming.cooldown_hours'); @endphp
-<div class="mt-6 rounded-2xl bg-radar-card p-5 shadow" x-data="{ claim: @js($canName) }"
+<div class="mt-6 rounded-2xl bg-radar-card p-5 shadow"
      @if ($mySubmission?->status === \App\Models\BinName::STATUS_PENDING) wire:poll.5s @endif>
     @if ($current)
         <p class="text-xs font-semibold text-amber-300">🏴 {{ __('佔領中') }}</p>
@@ -144,7 +149,7 @@ new class extends Component
                 @case('eligible')
                     @if ($canName)
                         <p class="text-sm font-semibold text-amber-300">🎉 {{ __('你可以佔領這個桶了！') }}</p>
-                        <button type="button" x-on:click="claim = true"
+                        <button type="button" x-on:click="$dispatch('open-claim')"
                                 class="mt-2 rounded-lg bg-amber-400 px-4 py-2 text-sm font-bold text-amber-950 hover:bg-amber-300">{{ __('幫它命名') }}</button>
                     @endif
                     @break
@@ -187,9 +192,10 @@ new class extends Component
         </ul>
     </details>
 
-    {{-- 恭喜佔領：一進頁面就跳出來要他命名，關掉後可以從上面的按鈕再打開 --}}
+    {{-- 恭喜佔領：一進頁面（或剛回報滿次數）就跳出來要他命名，關掉後可以從上面的按鈕再打開。
+         x-data 放在這層：次數剛滿時這塊才出現，Alpine 會重新初始化成打開 --}}
     @if ($canName)
-        <div x-show="claim" x-cloak x-transition.opacity
+        <div x-data="{ claim: true }" x-on:open-claim.window="claim = true" x-show="claim" x-cloak x-transition.opacity
              class="fixed inset-0 z-[1800] flex items-center justify-center bg-black/70 p-4" x-on:keydown.escape.window="claim = false">
             <div class="w-full max-w-sm rounded-2xl bg-radar-card p-6 text-center shadow-xl" x-on:click.outside="claim = false">
                 <p class="text-4xl">🎉</p>

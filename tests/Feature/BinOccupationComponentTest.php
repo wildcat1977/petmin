@@ -212,6 +212,18 @@ class BinOccupationComponentTest extends TestCase
             ->assertDontSee('0 小時');
     }
 
+    public function test_reaching_minimum_by_reporting_on_the_page_pops_congratulations_right_away(): void
+    {
+        // 打卡頁送出回報後（還在待審）佔領榜當場重算，不用重新整理頁面
+        $user = User::factory()->create();
+        $this->patrol($user, 1);
+        $component = Livewire::actingAs($user)->test('bin-occupation', ['binId' => $this->bin->id])
+            ->assertSee('再 1 次就能佔領');
+
+        Report::factory()->create(['user_id' => $user->id, 'trash_bin_id' => $this->bin->id, 'status' => Report::STATUS_PENDING]);
+        $component->dispatch('report-submitted')->assertSee('恭喜你佔領這個桶');
+    }
+
     public function test_checkin_page_includes_occupation_panel(): void
     {
         $this->withoutVite();

@@ -6,6 +6,7 @@ use App\Models\Report;
 use App\Models\TrashBin;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -66,6 +67,41 @@ class BinCheckinPageTest extends TestCase
             ->call('submit')
             ->assertHasNoErrors();
         $this->assertSame(1, Report::count());
+    }
+
+    public function test_report_opened_from_a_bin_stays_on_that_bin_whatever_the_photo_gps_says(): void
+    {
+        // 10-24 Summer 在華山公園桶前回報，照片 GPS 偏 100m，表單重新吸附找不到桶就把桶弄丟、佔領次數沒算到
+        $user = User::factory()->create();
+        $bin = TrashBin::factory()->create(['latitude' => 25.0470, 'longitude' => 121.5230]);
+        $other = TrashBin::factory()->create(['latitude' => 25.0400, 'longitude' => 121.5300]);
+
+        Livewire::actingAs($user)->test('report-form')
+            ->dispatch('open-report-form', binId: $bin->id, requirePhoto: true)
+            ->call('setLocationFromExif', 25.0461, 121.5232)
+            ->call('clearSnappedBin')
+            ->call('setSnappedBin', $other->id, '別的桶', TrashBin::KIND_CLEAN_BOX, 5)
+            ->assertSet('trashBinId', $bin->id)
+            ->set('photo', UploadedFile::fake()->image('bin.jpg'))
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $report = Report::sole();
+        $this->assertSame($bin->id, $report->trash_bin_id);
+        $this->assertEqualsWithDelta(25.0470, (float) $report->latitude, 0.00001);
+    }
+
+    public function test_free_report_still_snaps_to_wherever_the_pin_lands(): void
+    {
+        $user = User::factory()->create();
+        $other = TrashBin::factory()->create();
+
+        Livewire::actingAs($user)->test('report-form')
+            ->dispatch('open-report-form')
+            ->call('setSnappedBin', $other->id, '別的桶', TrashBin::KIND_CLEAN_BOX, 5)
+            ->assertSet('trashBinId', $other->id)
+            ->call('clearSnappedBin')
+            ->assertSet('trashBinId', null);
     }
 
     public function test_checkin_page_opens_form_with_photo_required(): void

@@ -31,7 +31,8 @@ class BinOccupationService
 
         $reports = Report::query()
             ->where('trash_bin_id', $bin->id)
-            ->where('status', Report::STATUS_APPROVED)
+            // 送出就算（站在桶前要能當場佔領），AI 或管理員退件才扣掉
+            ->whereIn('status', [Report::STATUS_PENDING, Report::STATUS_APPROVED])
             ->where('created_at', '>=', now()->subDays((int) $config['window_days']))
             ->whereHas('user', fn ($q) => $q->where('is_banned', false))
             ->orderBy('created_at')->orderBy('id')
