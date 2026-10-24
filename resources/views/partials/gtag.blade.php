@@ -1,8 +1,8 @@
 {{-- Google Analytics --}}
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-X5TSGKLZDH"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LCRBPF78P7"></script>
 <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-X5TSGKLZDH');
+    gtag('config', 'G-LCRBPF78P7');
 </script>
