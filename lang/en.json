@@ -464,5 +464,6 @@
     "快滿": "Almost full",
     "滿出來": "Overflowing",
     "別人要從你佔領後重新巡滿 :min 次才搶得走": "To take it, someone must patrol it :min times after you occupied it",
-    "已被佔領的桶，要從佔領之後重新巡滿 :min 次才搶得走": "An occupied bin can be taken over after :min new patrols since it was occupied"
+    "已被佔領的桶，要從佔領之後重新巡滿 :min 次才搶得走": "An occupied bin can be taken over after :min new patrols since it was occupied",
+    "全部關閉": "Close all"
 }

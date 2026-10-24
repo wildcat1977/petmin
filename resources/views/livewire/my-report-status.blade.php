@@ -30,19 +30,26 @@ new class extends Component
 @if(Auth::check() && isset($reports) && $reports->isNotEmpty())
 <div
     x-data="{
+        items: {{ Js::from($reports->map(fn($r) => ['id' => $r->id, 'ts' => $r->reviewed_at?->timestamp ?? 0])->values()) }},
         dismissed: JSON.parse(localStorage.getItem('petmin_reviews') || '{}'),
         isDismissed(id, ts) { return !!this.dismissed[id + '_' + ts]; },
         dismiss(id, ts) {
             this.dismissed[id + '_' + ts] = true;
             localStorage.setItem('petmin_reviews', JSON.stringify(this.dismissed));
         },
-        hasVisible(reports) {
-            return reports.some(r => !this.isDismissed(r.id, r.ts));
-        }
+        dismissAll() { this.items.forEach(r => this.dismiss(r.id, r.ts)); },
+        visibleCount() { return this.items.filter(r => !this.isDismissed(r.id, r.ts)).length; }
     }"
-    x-show="hasVisible({{ Js::from($reports->map(fn($r) => ['id' => $r->id, 'ts' => $r->reviewed_at?->timestamp ?? 0])->values()) }})"
+    x-show="visibleCount() > 0"
     class="mx-auto w-full max-w-md space-y-2"
 >
+    {{-- 一次好幾則時（例如連續回報）一鍵全關，不用一則一則按 --}}
+    <div x-show="visibleCount() > 1" class="flex justify-end">
+        <button type="button" @click="dismissAll()"
+                class="rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-slate-200 ring-1 ring-white/20 backdrop-blur hover:bg-black/80">
+            ✕ {{ __('全部關閉') }}
+        </button>
+    </div>
     @foreach($reports as $report)
     @php
         $ts = $report->reviewed_at?->timestamp ?? 0;
@@ -58,7 +65,7 @@ new class extends Component
         x-transition:leave="transition duration-200"
         x-transition:leave-start="opacity-100 translate-y-0"
         x-transition:leave-end="opacity-0 -translate-y-2"
-        class="relative flex items-start gap-3 rounded-2xl px-4 py-3 backdrop-blur ring-1
+        class="flex items-start gap-3 rounded-2xl px-4 py-3 backdrop-blur ring-1
             {{ $isApproved ? 'bg-green-950/70 ring-green-500/30' : 'bg-red-950/70 ring-red-500/30' }}"
     >
         <span class="mt-0.5 text-xl leading-none">{{ $isApproved ? '✅' : '❌' }}</span>
@@ -82,10 +89,11 @@ new class extends Component
                 <p class="mt-0.5 text-[10px] text-slate-600 truncate">{{ $report->address }}</p>
             @endif
         </div>
-        <button
+        {{-- 關閉鈕：原本是深灰小字疊在深色卡片上幾乎看不到，改成明顯的圓鈕、手機好按 --}}
+        <button type="button"
             @click="dismiss({{ $report->id }}, {{ $ts }})"
-            class="absolute top-2 right-3 text-slate-600 hover:text-slate-300 text-xs leading-none"
-            title="{{ __('關閉') }}">✕</button>
+            class="-mr-1 -mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm text-slate-200 hover:bg-white/25"
+            title="{{ __('關閉') }}" aria-label="{{ __('關閉') }}">✕</button>
     </div>
     @endforeach
 </div>
