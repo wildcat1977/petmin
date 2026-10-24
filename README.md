@@ -9,8 +9,7 @@
 
 完整提案見 [docs/proposal.md](docs/proposal.md)；五分鐘 demo 腳本見 [docs/demo-script.md](docs/demo-script.md)。
 
-本專案 fork 自 [hazdar（災害回報）](https://github.com/wildcat1977/hazdar)，再往上是
-[ratdar（見鼠地圖）](https://github.com/wildcat1977/ratdar)；沿用回報 pipeline、Socialite 登入、
+本專案 fork 自 [ratdar（見鼠地圖）](https://github.com/wildcat1977/ratdar)；沿用回報 pipeline、Socialite 登入、
 Leaflet + 自架 Protomaps 底圖、Claude Vision 審核、Filament 後台。
 
 ## 三層設計
